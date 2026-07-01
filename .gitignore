@@ -1,0 +1,23 @@
+# Dependências (reinstala com "npm install")
+node_modules/
+
+# 🔑 Segredos — NUNCA versionar
+.env
+.env.local
+.env.*.local
+
+# 👥 Banco com dados dos clientes (nome/endereço/telefone) — NUNCA versionar
+acai.db
+acai.db-journal
+acai.db-wal
+acai.db-shm
+
+# 📱 Sessão/cache do WhatsApp — NUNCA versionar (dá controle do WhatsApp a quem pegar)
+.wwebjs_auth/
+.wwebjs_cache/
+
+# Configuração local desta máquina
+.claude/settings.local.json
+
+# Logs e temporários
+*.log

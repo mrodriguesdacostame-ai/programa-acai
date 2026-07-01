@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌴 PROGRAMA AÇAÍ</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ══════════ TELA DE LOGIN ══════════ -->
+  <div id="tela-login">
+    <form class="login-card" id="form-login" autocomplete="on">
+      <div class="login-logo">🌴</div>
+      <h1 class="login-titulo">AÇAÍ DO CENTRO</h1>
+      <p class="login-sub">Sistema de Vendas</p>
+
+      <div class="login-campo">
+        <label for="login-user">Usuário</label>
+        <input type="text" id="login-user" placeholder="Digite seu usuário" autocomplete="username" autofocus>
+      </div>
+      <div class="login-campo">
+        <label for="login-senha">Senha</label>
+        <input type="password" id="login-senha" placeholder="Digite sua senha" autocomplete="current-password">
+      </div>
+
+      <div class="login-erro" id="login-erro"></div>
+      <button type="submit" class="btn-login"><span class="atalho">E</span>ntrar</button>
+
+      <div class="login-rodape">v1.0 · Açaí do Centro</div>
+    </form>
+  </div>
+
+  <!-- ══════════ APP PRINCIPAL ══════════ -->
+  <div id="app-principal" class="oculto">
+
+  <!-- ── TOP BAR ── -->
+  <header class="topbar">
+    <div class="logo" id="btn-home-logo">🌴 <strong>AÇAÍ</strong> DO CENTRO</div>
+    <div class="topbar-centro">
+      <button class="btn-topmenu" id="btn-inicio" data-ir="home">🏠 <span class="atalho">I</span>nício</button>
+      <button class="btn-topmenu" id="btn-menu-delivery" data-ir="delivery">🛵 <span class="atalho">D</span>elivery</button>
+      <button class="btn-topmenu" id="btn-menu-atendimento" data-ir="atendimento">💬 <span class="atalho">A</span>tendimento <span class="badge-nao-lidas" id="top-badge-atendimento" style="display:none">0</span></button>
+      <span class="topbar-secao" id="topbar-secao">Início</span>
+    </div>
+    <div class="topbar-dir">
+      <div class="user-chip">👤 <span id="user-nome">—</span></div>
+      <div class="relogio" id="relogio">--:--</div>
+      <button class="btn-sair" id="btn-sair" title="Sair (Alt+S)">⎋ <span class="atalho">S</span>air</button>
+    </div>
+  </header>
+
+  <main class="conteudo">
+
+    <!-- ══════════ TELA PRINCIPAL (HOME / MENU) ══════════ -->
+    <section class="tela ativa" id="tela-home">
+      <div class="home-wrap">
+        <div class="home-header">
+          <h1>Bem-vindo, <span id="home-user">—</span>! 🌴</h1>
+          <p>Selecione um módulo para começar</p>
+        </div>
+
+        <!-- Conexão do WhatsApp (status + QR pra (re)conectar) -->
+        <div class="home-wpp">
+          <div class="cl-whats-status" id="home-whats-status">🔌 Verificando WhatsApp…</div>
+          <button class="btn-conectar-wpp" id="btn-conectar-wpp" style="display:none">🔌 Conectar WhatsApp</button>
+          <div class="cl-whats-qr" id="home-whats-qr" style="display:none">
+            <img id="home-whats-qr-img" alt="QR Code do WhatsApp">
+            <p>📱 No celular da loja: WhatsApp → <b>Aparelhos conectados → Conectar um aparelho</b> e escaneie.</p>
+          </div>
+        </div>
+
+        <div class="home-grid">
+          <button class="modulo-card" data-ir="pdv">
+            <div class="modulo-ico">🛒</div>
+            <div class="modulo-nome"><span class="atalho">V</span>endas (PDV)</div>
+            <div class="modulo-desc">Registrar vendas no balcão</div>
+          </button>
+          <button class="modulo-card" data-ir="delivery">
+            <div class="modulo-ico">🛵</div>
+            <div class="modulo-nome"><span class="atalho">D</span>elivery</div>
+            <div class="modulo-desc">Controle de pedidos e entregas</div>
+          </button>
+          <button class="modulo-card" data-ir="produtos">
+            <div class="modulo-ico">📦</div>
+            <div class="modulo-nome"><span class="atalho">P</span>rodutos</div>
+            <div class="modulo-desc">Estoque, entrada e preços</div>
+          </button>
+          <button class="modulo-card desabilitado" data-ir="relatorios" disabled>
+            <div class="modulo-ico">📊</div>
+            <div class="modulo-nome">Relatórios</div>
+            <div class="modulo-desc">Em breve</div>
+          </button>
+          <button class="modulo-card" data-ir="clientes">
+            <div class="modulo-ico">👥</div>
+            <div class="modulo-nome"><span class="atalho">C</span>lientes</div>
+            <div class="modulo-desc">Cadastro, saldo fiado e avisos</div>
+          </button>
+          <button class="modulo-card" data-ir="atendimento">
+            <div class="modulo-ico">💬</div>
+            <div class="modulo-nome"><span class="atalho">A</span>tendimento</div>
+            <div class="modulo-desc">Caixa de entrada do WhatsApp <span class="badge-nao-lidas" id="home-badge-atendimento" style="display:none">0</span></div>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ TELA PDV ══════════ -->
+    <section class="tela" id="tela-pdv">
+
+      <!-- Esquerda: campo de código -->
+      <div class="painel-esquerdo">
+        <div class="campo-codigo">
+          <label for="codigo">Código da Mercadoria</label>
+          <input type="text" id="codigo" placeholder="Digite o código..." autocomplete="off" autofocus>
+        </div>
+        <button type="button" class="btn-disp-pdv" id="btn-disponibilidade-pdv">🟢 Disponibilidade de hoje</button>
+        <div class="ultima-venda" id="ultima-venda" style="display:none">
+          <div class="uv-titulo-row">
+            <div class="uv-titulo">🧾 Última venda <span class="uv-badge-cancelada" id="uv-badge-cancelada" style="display:none">CANCELADA</span></div>
+            <button type="button" class="btn-cancelar-venda" id="btn-cancelar-venda" title="Cancelar esta venda (devolve ao estoque)">✕ <span class="atalho">C</span>ancelar</button>
+          </div>
+          <ul class="uv-itens" id="uv-itens"></ul>
+          <div class="uv-linha"><span>Total</span><strong id="uv-total">R$ 0,00</strong></div>
+          <div class="uv-linha"><span>Pagamento</span><strong id="uv-pgto">—</strong></div>
+          <div class="uv-linha"><span>Troco</span><strong id="uv-troco">R$ 0,00</strong></div>
+          <div class="uv-linha"><span>Hora</span><strong id="uv-hora">--:--</strong></div>
+        </div>
+
+        <div class="atalhos-dica">
+          <span><kbd>Enter</kbd> adicionar</span>
+          <span><kbd>3*código</kbd> quantidade</span>
+          <span><kbd>2× Espaço</kbd> buscar nome</span>
+          <span><kbd>↓</kbd> editar item</span>
+          <span><kbd>V</kbd> finalizar</span>
+        </div>
+      </div>
+
+      <!-- Direita: espelho do cupom -->
+      <aside class="espelho">
+        <div class="espelho-header">
+          <span>🧾 Espelho do Cupom</span>
+          <span class="esp-head-dir">
+            <span class="contador" id="contador">0 itens</span>
+            <button class="btn-limpar-venda" id="btn-limpar-venda" title="Limpar venda">🗑</button>
+          </span>
+        </div>
+        <div class="auto-finaliza" id="auto-finaliza" style="display:none">
+          <span>⏱ Finalização automática em</span>
+          <span class="af-tempo" id="af-tempo">0:30</span>
+        </div>
+        <div class="espelho-colunas">
+          <span>Cód</span><span>Descrição</span><span>Qtd</span><span>Total</span>
+        </div>
+        <div class="espelho-itens" id="espelho-itens">
+          <div class="espelho-vazio">Nenhum item registrado</div>
+        </div>
+        <div class="espelho-footer">
+          <div class="footer-total">
+            <span class="rotulo">TOTAL</span>
+            <span class="valor" id="espelho-total">R$ 0,00</span>
+          </div>
+          <button class="btn-finalizar" id="btn-finalizar">
+            ✅ Finalizar <span class="atalho">V</span>enda
+          </button>
+        </div>
+      </aside>
+
+    </section>
+
+    <!-- ══════════ TELA DELIVERY ══════════ -->
+    <section class="tela" id="tela-delivery">
+      <div class="delivery-topo">
+        <div class="del-stats">
+          <div class="del-stat">
+            <div class="del-stat-num" id="stat-pendentes">0</div>
+            <div class="del-stat-lbl">🕐 Pendentes</div>
+          </div>
+          <div class="del-stat">
+            <div class="del-stat-num" id="stat-rota">0</div>
+            <div class="del-stat-lbl">🛵 Em rota</div>
+          </div>
+          <div class="del-stat">
+            <div class="del-stat-num" id="stat-entregues">0</div>
+            <div class="del-stat-lbl">✅ Entregues hoje</div>
+          </div>
+          <div class="del-stat destaque">
+            <div class="del-stat-num" id="stat-faturamento">R$ 0,00</div>
+            <div class="del-stat-lbl">💰 Faturamento delivery</div>
+          </div>
+        </div>
+        <div class="del-controles">
+          <div class="del-toggle">
+            <span class="dt-nome">🏪 Loja</span>
+            <button class="dt-switch" id="btn-loja-estado" role="switch" title="Ligado = aberta (IA atende) · Desligado = fechada"></button>
+            <span class="dt-estado" id="dt-loja-estado">—</span>
+          </div>
+          <div class="del-toggle">
+            <span class="dt-nome">🛵 Só Retirada</span>
+            <button class="dt-switch" id="btn-loja-retirada" role="switch" title="Ligado = só retirada no balcão (IA não pede endereço) · Desligado = entrega normal"></button>
+            <span class="dt-estado" id="dt-ret-estado">—</span>
+          </div>
+        </div>
+        <button class="btn-novo-pedido" id="btn-novo-pedido">+ <span class="atalho">N</span>ovo Pedido</button>
+        <button class="btn-clientes-delivery" id="btn-clientes-delivery">👥 Clientes cadastrados</button>
+        <button class="btn-clientes-delivery" id="btn-disponibilidade-delivery">🟢 Disponibilidade</button>
+      </div>
+
+      <div class="delivery-board" id="delivery-board">
+        <div class="board-vazio">
+          <div class="ico">🛵</div>
+          <p>Nenhum pedido de delivery.<br>Clique em <strong>+ Novo Pedido</strong> para começar.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ TELA PRODUTOS / ESTOQUE ══════════ -->
+    <section class="tela" id="tela-produtos">
+      <div class="prod-tabs">
+        <button class="prod-tab ativo" data-ptab="merc">📦 <span class="atalho">M</span>ercadorias</button>
+        <button class="prod-tab" data-ptab="insumos">🧴 I<span class="atalho">n</span>sumos</button>
+        <button class="prod-tab" data-ptab="hist">📈 <span class="atalho">H</span>istórico</button>
+        <button class="prod-tab" data-ptab="notas">🧾 Notas <span class="atalho">F</span>iscais</button>
+      </div>
+
+      <!-- ─ MERCADORIAS ─ -->
+      <div class="prod-painel ativo" id="ptab-merc">
+        <form class="prod-form" id="form-produto" autocomplete="off">
+          <h3>📥 Entrada de Mercadoria</h3>
+          <button type="button" class="btn-rendimento" id="btn-abrir-rendimento" title="Comprei uma matéria-prima (ex.: saca de açaí) e vou gerar vários produtos com preços diferentes">🫐 <span class="atalho">P</span>rocessar em vários produtos <small>(rendimento)</small></button>
+          <div class="campo"><label>Nº da Nota fiscal</label><input id="pf-nota" placeholder="opcional"></div>
+          <div class="pf-nota-resumo" id="pf-nota-resumo" style="display:none">
+            <span>📋 Total da nota <strong id="pf-nota-resumo-num">—</strong></span>
+            <span><strong id="pf-nota-resumo-total">R$ 0,00</strong> · <span id="pf-nota-resumo-qtd">0 entradas</span></span>
+          </div>
+          <div class="campo"><label>Descrição *</label><input id="pf-nome" required></div>
+          <div class="pf-row">
+            <div class="campo"><label>Código *</label><input id="pf-codigo" required></div>
+            <div class="campo"><label>Cód. conjunto</label><input id="pf-conjunto" placeholder="opcional"></div>
+            <div class="campo"><label>Venda cx (R$)</label><input type="number" id="pf-vendacaixa" step="0.01" min="0" placeholder="0,00" title="Preço de venda da caixa inteira (pacote)"></div>
+          </div>
+          <p class="pf-hint">💡 Cód. conjunto + venda da caixa liberam vender a caixa inteira na tela de Venda (desconta "Unid. por caixa" do estoque de uma vez).</p>
+          <div class="pf-row">
+            <div class="campo"><label>Departamento</label><input id="pf-departamento" list="lista-departamentos" placeholder="Ex: Açaí"></div>
+            <div class="campo"><label>Fornecedor</label><input id="pf-fornecedor" placeholder="Ex: Distribuidora X"></div>
+          </div>
+          <div class="pf-row">
+            <div class="campo"><label>Entrada (qtd)</label><input type="number" id="pf-entrada" step="1" min="0" placeholder="0"></div>
+            <div class="campo"><label>Valor total pago (R$)</label><input type="number" id="pf-valortotal" step="0.01" min="0" placeholder="0,00"></div>
+          </div>
+          <p class="pf-hint">💡 Valor total ÷ quantidade = custo unitário (preenchido automaticamente abaixo).</p>
+          <div class="pf-row">
+            <div class="campo"><label>Caixas</label><input type="number" id="pf-caixas" step="1" min="0" placeholder="opcional"></div>
+            <div class="campo"><label>Unid. por caixa</label><input type="number" id="pf-unidcaixa" step="1" min="0" placeholder="1"></div>
+            <div class="campo"><label>Valor cx (R$)</label><input type="number" id="pf-valorcaixa" step="0.01" min="0" placeholder="0,00"></div>
+          </div>
+          <p class="pf-hint">💡 Caixas × unid. por caixa = quantidade · Caixas × valor da caixa = valor total · tudo já cai no custo unitário abaixo.</p>
+          <div class="pf-row">
+            <div class="campo"><label>Preço compra unit. (R$)</label><input type="number" id="pf-compra" step="0.01" min="0" placeholder="0,00"></div>
+            <div class="campo"><label>Preço venda (R$)</label><input type="number" id="pf-venda" step="0.01" min="0" placeholder="0,00"></div>
+          </div>
+          <div class="pf-margem">
+            <span>Margem de lucratividade</span>
+            <strong id="pf-margem">—</strong>
+          </div>
+          <div class="campo"><label>Estoque mínimo</label><input type="number" id="pf-min" step="1" min="0" placeholder="0"></div>
+          <div class="pf-acoes">
+            <button type="button" class="btn-prod-limpar" id="btn-prod-limpar"><span class="atalho">L</span>impar</button>
+            <button type="button" class="btn-prod-excluir" id="btn-prod-excluir" title="Excluir definitivamente o produto deste código">🗑 E<span class="atalho">x</span>cluir</button>
+            <button type="submit" class="btn-prod-salvar">💾 <span class="atalho">G</span>ravar / dar entrada</button>
+          </div>
+          <button type="button" class="btn-prod-zerar" id="btn-prod-zerar" title="Apagar TODOS os produtos cadastrados (recomeçar do zero)">🧹 <span class="atalho">Z</span>erar todos os cadastros</button>
+        </form>
+
+        <div class="prod-detalhe" id="prod-detalhe">
+          <div class="pd-alerta-baixo" id="pd-alerta-baixo"></div>
+          <div class="pd-vazio" id="pd-vazio">
+            🔍 Digite o <strong>código</strong> e pressione <kbd>Enter</kbd>,<br>
+            ou pressione <kbd>espaço</kbd> <kbd>espaço</kbd> no campo Descrição para buscar um produto cadastrado.
+          </div>
+          <div class="pd-conteudo" id="pd-conteudo" style="display:none">
+            <div class="pd-head">
+              <div>
+                <span class="pd-cod" id="pd-cod">—</span>
+                <h2 class="pd-nome" id="pd-nome">—</h2>
+                <div class="pd-tags">
+                  <span class="pd-tag" id="pd-tag-dep" style="display:none"></span>
+                  <span class="pd-tag" id="pd-tag-forn" style="display:none"></span>
+                  <span class="pd-tag" id="pd-tag-conj" style="display:none"></span>
+                </div>
+              </div>
+              <button type="button" class="btn-mini-del" id="pd-excluir" title="Excluir definitivamente">🗑 Excluir</button>
+            </div>
+
+            <div class="pd-estoque-box">
+              <div class="pd-estoque-info">
+                <span class="pd-estoque-lbl">📦 Estoque atual</span>
+                <strong class="pd-estoque-num" id="pd-estoque-num">0</strong>
+                <span class="pd-estoque-min">mínimo: <b id="pd-estoque-min">0</b></span>
+              </div>
+              <div class="pd-gauge"><div class="pd-gauge-fill" id="pd-gauge-fill"></div></div>
+              <div class="pd-estoque-acoes">
+                <button type="button" class="pd-ajuste" data-delta="-10">−10</button>
+                <button type="button" class="pd-ajuste" data-delta="-1">−1</button>
+                <button type="button" class="pd-ajuste" data-delta="1">+1</button>
+                <button type="button" class="pd-ajuste" data-delta="10">+10</button>
+              </div>
+              <div class="pd-estoque-set">
+                <input type="number" id="pd-set-input" min="0" step="1" placeholder="Definir estoque exato...">
+                <button type="button" id="pd-set-btn">Aplicar</button>
+              </div>
+            </div>
+
+            <div class="pd-grid">
+              <div class="pd-cardmini"><span>Preço compra</span><strong id="pd-compra">R$ 0,00</strong></div>
+              <div class="pd-cardmini"><span>Preço venda</span><strong id="pd-venda">R$ 0,00</strong></div>
+              <div class="pd-cardmini"><span>Margem</span><strong id="pd-margem">—</strong></div>
+            </div>
+
+            <div class="pd-sub">📊 Desempenho de vendas</div>
+            <div class="pd-grid">
+              <div class="pd-cardmini"><span>Qtd. vendida</span><strong id="pd-qtdvend">0</strong></div>
+              <div class="pd-cardmini"><span>Faturado</span><strong id="pd-faturado">R$ 0,00</strong></div>
+              <div class="pd-cardmini"><span>Última venda</span><strong id="pd-ultvenda">—</strong></div>
+            </div>
+
+            <div class="pd-sub">📅 Vendas por período</div>
+            <div class="pd-periodo-busca">
+              <div class="campo"><label>De</label><input type="date" id="pd-data-de"></div>
+              <div class="campo"><label>Até</label><input type="date" id="pd-data-ate"></div>
+            </div>
+            <div class="pd-grid">
+              <div class="pd-cardmini"><span>Vendido no período</span><strong id="pd-periodo-qtd">0</strong></div>
+              <div class="pd-cardmini"><span>Faturado no período</span><strong id="pd-periodo-fat">R$ 0,00</strong></div>
+              <div class="pd-cardmini destaque"><span>Média diária</span><strong id="pd-periodo-media">0,0/dia</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─ INSUMOS ─ -->
+      <div class="prod-painel" id="ptab-insumos">
+        <form class="prod-form" id="form-insumo" autocomplete="off">
+          <h3>🧴 Insumos / Descartáveis</h3>
+          <p class="prod-nota">Controle de gastos com descartáveis (sacolas, copos, colheres...). <strong>Não entra no custo das mercadorias.</strong> Informe a quantidade e o valor total — mostramos o valor por unidade.</p>
+          <div class="campo"><label>Descrição *</label><input id="if-nome" required placeholder="Ex: Sacola, Copo 500ml, Colher"></div>
+          <div class="pf-row">
+            <div class="campo"><label>Quantidade *</label><input type="number" id="if-qtd" step="1" min="0" required placeholder="Ex: 100"></div>
+            <div class="campo"><label>Valor total (R$) *</label><input type="number" id="if-custo" step="0.01" min="0" required placeholder="0,00"></div>
+          </div>
+          <p class="pf-hint" id="if-unit-preview"></p>
+          <div class="pf-acoes">
+            <button type="submit" class="btn-prod-salvar">💾 Adicionar insumo</button>
+          </div>
+        </form>
+        <div class="prod-lista">
+          <div class="insumo-resumo" id="insumo-resumo">—</div>
+          <div class="prod-tabela-wrap">
+            <table class="prod-tabela">
+              <thead><tr><th>Insumo</th><th>Qtd</th><th>Valor total</th><th>Valor unit.</th><th></th></tr></thead>
+              <tbody id="insumo-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─ HISTÓRICO ─ -->
+      <div class="prod-painel" id="ptab-hist">
+        <div class="hist-periodo">
+          <button class="periodo-btn ativo" data-periodo="hoje">Hoje</button>
+          <button class="periodo-btn" data-periodo="semana">Semana</button>
+          <button class="periodo-btn" data-periodo="mes">Mês</button>
+          <button class="periodo-btn" data-periodo="tudo">Tudo</button>
+        </div>
+        <div class="hist-cards">
+          <div class="hist-card"><div class="hc-num" id="hist-vendas">0</div><div class="hc-lbl">Vendas registradas</div></div>
+          <div class="hist-card"><div class="hc-num" id="hist-itens">0</div><div class="hc-lbl">Itens vendidos</div></div>
+          <div class="hist-card destaque"><div class="hc-num" id="hist-pico">—</div><div class="hc-lbl">⏰ Maior fluxo (horário)</div></div>
+          <div class="hist-card"><div class="hc-num verde" id="hist-faturamento">R$ 0,00</div><div class="hc-lbl">💰 Faturamento total</div></div>
+        </div>
+
+        <div class="hist-sub">💸 Resumo financeiro (gastos × saldo)</div>
+        <div class="hist-cards">
+          <div class="hist-card"><div class="hc-num" id="gasto-compras">R$ 0,00</div><div class="hc-lbl">💸 Compras (mercadorias)</div></div>
+          <div class="hist-card"><div class="hc-num" id="gasto-insumos">R$ 0,00</div><div class="hc-lbl">🧴 Insumos</div></div>
+          <div class="hist-card"><div class="hc-num" id="gasto-total">R$ 0,00</div><div class="hc-lbl">📉 Total de gastos</div></div>
+          <div class="hist-card destaque"><div class="hc-num" id="saldo">R$ 0,00</div><div class="hc-lbl">💵 Saldo (faturamento − gastos)</div></div>
+        </div>
+
+        <div class="prod-tabela-wrap">
+          <table class="prod-tabela">
+            <thead><tr><th>Produto</th><th>Qtd vendida</th><th>Faturado</th><th>Última venda</th></tr></thead>
+            <tbody id="hist-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ─ NOTAS FISCAIS ─ -->
+      <div class="prod-painel" id="ptab-notas">
+        <div class="notas-head">
+          <input type="text" id="notas-filtro" placeholder="🔎 Filtrar por número da nota...">
+          <span class="notas-totalgeral">Total geral em notas: <strong id="notas-total-geral">R$ 0,00</strong></span>
+        </div>
+        <div class="prod-tabela-wrap">
+          <table class="prod-tabela">
+            <thead><tr><th>Nº da Nota</th><th>Entradas</th><th>Última entrada</th><th>Total</th></tr></thead>
+            <tbody id="notas-tbody"></tbody>
+          </table>
+        </div>
+        <div class="nota-resultado" id="nota-resultado" style="display:none">
+          <div class="nota-resumo">
+            <span>Nota <strong id="nota-r-num">—</strong> · <span id="nota-r-qtditens">0</span> entrada(s)</span>
+            <strong id="nota-r-total">R$ 0,00</strong>
+          </div>
+          <div id="nota-r-itens"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ TELA CLIENTES ══════════ -->
+    <section class="tela" id="tela-clientes">
+      <div class="prod-painel ativo" id="clientes-painel">
+        <form class="prod-form" id="form-cliente" autocomplete="off">
+          <h3>👥 Cadastro de Cliente</h3>
+          <div class="cl-whats-status" id="cl-whats-status">🔌 Verificando WhatsApp…</div>
+          <div class="cl-whats-qr" id="cl-whats-qr" style="display:none">
+            <img id="cl-whats-qr-img" alt="QR Code do WhatsApp">
+            <p>Abra o WhatsApp do celular da loja → <b>Mais opções → Aparelhos conectados → Conectar um aparelho</b> e escaneie.</p>
+          </div>
+          <div class="campo"><label>Nome *</label><input id="cl-nome" required placeholder="Nome do cliente"></div>
+          <div class="campo"><label>Telefone (WhatsApp) *</label><input id="cl-telefone" required placeholder="(91) 9 9999-9999"></div>
+          <div class="pf-row">
+            <div class="campo"><label>Bairro</label><input id="cl-bairro" placeholder="opcional"></div>
+            <div class="campo"><label>Endereço</label><input id="cl-endereco" placeholder="opcional"></div>
+          </div>
+          <div class="campo"><label>Observações</label><input id="cl-obs" placeholder="opcional"></div>
+          <div class="pf-acoes">
+            <button type="button" class="btn-prod-limpar" id="btn-cliente-limpar"><span class="atalho">L</span>impar</button>
+            <button type="button" class="btn-prod-excluir" id="btn-cliente-excluir" title="Excluir definitivamente o cliente">🗑 E<span class="atalho">x</span>cluir</button>
+            <button type="submit" class="btn-prod-salvar">💾 <span class="atalho">G</span>ravar</button>
+          </div>
+        </form>
+
+        <div class="prod-detalhe" id="cliente-detalhe">
+          <div class="pd-vazio" id="cl-vazio">
+            🔍 Digite o <strong>nome</strong> e pressione <kbd>espaço</kbd> <kbd>espaço</kbd> pra buscar um cliente já cadastrado,<br>
+            ou cadastre um novo ao lado.
+          </div>
+          <div class="pd-conteudo" id="cl-conteudo" style="display:none">
+            <div class="pd-head">
+              <div>
+                <span class="pd-cod" id="cl-d-telefone">—</span>
+                <h2 class="pd-nome" id="cl-d-nome">—</h2>
+                <div class="pd-tags">
+                  <span class="pd-tag" id="cl-tag-bairro" style="display:none"></span>
+                </div>
+              </div>
+              <button type="button" class="btn-mini-del" id="cl-d-excluir" title="Excluir definitivamente">🗑 Excluir</button>
+            </div>
+
+            <div class="pd-grid" id="cl-d-infogrid">
+              <div class="pd-cardmini"><span>Endereço</span><strong id="cl-d-endereco">—</strong></div>
+              <div class="pd-cardmini"><span>Observações</span><strong id="cl-d-obsmini">—</strong></div>
+            </div>
+
+            <div class="pd-estoque-box cl-saldo-box">
+              <div class="pd-estoque-info">
+                <span class="pd-estoque-lbl">💰 Saldo (fiado)</span>
+                <strong class="pd-estoque-num" id="cl-saldo-num">R$ 0,00</strong>
+              </div>
+            </div>
+
+            <div class="pd-sub">💰 Registrar pagamento</div>
+            <p class="pf-hint">💡 Pode preencher mais de uma forma se o cliente pagar parte em cada uma.</p>
+            <div class="cl-pgto-formas">
+              <label class="forma-linha" for="cl-pgto-pix">
+                <span class="forma-nome"><span class="ico">📱</span><span class="forma-texto">PIX</span></span>
+                <input type="number" id="cl-pgto-pix" class="forma-valor" placeholder="0,00" min="0" step="0.50" inputmode="decimal">
+              </label>
+              <label class="forma-linha" for="cl-pgto-dinheiro">
+                <span class="forma-nome"><span class="ico">💵</span><span class="forma-texto">Dinheiro</span></span>
+                <input type="number" id="cl-pgto-dinheiro" class="forma-valor" placeholder="0,00" min="0" step="0.50" inputmode="decimal">
+              </label>
+              <label class="forma-linha" for="cl-pgto-credito">
+                <span class="forma-nome"><span class="ico">💳</span><span class="forma-texto">Cartão Crédito</span></span>
+                <input type="number" id="cl-pgto-credito" class="forma-valor" placeholder="0,00" min="0" step="0.50" inputmode="decimal">
+              </label>
+              <label class="forma-linha" for="cl-pgto-debito">
+                <span class="forma-nome"><span class="ico">💳</span><span class="forma-texto">Cartão Débito</span></span>
+                <input type="number" id="cl-pgto-debito" class="forma-valor" placeholder="0,00" min="0" step="0.50" inputmode="decimal">
+              </label>
+            </div>
+            <div class="pf-margem cl-pgto-total">
+              <span>Total a registrar</span>
+              <strong id="cl-pgto-total">R$ 0,00</strong>
+            </div>
+            <div class="campo"><label>Descrição</label><input id="cl-lanc-desc" placeholder="opcional"></div>
+            <div class="cl-lanc-acoes">
+              <button type="button" class="btn-cl-pagamento" id="btn-cl-pagamento" disabled>💰 Registrar pagamento</button>
+            </div>
+            <p class="pf-hint">💡 Avisa o cliente automaticamente no WhatsApp com o saldo atualizado.</p>
+
+            <div class="pd-sub">📋 Extrato</div>
+            <div class="cl-extrato" id="cl-extrato"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ TELA ATENDIMENTO (Caixa de entrada WhatsApp) ══════════ -->
+    <section class="tela" id="tela-atendimento">
+      <div class="at-wrap">
+        <!-- Esquerda: lista de conversas -->
+        <aside class="at-lista">
+          <div class="at-lista-head">
+            <span>💬 Conversas</span>
+            <span class="at-status" id="at-status-wpp">···</span>
+          </div>
+          <input type="text" id="at-busca" class="at-busca" placeholder="🔎 Buscar conversa...">
+          <div class="at-conversas" id="at-conversas">
+            <div class="at-vazio">Carregando…</div>
+          </div>
+        </aside>
+
+        <!-- Direita: conversa aberta -->
+        <section class="at-chat" id="at-chat">
+          <div class="at-chat-vazio" id="at-chat-vazio">
+            <div class="ico">💬</div>
+            <p>Selecione uma conversa à esquerda<br>para ver as mensagens e responder.</p>
+          </div>
+          <div class="at-chat-ativo" id="at-chat-ativo" style="display:none">
+            <header class="at-chat-head">
+              <div class="at-chat-contato">
+                <strong id="at-chat-nome">—</strong>
+                <span id="at-chat-telefone">—</span>
+              </div>
+              <div class="at-chat-head-dir">
+                <div class="at-chat-cliente" id="at-chat-cliente"></div>
+                <button type="button" class="at-btn-pedido" id="at-btn-criar-pedido">🛵 Criar pedido</button>
+                <button type="button" class="at-btn-excluir" id="at-btn-excluir" title="Excluir esta conversa">🗑</button>
+              </div>
+            </header>
+            <div class="at-mensagens" id="at-mensagens"></div>
+            <div class="at-respostas" id="at-respostas"></div>
+            <form class="at-envio" id="at-envio">
+              <textarea id="at-texto" rows="1" placeholder="Digite uma resposta… (Enter envia, Shift+Enter quebra linha)"></textarea>
+              <button type="submit" class="at-btn-enviar" id="at-btn-enviar" title="Enviar">➤</button>
+            </form>
+          </div>
+        </section>
+      </div>
+    </section>
+
+  </main>
+
+  </div><!-- /#app-principal -->
+
+  <!-- ══════════ MODAL AUTORIZAÇÃO DO SUPERVISOR ══════════ -->
+  <div class="overlay" id="overlay-supervisor">
+    <div class="modal-supervisor">
+      <header class="modal-head">
+        <h2>🔒 Autorização do supervisor</h2>
+        <button class="btn-fechar" id="btn-fechar-supervisor">✕</button>
+      </header>
+      <div class="modal-body">
+        <p id="supervisor-msg">Esta ação precisa da senha do supervisor.</p>
+        <input type="password" id="supervisor-senha" placeholder="Senha do supervisor" autocomplete="off">
+        <div class="supervisor-erro" id="supervisor-erro"></div>
+        <button class="btn-supervisor-ok" id="btn-supervisor-ok">✔ Autorizar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ MODAL DISPONIBILIDADE (o que tem agora) ══════════ -->
+  <div class="overlay" id="overlay-disponibilidade">
+    <div class="modal-disponibilidade">
+      <header class="modal-head">
+        <h2>🟢 Disponibilidade de agora</h2>
+        <button class="btn-fechar" id="btn-fechar-disp">✕</button>
+      </header>
+      <div class="modal-body">
+        <p class="disp-hint">Desligue o que <strong>acabou</strong>. O cliente e a IA só veem o que está <strong>ligado</strong>. Volta a ligar quando repor.</p>
+        <div class="disp-lista" id="disp-lista"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ MODAL CLIENTES CADASTRADOS (importados do BotConversa) ══════════ -->
+  <div class="overlay" id="overlay-clientes-delivery">
+    <div class="modal-clientes-delivery">
+      <header class="modal-head">
+        <h2>👥 Clientes Cadastrados</h2>
+        <button class="btn-fechar" id="btn-fechar-clientes-delivery">✕</button>
+      </header>
+      <div class="modal-body">
+        <div class="cd-busca-linha">
+          <input type="text" id="cd-busca" placeholder="🔎 Buscar por nome, telefone ou endereço...">
+          <span class="cd-total" id="cd-total">0 clientes</span>
+        </div>
+        <div class="prod-tabela-wrap" style="max-height: 60vh;">
+          <table class="prod-tabela">
+            <thead><tr><th>Nome</th><th>Telefone</th><th>Endereço</th><th>Forma pgto.</th><th>Atualizado</th></tr></thead>
+            <tbody id="cd-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ MODAL NOVO PEDIDO ══════════ -->
+  <div class="overlay" id="overlay-pedido">
+    <div class="modal-pedido">
+      <header class="modal-head">
+        <h2>🛵 Novo Pedido de Delivery</h2>
+        <button class="btn-fechar" id="btn-fechar-pedido">✕</button>
+      </header>
+
+      <form id="form-pedido" class="modal-body">
+        <div class="campo full">
+          <label>Cliente *</label>
+          <input type="text" id="ped-cliente" placeholder="Nome do cliente" required>
+        </div>
+        <div class="campo">
+          <label>Telefone</label>
+          <input type="text" id="ped-telefone" placeholder="(91) 9 9999-9999">
+        </div>
+        <div class="campo">
+          <label>Bairro</label>
+          <input type="text" id="ped-bairro" placeholder="Bairro">
+        </div>
+        <div class="campo full">
+          <label>Endereço *</label>
+          <input type="text" id="ped-endereco" placeholder="Rua, número" required>
+        </div>
+        <div class="campo full">
+          <label>Complemento / Referência</label>
+          <input type="text" id="ped-complemento" placeholder="Apto, ponto de referência...">
+        </div>
+        <div class="campo full">
+          <label>Itens do pedido</label>
+          <textarea id="ped-itens" rows="2" placeholder="Ex: 2x Açaí 500ml com granola e leite condensado"></textarea>
+        </div>
+        <div class="campo">
+          <label>Valor dos itens (R$) *</label>
+          <input type="number" id="ped-valor" placeholder="0,00" min="0" step="0.50" required>
+        </div>
+        <div class="campo">
+          <label>Taxa de entrega (R$)</label>
+          <input type="number" id="ped-taxa" placeholder="0,00" min="0" step="0.50" value="0">
+        </div>
+        <div class="campo">
+          <label>Forma de pagamento</label>
+          <select id="ped-pagamento">
+            <option>Dinheiro</option>
+            <option>PIX</option>
+            <option>Cartão Débito</option>
+            <option>Cartão Crédito</option>
+          </select>
+        </div>
+        <div class="campo">
+          <label>Troco para (R$)</label>
+          <input type="number" id="ped-troco" placeholder="0,00" min="0" step="1">
+        </div>
+
+        <div class="modal-total-preview">
+          <span>Total do pedido</span>
+          <strong id="ped-total-preview">R$ 0,00</strong>
+        </div>
+
+        <button type="submit" class="btn-salvar-pedido">🛵 Registrar Pedido</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ══════════ MODAL RENDIMENTO / PROCESSAMENTO ══════════ -->
+  <div class="overlay" id="overlay-rendimento">
+    <div class="modal-rend">
+      <header class="modal-head">
+        <h2>🫐 Processar matéria-prima em vários produtos</h2>
+        <button class="btn-fechar" id="btn-fechar-rend">✕</button>
+      </header>
+      <div class="rend-body">
+        <div class="rend-topo">
+          <div class="campo"><label>Matéria-prima</label><input id="rend-materia" placeholder="Ex: Saca de açaí" title="Já usada antes? Dê espaço-espaço (campo vazio) pra carregar os mesmos produtos prontos"></div>
+          <div class="campo"><label>Quantidade</label><input type="number" id="rend-qtd-materia" step="0.01" min="0" placeholder="1" value="1"></div>
+          <div class="campo"><label>Valor unitário (R$) *</label><input type="number" id="rend-valor-unit" step="0.01" min="0" placeholder="250,00"></div>
+          <div class="campo"><label>Total pago (R$)</label><input type="number" id="rend-total" step="0.01" min="0" placeholder="0,00" readonly title="Calculado automaticamente: quantidade × valor unitário"></div>
+        </div>
+        <div class="rend-topo rend-topo-3">
+          <div class="campo"><label>Departamento</label><input id="rend-departamento" list="lista-departamentos" placeholder="Ex: Açaí"></div>
+          <div class="campo"><label>Fornecedor</label><input id="rend-fornecedor" placeholder="opcional"></div>
+          <div class="campo"><label>Nº da Nota fiscal</label><input id="rend-nota" placeholder="opcional"></div>
+        </div>
+        <div class="pf-nota-resumo" id="rend-nota-resumo" style="display:none">
+          <span>📋 Total da nota <strong id="rend-nota-resumo-num">—</strong></span>
+          <span><strong id="rend-nota-resumo-total">R$ 0,00</strong> · <span id="rend-nota-resumo-qtd">0 entradas</span></span>
+        </div>
+
+        <div class="rend-tabela">
+          <div class="rend-head-row">
+            <span>Código *</span><span>Descrição *</span><span>Qtd *</span><span>Preço venda *</span><span>Custo un.</span><span>Margem</span><span></span>
+          </div>
+          <div id="rend-linhas"></div>
+          <button type="button" class="btn-rend-add" id="btn-rend-add">+ Adicionar produto</button>
+        </div>
+
+        <div class="rend-resumo">
+          <div class="rr-item"><span>Custo total</span><strong id="rend-r-total">R$ 0,00</strong></div>
+          <div class="rr-item"><span>Qtd total</span><strong id="rend-r-qtd">0</strong></div>
+          <div class="rr-item"><span>Custo médio/un.</span><strong id="rend-r-medio">R$ 0,00</strong></div>
+          <div class="rr-item" id="rend-r-aloc-box"><span>Custo alocado</span><strong id="rend-r-aloc">R$ 0,00</strong></div>
+        </div>
+
+        <button type="button" class="btn-confirmar-rend" id="btn-confirmar-rend" disabled>✅ Processar e dar entrada</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ MODAL BUSCA POR NOME (duplo-espaço) ══════════ -->
+  <div class="overlay" id="overlay-busca">
+    <div class="modal-busca">
+      <div class="busca-head">
+        <input type="text" id="busca-input" placeholder="🔍 Buscar produto pelo nome..." autocomplete="off">
+        <button class="btn-fechar" id="btn-fechar-busca">✕</button>
+      </div>
+      <div class="busca-resultados" id="busca-resultados"></div>
+    </div>
+  </div>
+
+  <!-- ══════════ MODAL RECEBIMENTO ══════════ -->
+  <div class="overlay" id="overlay-recebimento">
+    <div class="modal-receb">
+      <header class="modal-head">
+        <h2>💰 Recebimento</h2>
+        <button class="btn-fechar" id="btn-fechar-receb">✕</button>
+      </header>
+
+      <div class="receb-body">
+        <!-- Total a receber -->
+        <div class="receb-total">
+          <span class="lbl">Total a Receber</span>
+          <span class="val" id="receb-total">R$ 0,00</span>
+        </div>
+
+        <!-- Formas — digite o valor em cada uma -->
+        <div class="formas-multi">
+          <label class="forma-linha" for="val-pix">
+            <span class="forma-nome"><span class="ico">📱</span><span class="forma-texto"><span class="atalho">P</span>IX</span></span>
+            <input type="number" id="val-pix" class="forma-valor" placeholder="0,00" min="0" step="0.50" inputmode="decimal">
+          </label>
+          <label class="forma-linha" for="val-dinheiro">
+            <span class="forma-nome"><span class="ico">💵</span><span class="forma-texto"><span class="atalho">D</span>inheiro</span></span>
+            <input type="number" id="val-dinheiro" class="forma-valor" placeholder="0,00" min="0" step="0.50" inputmode="decimal">
+          </label>
+          <label class="forma-linha" for="val-cartao">
+            <span class="forma-nome"><span class="ico">💳</span><span class="forma-texto" id="cartao-texto"><span class="atalho">C</span>artão</span></span>
+            <input type="number" id="val-cartao" class="forma-valor" placeholder="0,00" min="0" step="0.50" inputmode="decimal">
+          </label>
+          <label class="forma-linha" for="val-fiado">
+            <span class="forma-nome"><span class="ico">📒</span><span class="forma-texto">Fiado</span></span>
+            <input type="number" id="val-fiado" class="forma-valor" placeholder="0,00" readonly tabindex="-1" title="Automático: total menos o que já foi preenchido em PIX/Dinheiro/Cartão">
+          </label>
+        </div>
+
+        <div class="receb-fiado-cliente-box" id="receb-fiado-cliente-box" style="display:none">
+          <label>Cliente do fiado (espaço-espaço pra buscar) *</label>
+          <input type="text" id="receb-fiado-cliente" placeholder="Nome do cliente cadastrado" autocomplete="off">
+        </div>
+
+        <div class="receb-resumo">
+          <div class="resumo-item"><span>Pago</span><strong id="receb-pago">R$ 0,00</strong></div>
+          <div class="resumo-item" id="receb-restante-box"><span id="receb-rest-lbl">Restante</span><strong id="receb-restante">R$ 0,00</strong></div>
+        </div>
+
+        <button type="button" class="btn-confirmar-receb" id="btn-confirmar-receb" disabled>✅ Confirmar Recebimento</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ SUBMODAL TIPO DE CARTÃO ══════════ -->
+  <div class="overlay" id="overlay-cartao-tipo">
+    <div class="modal-cartao-tipo">
+      <h2>💳 Tipo de Cartão</h2>
+      <p class="cartao-sub">Escolha a opção</p>
+      <div class="cartao-opcoes">
+        <button type="button" class="cartao-opc" data-tipo="Crédito">
+          <span class="num">1</span>
+          <span class="lbl">Crédito</span>
+        </button>
+        <button type="button" class="cartao-opc" data-tipo="Débito">
+          <span class="num">2</span>
+          <span class="lbl">Débito</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ MODAL ALTERAR ITEM ══════════ -->
+  <div class="overlay" id="overlay-item">
+    <div class="modal-item">
+      <header class="modal-head">
+        <h2>✏️ Alterar Item</h2>
+        <button class="btn-fechar" id="btn-fechar-item">✕</button>
+      </header>
+      <div class="item-edit">
+        <div class="item-edit-nome" id="item-edit-nome">Produto</div>
+
+        <div class="campo">
+          <label>Quantidade</label>
+          <div class="qtd-control">
+            <button type="button" id="item-qtd-menos">−</button>
+            <input type="number" id="item-qtd" min="0" step="1" value="1" inputmode="numeric">
+            <button type="button" id="item-qtd-mais">+</button>
+          </div>
+        </div>
+
+        <div class="campo">
+          <label>Preço unitário (R$)</label>
+          <input type="number" id="item-preco" class="item-preco-input" min="0" step="0.50" inputmode="decimal">
+        </div>
+
+        <div class="item-edit-subtotal">
+          <span>Subtotal</span>
+          <strong id="item-edit-subtotal">R$ 0,00</strong>
+        </div>
+
+        <div class="item-edit-acoes">
+          <button type="button" class="btn-remover-item" id="btn-remover-item">🗑 Remover</button>
+          <button type="button" class="btn-salvar-item" id="btn-salvar-item">✅ Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <datalist id="lista-departamentos">
+    <option value="Açaí"></option>
+    <option value="Complementos"></option>
+    <option value="Bebidas"></option>
+    <option value="Sorvetes"></option>
+    <option value="Outros"></option>
+  </datalist>
+
+  <!-- Notificação -->
+  <div class="toast" id="toast"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
