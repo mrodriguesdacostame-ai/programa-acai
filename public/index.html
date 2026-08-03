@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🌴 PROGRAMA AÇAÍ</title>
   <link rel="stylesheet" href="css/style.css">
+  <!-- Etapa 1 do redesenho: Design System oficial (tokens + componentes + shell da sidebar) -->
+  <link rel="stylesheet" href="css/design-system.css">
 </head>
 <body>
 
@@ -34,16 +36,18 @@
   <!-- ══════════ APP PRINCIPAL ══════════ -->
   <div id="app-principal" class="oculto">
 
-  <!-- ── TOP BAR ── -->
-  <header class="topbar">
-    <div class="logo" id="btn-home-logo">🌴 <strong>AÇAÍ</strong> DO CENTRO</div>
-    <div class="topbar-centro">
-      <button class="btn-topmenu" id="btn-inicio" data-ir="home">🏠 <span class="atalho">I</span>nício</button>
-      <button class="btn-topmenu" id="btn-menu-delivery" data-ir="delivery">🛵 <span class="atalho">D</span>elivery</button>
-      <button class="btn-topmenu" id="btn-menu-atendimento" data-ir="atendimento">💬 <span class="atalho">A</span>tendimento <span class="badge-nao-lidas" id="top-badge-atendimento" style="display:none">0</span></button>
-      <span class="topbar-secao" id="topbar-secao">Início</span>
-    </div>
-    <div class="topbar-dir">
+  <!-- Etapa 2: saída visível do MODO OPERAÇÃO (aparece só no PDV/Produção; ESC também sai) -->
+  <button class="op-sair" id="btn-sair-operacao" title="Sair do modo operação (ESC)">⎋ Sair</button>
+
+  <!-- ── BARRA SUPERIOR FIXA (arquitetura final): atalhos dos módulos a 1 clique.
+       Gerada de NAV_TOPO/NAV_MAIS (fonte central), filtrada por permissão. ── -->
+  <header class="topo" id="topo">
+    <div class="logo" id="btn-home-logo" title="Início">🌴</div>
+    <nav class="topo-nav" id="topo-nav" aria-label="Módulos"></nav>
+    <span class="topbar-secao" id="topbar-secao" hidden>Início</span>
+    <div class="topo-dir">
+      <span class="badge-fila" id="badge-fila" style="display:none" title="operações pendentes de envio ao servidor">0</span>
+      <div class="status-cluster" id="status-cluster"></div>
       <div class="user-chip">👤 <span id="user-nome">—</span></div>
       <div class="relogio" id="relogio">--:--</div>
       <button class="btn-sair" id="btn-sair" title="Sair (Alt+S)">⎋ <span class="atalho">S</span>air</button>
@@ -54,10 +58,48 @@
 
     <!-- ══════════ TELA PRINCIPAL (HOME / MENU) ══════════ -->
     <section class="tela ativa" id="tela-home">
-      <div class="home-wrap">
-        <div class="home-header">
-          <h1>Bem-vindo, <span id="home-user">—</span>! 🌴</h1>
-          <p>Selecione um módulo para começar</p>
+      <div class="dash-wrap">
+        <div class="dash-header">
+          <div class="dash-saud">
+            <h1>Olá, <span id="home-user">—</span>! 🌴</h1>
+            <p id="dash-data">—</p>
+          </div>
+          <button class="btn-dash-refresh" id="btn-dash-refresh" title="Atualizar os números agora">🔄 <span>Atualizar</span></button>
+        </div>
+
+        <!-- BLOCO A — KPIs do dia -->
+        <div class="dash-kpis" id="dash-kpis"><div class="dash-load">Carregando resumo do dia…</div></div>
+
+        <!-- BLOCOS — operação (esquerda) + dinheiro (direita) -->
+        <div class="dash-grid">
+          <div class="dash-card" id="dash-atend-card">
+            <div class="dash-card-tit">🛵 Delivery &amp; Atendimento</div>
+            <div class="dash-card-body" id="dash-atendimento"><div class="dash-load">…</div></div>
+          </div>
+          <div class="dash-card" id="dash-estoque-card">
+            <div class="dash-card-tit">📦 Estoque &amp; alertas</div>
+            <div class="dash-card-body" id="dash-estoque"><div class="dash-load">…</div></div>
+          </div>
+          <div class="dash-card" id="dash-fin-card" data-perm="gestor">
+            <div class="dash-card-tit">💰 Financeiro rápido</div>
+            <div class="dash-card-body" id="dash-financeiro"><div class="dash-load">…</div></div>
+            <div class="dash-card-tit dash-card-subtit">💳 Formas de pagamento <span class="dash-tit-sub">hoje</span></div>
+            <div class="dash-card-body" id="dash-pagamentos"><div class="dash-load">…</div></div>
+          </div>
+          <div class="dash-card larga" id="dash-top-card" data-perm="gestor">
+            <div class="dash-card-tit">🏆 Top produtos</div>
+            <div class="dash-card-body" id="dash-top"><div class="dash-load">…</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ TELA CONECTIVIDADE (WhatsApp · IA automática · cópia de pedidos) ══════════ -->
+    <section class="tela" id="tela-conectividade">
+      <div class="conect-wrap">
+        <div class="conect-header">
+          <h1>🔌 Conectividade</h1>
+          <p>WhatsApp da loja, atendimento automático e cópia dos pedidos</p>
         </div>
 
         <!-- Conexão do WhatsApp (status + QR pra (re)conectar) -->
@@ -68,39 +110,62 @@
             <img id="home-whats-qr-img" alt="QR Code do WhatsApp">
             <p>📱 No celular da loja: WhatsApp → <b>Aparelhos conectados → Conectar um aparelho</b> e escaneie.</p>
           </div>
+          <div class="home-ia-auto">
+            <div class="hia-info">
+              <span class="hia-titulo">🤖 Atendimento automático (IA)</span>
+              <span class="hia-sub">Ligado: a IA responde sozinha quem escrever neste WhatsApp.</span>
+            </div>
+            <button class="dt-switch" id="btn-ia-auto" title="Ligar/desligar"></button>
+            <span class="dt-estado off" id="ia-auto-estado">Desligado</span>
+          </div>
         </div>
 
-        <div class="home-grid">
-          <button class="modulo-card" data-ir="pdv">
-            <div class="modulo-ico">🛒</div>
-            <div class="modulo-nome"><span class="atalho">V</span>endas (PDV)</div>
-            <div class="modulo-desc">Registrar vendas no balcão</div>
-          </button>
-          <button class="modulo-card" data-ir="delivery">
-            <div class="modulo-ico">🛵</div>
-            <div class="modulo-nome"><span class="atalho">D</span>elivery</div>
-            <div class="modulo-desc">Controle de pedidos e entregas</div>
-          </button>
-          <button class="modulo-card" data-ir="produtos">
-            <div class="modulo-ico">📦</div>
-            <div class="modulo-nome"><span class="atalho">P</span>rodutos</div>
-            <div class="modulo-desc">Estoque, entrada e preços</div>
-          </button>
-          <button class="modulo-card desabilitado" data-ir="relatorios" disabled>
-            <div class="modulo-ico">📊</div>
-            <div class="modulo-nome">Relatórios</div>
-            <div class="modulo-desc">Em breve</div>
-          </button>
-          <button class="modulo-card" data-ir="clientes">
-            <div class="modulo-ico">👥</div>
-            <div class="modulo-nome"><span class="atalho">C</span>lientes</div>
-            <div class="modulo-desc">Cadastro, saldo fiado e avisos</div>
-          </button>
-          <button class="modulo-card" data-ir="atendimento">
-            <div class="modulo-ico">💬</div>
-            <div class="modulo-nome"><span class="atalho">A</span>tendimento</div>
-            <div class="modulo-desc">Caixa de entrada do WhatsApp <span class="badge-nao-lidas" id="home-badge-atendimento" style="display:none">0</span></div>
-          </button>
+        <!-- Estado da loja: aberta/fechada e só retirada (controlam como a IA atende) -->
+        <div class="conect-loja">
+          <div class="del-controles">
+            <div class="del-toggle">
+              <span class="dt-nome">🏪 Loja</span>
+              <button class="dt-switch" id="btn-loja-estado" role="switch" title="Ligado = aberta (IA atende) · Desligado = fechada"></button>
+              <span class="dt-estado" id="dt-loja-estado">—</span>
+            </div>
+            <div class="del-toggle">
+              <span class="dt-nome">🛵 Só Retirada</span>
+              <button class="dt-switch" id="btn-loja-retirada" role="switch" title="Ligado = só retirada no balcão (IA não pede endereço) · Desligado = entrega normal"></button>
+              <span class="dt-estado" id="dt-ret-estado">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cópia dos pedidos: números que recebem uma cópia de cada pedido novo -->
+        <div class="home-copia">
+          <div class="hc-titulo">📋 Cópia dos pedidos no WhatsApp</div>
+          <div class="hc-sub">Cada pedido novo é enviado pelo WhatsApp conectado para os números <b>ligados</b> abaixo (cozinha, entregador, você...).</div>
+          <form class="hc-add" id="form-copia" autocomplete="off">
+            <input id="copia-nome" placeholder="Nome (ex.: Cozinha)" maxlength="30">
+            <input id="copia-telefone" placeholder="Telefone com DDD" inputmode="numeric" maxlength="15">
+            <button type="submit" class="btn-hc-add">➕ Adicionar</button>
+          </form>
+          <div class="hc-lista" id="copia-lista"><div class="hc-vazio">Nenhum número cadastrado ainda.</div></div>
+        </div>
+
+        <!-- Avisos automáticos: a IA passa o texto pro cliente quando o aviso está ligado -->
+        <div class="home-copia">
+          <div class="hc-titulo">📢 Avisos automáticos</div>
+          <div class="hc-sub">Escreva um aviso e ligue — a IA passa pro cliente durante o atendimento (promoção, demora, recado...).</div>
+          <div class="avisos-lista" id="avisos-lista"></div>
+        </div>
+
+        <!-- Etapa 2 (regra 10): números autorizados que recebem o RELATÓRIO DE FECHAMENTO no WhatsApp -->
+        <div class="home-copia">
+          <div class="hc-titulo">🌅 Relatório de fechamento no WhatsApp</div>
+          <div class="hc-sub">Ao <b>confirmar um fechamento</b>, o resumo (sacas, litros, restante, divergência) é enviado automaticamente para os números abaixo. Se o WhatsApp estiver desconectado, entra na <b>fila</b> e sincroniza sozinho ao reconectar.</div>
+          <form class="hc-add" id="numsfech-form" autocomplete="off">
+            <input id="numsfech-nome" placeholder="Nome (ex.: Dono, Gerente)">
+            <input id="numsfech-tel" placeholder="Telefone com DDD">
+            <button type="submit" class="btn-hc-add">➕ Autorizar</button>
+          </form>
+          <div class="hc-lista" id="numsfech-lista"><div class="hc-vazio">Nenhum número autorizado ainda.</div></div>
+          <div class="hc-sub" id="numsfech-fila"></div>
         </div>
       </div>
     </section>
@@ -108,11 +173,15 @@
     <!-- ══════════ TELA PDV ══════════ -->
     <section class="tela" id="tela-pdv">
 
-      <!-- Esquerda: campo de código -->
+      <!-- Esquerda: estação de operação do caixa -->
       <div class="painel-esquerdo">
         <div class="campo-codigo">
-          <label for="codigo">Código da Mercadoria</label>
+          <div class="cc-label-row">
+            <label for="codigo">Código da Mercadoria</label>
+            <span class="cc-foco">● foco</span>
+          </div>
           <input type="text" id="codigo" placeholder="Digite o código..." autocomplete="off" autofocus>
+          <div class="campo-codigo-hint">Tecle <kbd>Enter</kbd> pra adicionar · <kbd>3*cód</kbd> pra quantidade</div>
         </div>
         <button type="button" class="btn-disp-pdv" id="btn-disponibilidade-pdv">🟢 Disponibilidade de hoje</button>
         <div class="ultima-venda" id="ultima-venda" style="display:none">
@@ -123,11 +192,14 @@
           <ul class="uv-itens" id="uv-itens"></ul>
           <div class="uv-linha"><span>Total</span><strong id="uv-total">R$ 0,00</strong></div>
           <div class="uv-linha"><span>Pagamento</span><strong id="uv-pgto">—</strong></div>
+          <div class="uv-linha uv-fiado" id="uv-fiado-linha" style="display:none"><span>📒 Fiado de</span><strong id="uv-fiado-cliente">—</strong></div>
+          <div class="uv-linha uv-fiado" id="uv-retirou-linha" style="display:none"><span>🖐 Retirado por</span><strong id="uv-retirou-nome">—</strong></div>
           <div class="uv-linha"><span>Troco</span><strong id="uv-troco">R$ 0,00</strong></div>
           <div class="uv-linha"><span>Hora</span><strong id="uv-hora">--:--</strong></div>
         </div>
 
         <div class="atalhos-dica">
+          <span class="atalhos-titulo">⚡ Atalhos do operador</span>
           <span><kbd>Enter</kbd> adicionar</span>
           <span><kbd>3*código</kbd> quantidade</span>
           <span><kbd>2× Espaço</kbd> buscar nome</span>
@@ -172,47 +244,87 @@
     <section class="tela" id="tela-delivery">
       <div class="delivery-topo">
         <div class="del-stats">
-          <div class="del-stat">
+          <div class="del-stat s-pend">
             <div class="del-stat-num" id="stat-pendentes">0</div>
             <div class="del-stat-lbl">🕐 Pendentes</div>
           </div>
-          <div class="del-stat">
+          <div class="del-stat s-prep">
+            <div class="del-stat-num" id="stat-preparo">0</div>
+            <div class="del-stat-lbl">👨‍🍳 Em preparo</div>
+          </div>
+          <div class="del-stat s-rota">
             <div class="del-stat-num" id="stat-rota">0</div>
             <div class="del-stat-lbl">🛵 Em rota</div>
           </div>
-          <div class="del-stat">
+          <div class="del-stat s-entr">
             <div class="del-stat-num" id="stat-entregues">0</div>
             <div class="del-stat-lbl">✅ Entregues hoje</div>
           </div>
           <div class="del-stat destaque">
             <div class="del-stat-num" id="stat-faturamento">R$ 0,00</div>
-            <div class="del-stat-lbl">💰 Faturamento delivery</div>
+            <div class="del-stat-lbl">💰 Faturamento</div>
           </div>
         </div>
-        <div class="del-controles">
-          <div class="del-toggle">
-            <span class="dt-nome">🏪 Loja</span>
-            <button class="dt-switch" id="btn-loja-estado" role="switch" title="Ligado = aberta (IA atende) · Desligado = fechada"></button>
-            <span class="dt-estado" id="dt-loja-estado">—</span>
-          </div>
-          <div class="del-toggle">
-            <span class="dt-nome">🛵 Só Retirada</span>
-            <button class="dt-switch" id="btn-loja-retirada" role="switch" title="Ligado = só retirada no balcão (IA não pede endereço) · Desligado = entrega normal"></button>
-            <span class="dt-estado" id="dt-ret-estado">—</span>
-          </div>
+        <div class="del-acoes-topo">
+          <button class="btn-novo-pedido" id="btn-novo-pedido">+ <span class="atalho">N</span>ovo Pedido</button>
+          <button class="btn-clientes-delivery" id="btn-clientes-delivery">👥 Clientes cadastrados</button>
+          <button class="btn-clientes-delivery" id="btn-disponibilidade-delivery">🟢 Disponibilidade</button>
         </div>
-        <button class="btn-novo-pedido" id="btn-novo-pedido">+ <span class="atalho">N</span>ovo Pedido</button>
-        <button class="btn-clientes-delivery" id="btn-clientes-delivery">👥 Clientes cadastrados</button>
-        <button class="btn-clientes-delivery" id="btn-disponibilidade-delivery">🟢 Disponibilidade</button>
       </div>
 
-      <div class="delivery-board" id="delivery-board">
-        <div class="board-vazio">
-          <div class="ico">🛵</div>
-          <p>Nenhum pedido de delivery.<br>Clique em <strong>+ Novo Pedido</strong> para começar.</p>
+      <!-- Fase 22: alterna entre o Quadro (kanban) e a Expedição (saída/rota) -->
+      <div class="del-tabs">
+        <button class="del-tab ativo" data-dtab="quadro">🗂 Quadro</button>
+        <button class="del-tab" data-dtab="expedicao">🛵 Expedição</button>
+      </div>
+
+      <!-- Quadro operacional por status (colunas montadas pelo renderDelivery no app.js) -->
+      <div class="delivery-board" id="delivery-board"></div>
+
+      <!-- Painel de Expedição (Fase 22) -->
+      <div class="expedicao-wrap" id="expedicao-wrap" style="display:none">
+        <div class="exp-grid">
+          <div class="exp-col">
+            <div class="exp-bloco-tit">📦 Prontos para sair <span class="exp-badge" id="exp-prontos-n">0</span></div>
+            <div class="exp-lista" id="exp-prontos"></div>
+          </div>
+          <div class="exp-col">
+            <div class="exp-bloco-tit">🛵 Em rota <span class="exp-badge" id="exp-rota-n">0</span></div>
+            <div class="exp-lista" id="exp-rota"></div>
+          </div>
+          <div class="exp-col">
+            <div class="exp-bloco-tit">🧑‍🔧 Entregadores</div>
+            <div class="exp-entregadores" id="exp-entregadores"></div>
+            <form class="exp-ent-add" id="exp-ent-add" autocomplete="off">
+              <input id="exp-ent-nome" placeholder="Nome do entregador" required maxlength="40">
+              <input id="exp-ent-tel" placeholder="Telefone (com DDD)" inputmode="numeric" maxlength="15">
+              <input id="exp-ent-pin" placeholder="PIN de acesso (opcional)" inputmode="numeric" maxlength="8">
+              <button type="submit" class="exp-btn">+ Adicionar</button>
+            </form>
+            <div class="exp-ent-dica">📱 Entregador acessa em <b>/entregador</b> com o telefone + PIN.</div>
+            <div class="exp-hoje" id="exp-hoje"></div>
+          </div>
         </div>
       </div>
     </section>
+
+    <!-- ══════════ MODAL DESPACHAR (Fase 22) ══════════ -->
+    <div class="overlay" id="overlay-despachar">
+      <div class="modal-despachar">
+        <header class="modal-head">
+          <h2>🛵 Despachar pedido</h2>
+          <button class="btn-fechar" id="btn-fechar-despachar">✕</button>
+        </header>
+        <div class="modal-body">
+          <p id="despachar-info">—</p>
+          <label class="dp-label">Entregador</label>
+          <select id="despachar-entregador"></select>
+          <label class="dp-label">Previsão de entrega (min, opcional)</label>
+          <input type="number" id="despachar-previsao" min="0" step="5" placeholder="Ex.: 30">
+          <button class="btn-despachar-ok" id="btn-despachar-ok">✅ Sair para rota</button>
+        </div>
+      </div>
+    </div>
 
     <!-- ══════════ TELA PRODUTOS / ESTOQUE ══════════ -->
     <section class="tela" id="tela-produtos">
@@ -221,6 +333,7 @@
         <button class="prod-tab" data-ptab="insumos">🧴 I<span class="atalho">n</span>sumos</button>
         <button class="prod-tab" data-ptab="hist">📈 <span class="atalho">H</span>istórico</button>
         <button class="prod-tab" data-ptab="notas">🧾 Notas <span class="atalho">F</span>iscais</button>
+        <button class="prod-tab" data-ptab="custos">💲 Custos &amp; Produção</button>
       </div>
 
       <!-- ─ MERCADORIAS ─ -->
@@ -228,42 +341,64 @@
         <form class="prod-form" id="form-produto" autocomplete="off">
           <h3>📥 Entrada de Mercadoria</h3>
           <button type="button" class="btn-rendimento" id="btn-abrir-rendimento" title="Comprei uma matéria-prima (ex.: saca de açaí) e vou gerar vários produtos com preços diferentes">🫐 <span class="atalho">P</span>rocessar em vários produtos <small>(rendimento)</small></button>
-          <div class="campo"><label>Nº da Nota fiscal</label><input id="pf-nota" placeholder="opcional"></div>
-          <div class="pf-nota-resumo" id="pf-nota-resumo" style="display:none">
-            <span>📋 Total da nota <strong id="pf-nota-resumo-num">—</strong></span>
-            <span><strong id="pf-nota-resumo-total">R$ 0,00</strong> · <span id="pf-nota-resumo-qtd">0 entradas</span></span>
-          </div>
-          <div class="campo"><label>Descrição *</label><input id="pf-nome" required></div>
-          <div class="pf-row">
+
+          <div class="pf-grupo-tit">🏷️ Unidade</div>
+          <div class="pf-row pf-row-3u">
             <div class="campo"><label>Código *</label><input id="pf-codigo" required></div>
+            <div class="campo"><label>Descrição *</label><input id="pf-nome" required></div>
+            <div class="campo"><label>Preço venda un. (R$)</label><input type="number" id="pf-venda" step="0.01" min="0" placeholder="0,00"></div>
+          </div>
+
+          <div class="pf-grupo-tit">📦 Caixa / conjunto <small>(vender a caixa inteira)</small></div>
+          <div class="pf-row pf-row-4c">
             <div class="campo"><label>Cód. conjunto</label><input id="pf-conjunto" placeholder="opcional"></div>
-            <div class="campo"><label>Venda cx (R$)</label><input type="number" id="pf-vendacaixa" step="0.01" min="0" placeholder="0,00" title="Preço de venda da caixa inteira (pacote)"></div>
-          </div>
-          <p class="pf-hint">💡 Cód. conjunto + venda da caixa liberam vender a caixa inteira na tela de Venda (desconta "Unid. por caixa" do estoque de uma vez).</p>
-          <div class="pf-row">
-            <div class="campo"><label>Departamento</label><input id="pf-departamento" list="lista-departamentos" placeholder="Ex: Açaí"></div>
-            <div class="campo"><label>Fornecedor</label><input id="pf-fornecedor" placeholder="Ex: Distribuidora X"></div>
-          </div>
-          <div class="pf-row">
-            <div class="campo"><label>Entrada (qtd)</label><input type="number" id="pf-entrada" step="1" min="0" placeholder="0"></div>
-            <div class="campo"><label>Valor total pago (R$)</label><input type="number" id="pf-valortotal" step="0.01" min="0" placeholder="0,00"></div>
-          </div>
-          <p class="pf-hint">💡 Valor total ÷ quantidade = custo unitário (preenchido automaticamente abaixo).</p>
-          <div class="pf-row">
-            <div class="campo"><label>Caixas</label><input type="number" id="pf-caixas" step="1" min="0" placeholder="opcional"></div>
+            <div class="campo"><label>Descrição conjunto</label><input id="pf-conjunto-nome" placeholder="ex.: Caixa 12 un"></div>
             <div class="campo"><label>Unid. por caixa</label><input type="number" id="pf-unidcaixa" step="1" min="0" placeholder="1"></div>
-            <div class="campo"><label>Valor cx (R$)</label><input type="number" id="pf-valorcaixa" step="0.01" min="0" placeholder="0,00"></div>
+            <div class="campo"><label>Preço venda cx (R$)</label><input type="number" id="pf-vendacaixa" step="0.01" min="0" placeholder="0,00" title="Preço de venda da caixa inteira (pacote)"></div>
           </div>
-          <p class="pf-hint">💡 Caixas × unid. por caixa = quantidade · Caixas × valor da caixa = valor total · tudo já cai no custo unitário abaixo.</p>
+          <p class="pf-hint">💡 Cód. conjunto + preço da caixa liberam vender a caixa inteira na Venda (desconta "Unid. por caixa" do estoque de uma vez).</p>
+
+          <div class="pf-grupo-tit">🏭 Origem</div>
           <div class="pf-row">
-            <div class="campo"><label>Preço compra unit. (R$)</label><input type="number" id="pf-compra" step="0.01" min="0" placeholder="0,00"></div>
-            <div class="campo"><label>Preço venda (R$)</label><input type="number" id="pf-venda" step="0.01" min="0" placeholder="0,00"></div>
+            <div class="campo"><label>Fornecedor</label><input id="pf-fornecedor" placeholder="Ex: Distribuidora X"></div>
+            <div class="campo"><label>Departamento</label><input id="pf-departamento" list="lista-departamentos" placeholder="Ex: Açaí"></div>
           </div>
-          <div class="pf-margem">
-            <span>Margem de lucratividade</span>
-            <strong id="pf-margem">—</strong>
+          <label class="pf-granel-check"><input type="checkbox" id="pf-granel"> 🛍️ Produto a granel <small>(açaí/farinha/tapioca — na venda baixa 1 saco + 1 sacola; os demais só 1 sacola)</small></label>
+
+          <div class="pf-row pf-est-row">
+            <div class="pf-est-card"><span>Estoque conjunto</span><b id="pf-est-conj">—</b></div>
+            <div class="pf-est-card"><span>Unidades</span><b id="pf-est-un">—</b></div>
+            <div class="pf-est-card total"><span>Total (unid.)</span><b id="pf-est-total">—</b></div>
+            <div class="campo"><label>Estoque mínimo</label><input type="number" id="pf-min" step="1" min="0" placeholder="0"></div>
           </div>
-          <div class="campo"><label>Estoque mínimo</label><input type="number" id="pf-min" step="1" min="0" placeholder="0"></div>
+
+          <button type="button" class="pf-avancado-btn" id="pf-avancado-btn">💲 Custo e lucro <span class="pf-av-seta">▾</span></button>
+          <div class="pf-avancado" id="pf-avancado" style="display:none">
+            <div class="pf-row">
+              <div class="campo"><label>Preço compra unit. (R$)</label><input type="number" id="pf-compra" step="0.01" min="0" placeholder="0,00"></div>
+              <div class="campo"><label>Caixas compradas</label><input type="number" id="pf-caixas" step="1" min="0" placeholder="opcional"></div>
+              <div class="campo"><label>Valor cx compra (R$)</label><input type="number" id="pf-valorcaixa" step="0.01" min="0" placeholder="0,00"></div>
+            </div>
+            <div class="pf-margem"><span>Margem de lucratividade</span><strong id="pf-margem">—</strong></div>
+            <p class="pf-hint">💡 Valor total ÷ quantidade = custo unitário · Caixas × unid. = quantidade · Caixas × valor cx = valor total.</p>
+          </div>
+
+          <div class="pf-entrada-bar">
+            <div class="pf-entrada-tit">📥 Dar entrada (reabastecimento)</div>
+            <div class="pf-row pf-entrada-row">
+              <div class="campo"><label>Nº da nota</label><input id="pf-nota" placeholder="opcional"></div>
+              <div class="campo"><label>Data</label><input type="date" id="pf-data-entrada"></div>
+              <div class="campo"><label>Entrada (qtd)</label><input type="number" id="pf-entrada" step="1" min="0" placeholder="0"></div>
+              <div class="campo"><label>Pagamento</label><select id="pf-pagamento"><option value="">—</option><option>Dinheiro</option><option>PIX</option><option>Cartão</option><option>A prazo</option><option>Boleto</option></select></div>
+              <div class="campo"><label>Valor total pago (R$)</label><input type="number" id="pf-valortotal" step="0.01" min="0" placeholder="0,00"></div>
+            </div>
+            <div class="pf-nota-resumo" id="pf-nota-resumo" style="display:none">
+              <span>📋 Total da nota <strong id="pf-nota-resumo-num">—</strong></span>
+              <span><strong id="pf-nota-resumo-total">R$ 0,00</strong> · <span id="pf-nota-resumo-qtd">0 entradas</span></span>
+            </div>
+            <div class="pf-nota-lista" id="pf-nota-lista"></div>
+          </div>
+
           <div class="pf-acoes">
             <button type="button" class="btn-prod-limpar" id="btn-prod-limpar"><span class="atalho">L</span>impar</button>
             <button type="button" class="btn-prod-excluir" id="btn-prod-excluir" title="Excluir definitivamente o produto deste código">🗑 E<span class="atalho">x</span>cluir</button>
@@ -274,6 +409,7 @@
 
         <div class="prod-detalhe" id="prod-detalhe">
           <div class="pd-alerta-baixo" id="pd-alerta-baixo"></div>
+          <div class="pd-lista-box" id="pd-lista"></div>
           <div class="pd-vazio" id="pd-vazio">
             🔍 Digite o <strong>código</strong> e pressione <kbd>Enter</kbd>,<br>
             ou pressione <kbd>espaço</kbd> <kbd>espaço</kbd> no campo Descrição para buscar um produto cadastrado.
@@ -317,6 +453,20 @@
               <div class="pd-cardmini"><span>Margem</span><strong id="pd-margem">—</strong></div>
             </div>
 
+            <!-- Ficha técnica / receita (Fase 21) -->
+            <div class="pd-sub">🧪 Ficha técnica <span class="pd-ficha-custo" id="pd-ficha-custo"></span></div>
+            <div class="pd-ficha" id="pd-ficha">
+              <div class="pd-ficha-hint">Cadastre o que cada unidade consome — os insumos baixam sozinhos na venda e alimentam o custo.</div>
+              <div class="pd-ficha-itens" id="pd-ficha-itens"></div>
+              <div class="pd-ficha-add">
+                <select id="pdf-tipo"><option value="insumo">Insumo</option><option value="produto">Produto</option></select>
+                <select id="pdf-ref"></select>
+                <input type="number" id="pdf-qtd" step="0.001" min="0" placeholder="Qtd">
+                <button type="button" class="pd-btn-mini" id="pdf-add">+ Adicionar</button>
+              </div>
+              <button type="button" class="btn-prod-salvar" id="pdf-salvar">💾 Salvar ficha técnica</button>
+            </div>
+
             <div class="pd-sub">📊 Desempenho de vendas</div>
             <div class="pd-grid">
               <div class="pd-cardmini"><span>Qtd. vendida</span><strong id="pd-qtdvend">0</strong></div>
@@ -345,7 +495,13 @@
           <p class="prod-nota">Controle de gastos com descartáveis (sacolas, copos, colheres...). <strong>Não entra no custo das mercadorias.</strong> Informe a quantidade e o valor total — mostramos o valor por unidade.</p>
           <div class="campo"><label>Descrição *</label><input id="if-nome" required placeholder="Ex: Sacola, Copo 500ml, Colher"></div>
           <div class="pf-row">
-            <div class="campo"><label>Quantidade *</label><input type="number" id="if-qtd" step="1" min="0" required placeholder="Ex: 100"></div>
+            <div class="campo"><label>Quantidade *</label><input type="number" id="if-qtd" step="0.01" min="0" required placeholder="Ex: 100"></div>
+            <div class="campo"><label>Unidade</label>
+              <select id="if-unidade">
+                <option value="un">un</option><option value="cx">caixa</option><option value="kg">kg</option>
+                <option value="g">g</option><option value="l">litro</option><option value="ml">ml</option><option value="pct">pacote</option>
+              </select>
+            </div>
             <div class="campo"><label>Valor total (R$) *</label><input type="number" id="if-custo" step="0.01" min="0" required placeholder="0,00"></div>
           </div>
           <p class="pf-hint" id="if-unit-preview"></p>
@@ -387,6 +543,10 @@
           <div class="hist-card destaque"><div class="hc-num" id="saldo">R$ 0,00</div><div class="hc-lbl">💵 Saldo (faturamento − gastos)</div></div>
         </div>
 
+        <div class="hist-toolbar">
+          <input type="search" id="hist-busca" placeholder="🔎 buscar produto no histórico…" autocomplete="off">
+          <div class="hist-insight" id="hist-insight"></div>
+        </div>
         <div class="prod-tabela-wrap">
           <table class="prod-tabela">
             <thead><tr><th>Produto</th><th>Qtd vendida</th><th>Faturado</th><th>Última venda</th></tr></thead>
@@ -415,25 +575,57 @@
           <div id="nota-r-itens"></div>
         </div>
       </div>
+
+      <!-- ─ CUSTOS & PRODUÇÃO (Fase 19) ─ -->
+      <div class="prod-painel" id="ptab-custos">
+        <div class="hist-sub">🫐 Produções / rendimentos recentes</div>
+        <div class="prod-tabela-wrap">
+          <table class="prod-tabela">
+            <thead><tr><th>Data</th><th>Descrição</th><th>Tipo</th><th>Custo total</th></tr></thead>
+            <tbody id="prod-list-tbody"></tbody>
+          </table>
+        </div>
+        <div class="hist-sub" style="margin-top:18px">💲 Custo &amp; margem por produto</div>
+        <div class="custos-head">
+          <input type="text" id="custos-filtro" placeholder="🔎 Filtrar produto...">
+          <span style="opacity:.7;font-size:12.5px">Custo = última compra / produção · Margem = (venda − custo) ÷ venda</span>
+        </div>
+        <div class="custos-insight" id="custos-insight"></div>
+        <div class="prod-tabela-wrap">
+          <table class="prod-tabela">
+            <thead><tr><th>Código</th><th>Produto</th><th>Custo</th><th>Venda</th><th>Margem</th></tr></thead>
+            <tbody id="custos-tbody"></tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <!-- ══════════ TELA CLIENTES ══════════ -->
     <section class="tela" id="tela-clientes">
+      <div class="cl-tabs">
+        <button class="cl-tab ativo" data-cltab="cadastro">👤 Cadastro &amp; Fiado</button>
+        <button class="cl-tab" data-cltab="crm">📊 CRM &amp; Fidelidade</button>
+        <button class="cl-tab" data-cltab="clube">🎁 Clube do Cliente</button>
+      </div>
       <div class="prod-painel ativo" id="clientes-painel">
         <form class="prod-form" id="form-cliente" autocomplete="off">
-          <h3>👥 Cadastro de Cliente</h3>
-          <div class="cl-whats-status" id="cl-whats-status">🔌 Verificando WhatsApp…</div>
-          <div class="cl-whats-qr" id="cl-whats-qr" style="display:none">
-            <img id="cl-whats-qr-img" alt="QR Code do WhatsApp">
-            <p>Abra o WhatsApp do celular da loja → <b>Mais opções → Aparelhos conectados → Conectar um aparelho</b> e escaneie.</p>
+          <div class="cl-form-head">
+            <div class="cl-form-tit"><h3>👥 Cadastro de Cliente</h3><span class="cl-cod-chip cl-form-cod" id="cl-form-codigo">Novo</span></div>
+            <button type="button" class="btn-receber-conta" id="btn-receber-conta" title="Receber pagamento de fiado de qualquer cliente">💰 Receber Conta</button>
           </div>
-          <div class="campo"><label>Nome *</label><input id="cl-nome" required placeholder="Nome do cliente"></div>
+          <!-- Fase 46A §3: a conexão do WhatsApp saiu daqui — agora fica no módulo Atendimento › Conexão. -->
+          <div class="campo"><label>Nome * <span class="cl-nome-dica">— digite o código + Enter, ou espaço-espaço pra buscar</span></label><input id="cl-nome" required placeholder="Nome, ou código do cliente + Enter"></div>
           <div class="campo"><label>Telefone (WhatsApp) *</label><input id="cl-telefone" required placeholder="(91) 9 9999-9999"></div>
           <div class="pf-row">
             <div class="campo"><label>Bairro</label><input id="cl-bairro" placeholder="opcional"></div>
             <div class="campo"><label>Endereço</label><input id="cl-endereco" placeholder="opcional"></div>
           </div>
-          <div class="campo"><label>Observações</label><input id="cl-obs" placeholder="opcional"></div>
+          <div class="pf-row">
+            <div class="campo"><label>Aniversário</label><input type="date" id="cl-nascimento"></div>
+            <div class="campo"><label>Tags (separadas por vírgula)</label><input id="cl-tags" placeholder="ex.: vip, açaí grande"></div>
+          </div>
+          <div class="campo"><label>👥 Autorizados a pegar na conta (separados por vírgula)</label><input id="cl-autorizados" placeholder="ex.: esposa Maria, filho João"></div>
+          <div class="campo"><label>Observações</label><input id="cl-obs" placeholder="preferências, alergias..."></div>
           <div class="pf-acoes">
             <button type="button" class="btn-prod-limpar" id="btn-cliente-limpar"><span class="atalho">L</span>impar</button>
             <button type="button" class="btn-prod-excluir" id="btn-cliente-excluir" title="Excluir definitivamente o cliente">🗑 E<span class="atalho">x</span>cluir</button>
@@ -450,79 +642,117 @@
             <div class="pd-head">
               <div>
                 <span class="pd-cod" id="cl-d-telefone">—</span>
-                <h2 class="pd-nome" id="cl-d-nome">—</h2>
+                <h2 class="pd-nome cl-nome-linha"><span id="cl-d-nome">—</span><span class="cl-cod-chip" id="cl-d-codigo">Cód. —</span></h2>
                 <div class="pd-tags">
                   <span class="pd-tag" id="cl-tag-bairro" style="display:none"></span>
                 </div>
               </div>
-              <button type="button" class="btn-mini-del" id="cl-d-excluir" title="Excluir definitivamente">🗑 Excluir</button>
+              <button type="button" class="btn-mini-del" id="cl-d-excluir" title="Excluir cliente definitivamente">🗑</button>
             </div>
 
-            <div class="pd-grid" id="cl-d-infogrid">
-              <div class="pd-cardmini"><span>Endereço</span><strong id="cl-d-endereco">—</strong></div>
-              <div class="pd-cardmini"><span>Observações</span><strong id="cl-d-obsmini">—</strong></div>
+            <div class="cl-subtabs">
+              <button type="button" class="cl-subtab ativo" data-clsub="resumo">📊 Resumo</button>
+              <button type="button" class="cl-subtab" data-clsub="extrato">📋 Extrato</button>
+              <button type="button" class="cl-subtab" data-clsub="compras">🛒 Compras</button>
             </div>
 
-            <div class="pd-estoque-box cl-saldo-box">
-              <div class="pd-estoque-info">
-                <span class="pd-estoque-lbl">💰 Saldo (fiado)</span>
-                <strong class="pd-estoque-num" id="cl-saldo-num">R$ 0,00</strong>
+            <div class="cl-subpanel ativo" id="cl-sub-resumo">
+              <div class="pd-estoque-box cl-saldo-box">
+                <div class="pd-estoque-info">
+                  <span class="pd-estoque-lbl">💰 Saldo (fiado)</span>
+                  <strong class="pd-estoque-num" id="cl-saldo-num">R$ 0,00</strong>
+                </div>
+              </div>
+              <!-- CRM: métricas + status + fidelidade (Fase 24) -->
+              <div class="cl-crm" id="cl-crm-box"></div>
+              <div class="pd-grid" id="cl-d-infogrid">
+                <div class="pd-cardmini"><span>Endereço</span><strong id="cl-d-endereco">—</strong></div>
+                <div class="pd-cardmini"><span>Observações</span><strong id="cl-d-obsmini">—</strong></div>
               </div>
             </div>
 
-            <div class="pd-sub">💰 Registrar pagamento</div>
-            <p class="pf-hint">💡 Pode preencher mais de uma forma se o cliente pagar parte em cada uma.</p>
-            <div class="cl-pgto-formas">
-              <label class="forma-linha" for="cl-pgto-pix">
-                <span class="forma-nome"><span class="ico">📱</span><span class="forma-texto">PIX</span></span>
-                <input type="number" id="cl-pgto-pix" class="forma-valor" placeholder="0,00" min="0" step="0.50" inputmode="decimal">
-              </label>
-              <label class="forma-linha" for="cl-pgto-dinheiro">
-                <span class="forma-nome"><span class="ico">💵</span><span class="forma-texto">Dinheiro</span></span>
-                <input type="number" id="cl-pgto-dinheiro" class="forma-valor" placeholder="0,00" min="0" step="0.50" inputmode="decimal">
-              </label>
-              <label class="forma-linha" for="cl-pgto-credito">
-                <span class="forma-nome"><span class="ico">💳</span><span class="forma-texto">Cartão Crédito</span></span>
-                <input type="number" id="cl-pgto-credito" class="forma-valor" placeholder="0,00" min="0" step="0.50" inputmode="decimal">
-              </label>
-              <label class="forma-linha" for="cl-pgto-debito">
-                <span class="forma-nome"><span class="ico">💳</span><span class="forma-texto">Cartão Débito</span></span>
-                <input type="number" id="cl-pgto-debito" class="forma-valor" placeholder="0,00" min="0" step="0.50" inputmode="decimal">
-              </label>
+            <div class="cl-subpanel" id="cl-sub-extrato" style="display:none">
+              <div class="cl-extrato" id="cl-extrato"></div>
             </div>
-            <div class="pf-margem cl-pgto-total">
-              <span>Total a registrar</span>
-              <strong id="cl-pgto-total">R$ 0,00</strong>
-            </div>
-            <div class="campo"><label>Descrição</label><input id="cl-lanc-desc" placeholder="opcional"></div>
-            <div class="cl-lanc-acoes">
-              <button type="button" class="btn-cl-pagamento" id="btn-cl-pagamento" disabled>💰 Registrar pagamento</button>
-            </div>
-            <p class="pf-hint">💡 Avisa o cliente automaticamente no WhatsApp com o saldo atualizado.</p>
 
-            <div class="pd-sub">📋 Extrato</div>
-            <div class="cl-extrato" id="cl-extrato"></div>
+            <div class="cl-subpanel" id="cl-sub-compras" style="display:none">
+              <div class="cl-compras" id="cl-compras-box"></div>
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- ══════════ CRM & FIDELIDADE (Fase 24) ══════════ -->
+      <div class="crm-painel" id="crm-painel" style="display:none">
+        <div class="crm-resumo" id="crm-resumo"></div>
+
+        <div class="crm-listas" id="crm-listas">
+          <button class="crm-lista-btn ativo" data-lista="ranking-gasto">💸 Mais gastaram</button>
+          <button class="crm-lista-btn" data-lista="ranking-compras">🔁 Mais compraram</button>
+          <button class="crm-lista-btn" data-lista="sumidos">😴 Sumidos</button>
+          <button class="crm-lista-btn" data-lista="aniversariantes">🎂 Aniversariantes</button>
+          <button class="crm-lista-btn" data-lista="fiado">📒 Com fiado</button>
+          <button class="crm-lista-btn" data-lista="novos">🌱 Novos</button>
+          <button class="crm-lista-btn" data-lista="vip">⭐ VIPs</button>
+          <button class="crm-lista-btn" data-lista="todos">👥 Todos</button>
+        </div>
+
+        <div class="crm-toolbar">
+          <input type="text" id="crm-busca" placeholder="🔎 nome ou telefone…" autocomplete="off">
+          <input type="text" id="crm-bairro" placeholder="bairro…" autocomplete="off">
+          <span class="crm-count" id="crm-count">0 clientes</span>
+          <span class="crm-flex"></span>
+          <button class="crm-btn" id="crm-copiar" title="Copia nome + telefone da lista pra colar no WhatsApp">📋 Copiar contatos</button>
+          <button class="crm-btn" id="crm-exportar" title="Baixa a lista em CSV (abre no Excel)">⬇️ CSV</button>
+        </div>
+
+        <div class="prod-tabela-wrap crm-tabela-wrap">
+          <table class="prod-tabela crm-tabela">
+            <thead><tr>
+              <th>Cliente</th><th>Status</th><th class="num">Compras</th><th class="num">Gasto</th>
+              <th class="num">Sem comprar</th><th class="num">Fidelidade</th><th class="num">Fiado</th><th>Telefone</th>
+            </tr></thead>
+            <tbody id="crm-tbody"><tr><td colspan="8" class="crm-vazio">Carregando…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Fase 41 — Clube do Cliente (gerencial) -->
+      <div class="clube-painel" id="clube-painel" style="display:none">
+        <div class="clube-subtabs" id="clube-subtabs">
+          <button class="clube-sub ativo" data-clube="resumo">📊 Resumo</button>
+          <button class="clube-sub" data-clube="regras">⚙️ Regras</button>
+          <button class="clube-sub" data-clube="cupons">🎟️ Cupons</button>
+          <button class="clube-sub" data-clube="campanhas">📣 Campanhas</button>
+          <button class="clube-sub" data-clube="sorteios">🎲 Sorteios</button>
+        </div>
+        <div id="clube-conteudo"><div class="dash-load">…</div></div>
+      </div>
     </section>
 
-    <!-- ══════════ TELA ATENDIMENTO (Caixa de entrada WhatsApp) ══════════ -->
+    <!-- ══════════ TELA ATENDIMENTO — Central de Atendimento (Fase 4: 3 colunas) ══════════ -->
     <section class="tela" id="tela-atendimento">
+      <!-- Fase 46A §4: abas separam Atendimento (Conversas) da configuração (Conexão / Configurações) -->
+      <div class="at-tabs" id="at-tabs">
+        <button class="at-tab ativo" data-attab="conversas">💬 Conversas</button>
+        <button class="at-tab" data-attab="conexao">🔌 Conexão WhatsApp</button>
+        <button class="at-tab" data-attab="config">⚙️ Configurações</button>
+      </div>
+      <div class="at-pane" id="at-pane-conversas">
       <div class="at-wrap">
-        <!-- Esquerda: lista de conversas -->
+
+        <!-- ── COLUNA 1 — CONVERSAS (caixa de entrada do WhatsApp) ── -->
         <aside class="at-lista">
           <div class="at-lista-head">
             <span>💬 Conversas</span>
             <span class="at-status" id="at-status-wpp">···</span>
           </div>
-          <input type="text" id="at-busca" class="at-busca" placeholder="🔎 Buscar conversa...">
+          <input type="search" id="at-busca" class="at-busca" name="busca-conversa" autocomplete="off" placeholder="🔎 Buscar conversa...">
           <div class="at-conversas" id="at-conversas">
             <div class="at-vazio">Carregando…</div>
           </div>
         </aside>
 
-        <!-- Direita: conversa aberta -->
+        <!-- ── COLUNA 2 — CHAT (a conversa em si) ── -->
         <section class="at-chat" id="at-chat">
           <div class="at-chat-vazio" id="at-chat-vazio">
             <div class="ico">💬</div>
@@ -530,6 +760,7 @@
           </div>
           <div class="at-chat-ativo" id="at-chat-ativo" style="display:none">
             <header class="at-chat-head">
+              <div class="at-chat-avatar" id="at-chat-avatar">🙂</div>
               <div class="at-chat-contato">
                 <strong id="at-chat-nome">—</strong>
                 <span id="at-chat-telefone">—</span>
@@ -540,6 +771,8 @@
                 <button type="button" class="at-btn-excluir" id="at-btn-excluir" title="Excluir esta conversa">🗑</button>
               </div>
             </header>
+            <!-- Fase 15: controle IA x humano desta conversa (assumir / liberar / IA on-off) -->
+            <div class="at-chat-controle" id="at-chat-controle" style="display:none"></div>
             <div class="at-mensagens" id="at-mensagens"></div>
             <div class="at-respostas" id="at-respostas"></div>
             <form class="at-envio" id="at-envio">
@@ -548,6 +781,377 @@
             </form>
           </div>
         </section>
+
+        <!-- ── COLUNA 3 — CONTEXTO DO CLIENTE (painel operacional; preenchido pelo JS) ── -->
+        <aside class="at-contexto" id="at-contexto">
+          <div class="at-ctx-vazio" id="at-ctx-vazio">
+            <div class="ico">🪪</div>
+            <p>Abra uma conversa para ver<br>o contexto do cliente.</p>
+          </div>
+          <div class="at-ctx-conteudo" id="at-ctx-conteudo" style="display:none"></div>
+        </aside>
+
+      </div>
+      </div><!-- /at-pane-conversas -->
+      <div class="at-pane" id="at-pane-conexao" style="display:none"></div>
+      <div class="at-pane" id="at-pane-config" style="display:none"></div>
+    </section>
+
+    <!-- ══════════ TELA COMPRAS PROFISSIONAIS (Fase 31) ══════════ -->
+    <section class="tela" id="tela-compras">
+      <div class="fin-wrap">
+        <aside class="fin-menu">
+          <button class="cx-menu-item ativo" data-cx="solicitacoes">📝 Solicitações</button>
+          <button class="cx-menu-item" data-cx="cotacoes">💬 Cotações</button>
+          <button class="cx-menu-item" data-cx="pedidos">📋 Pedidos</button>
+          <button class="cx-menu-item" data-cx="recebimentos">📥 Recebimentos</button>
+          <button class="cx-menu-item" data-cx="notas">🧾 Notas Fiscais</button>
+          <button class="cx-menu-item" data-cx="inteligencia">📊 Inteligência</button>
+          <button class="cx-menu-item" data-cx="relatorios">📈 Relatórios</button>
+          <button class="cx-menu-item" data-cx="historico">🕒 Histórico</button>
+          <button class="cx-menu-item" data-cx="fornecedores">🏭 Fornecedores</button>
+        </aside>
+        <div class="fin-conteudo" id="cx-conteudo"></div>
+      </div>
+    </section>
+
+    <!-- ══════════ TELA CUSTOS & RENTABILIDADE (Fase 30) ══════════ -->
+    <section class="tela" id="tela-custos">
+      <div class="fin-wrap">
+        <aside class="fin-menu">
+          <button class="cu-menu-item ativo" data-cu="lotes">📦 Lotes Produzidos</button>
+          <button class="cu-menu-item" data-cu="rendimentos">🌾 Rendimentos</button>
+          <button class="cu-menu-item" data-cu="custos_reais">💵 Custos Reais</button>
+          <button class="cu-menu-item" data-cu="rentabilidade">📈 Rentabilidade</button>
+          <button class="cu-menu-item" data-cu="custo_produto">🏷️ Custo por Produto</button>
+          <button class="cu-menu-item" data-cu="formacao_preco">💰 Formação de Preço</button>
+          <button class="cu-menu-item" data-cu="lucro_bruto">📊 Lucro Bruto</button>
+          <button class="cu-menu-item" data-cu="rendimento_prep">🌾 Rendimento (prep.)</button>
+          <button class="cu-menu-item" data-cu="perfis_producao">🏭 Perfis de Produção</button>
+          <button class="cu-menu-item" data-cu="ordens_producao">📋 Ordens de Produção</button>
+          <button class="cu-menu-item" data-cu="perdas">🗑️ Perdas</button>
+          <button class="cu-menu-item" data-cu="pesos">⚖️ Pesos de Custo</button>
+          <button class="cu-menu-item" data-cu="simulacoes">🧮 Simulações</button>
+          <button class="cu-menu-item" data-cu="historico">🕒 Histórico</button>
+        </aside>
+        <div class="fin-conteudo" id="cu-conteudo"></div>
+      </div>
+    </section>
+
+    <!-- ══════════ TELA FECHAMENTO DO PERÍODO (Fase 43 — operacional) ══════════ -->
+    <section class="tela" id="tela-fechamento">
+      <div id="fechamento-conteudo"><div class="dash-load">…</div></div>
+    </section>
+
+    <!-- ══════════ TELA MOVIMENTAÇÕES NÃO COMERCIAIS (Fase 44 — operacional) ══════════ -->
+    <section class="tela" id="tela-movimentacoes">
+      <div id="movimentacoes-conteudo"><div class="dash-load">…</div></div>
+    </section>
+
+    <!-- ══════════ TELA ASSISTENTE IA (Fase 42 — gerencial) ══════════ -->
+    <section class="tela" id="tela-assistente">
+      <div id="assistente-conteudo"><div class="dash-load">…</div></div>
+    </section>
+
+    <!-- ══════════ TELA CENTRAL DE IMPRESSÃO (Fase 40 — operacional) ══════════ -->
+    <section class="tela" id="tela-impressao">
+      <div id="impressao-conteudo"><div class="dash-load">…</div></div>
+    </section>
+
+    <!-- ══════════ TELA PRODUÇÃO / KDS + IMPRESSÃO (Fase 28) ══════════ -->
+    <section class="tela" id="tela-producao">
+      <div class="cp-topo">
+        <div class="cp-abas">
+          <button class="cp-aba ativo" data-cpaba="board">🏭 Produção</button>
+          <button class="cp-aba" data-cpaba="expedicao">🛵 Expedição</button>
+          <button class="cp-aba" data-cpaba="config">⚙️ Impressão</button>
+        </div>
+        <div class="cp-topo-acoes">
+          <label class="cp-toggle" title="Imprime as comandas novas sozinho (precisa ativar por causa do navegador)"><input type="checkbox" id="cp-auto"> 🖨️ Impressão automática</label>
+          <label class="cp-toggle"><input type="checkbox" id="cp-som" checked> 🔔 Som</label>
+          <span class="cp-status" id="cp-status">●</span>
+        </div>
+      </div>
+      <div class="cp-painel ativo" id="cp-board"></div>
+      <div class="cp-painel" id="cp-expedicao"></div>
+      <div class="cp-painel" id="cp-config"></div>
+      <iframe id="cp-print-frame" style="position:absolute;width:0;height:0;border:0;left:-9999px" title="impressão"></iframe>
+    </section>
+
+    <!-- ══════════ TELA FINANCEIRO / FLUXO DE CAIXA (Fase 25 — núcleo financeiro) ══════════ -->
+    <section class="tela" id="tela-financeiro">
+      <div class="fin-negado" id="fin-negado" style="display:none">
+        <div class="ico">🔒</div>
+        <p><strong>Acesso restrito.</strong><br>O Financeiro é para <em>administrador</em> e <em>supervisor</em>.</p>
+      </div>
+      <div class="fin-wrap" id="fin-wrap">
+        <aside class="fin-menu">
+          <!-- Menu do gestor: grupos rotulados por fluxo de uso (dia a dia → contas → lançar → compras → gestão → cadastros) -->
+          <div id="fin-menu-principal">
+            <div class="fin-menu-grupo">
+              <div class="fin-menu-grupo-tit">Dia a dia</div>
+              <button class="fin-menu-item ativo" data-fin="caixa">💰 Caixa do dia</button>
+              <button class="fin-menu-item" data-fin="conferencia">🧮 Fechamento / Conferência</button>
+              <button class="fin-menu-item" data-fin="balanco">📦 Balanço de estoque</button>
+            </div>
+            <div class="fin-menu-grupo">
+              <div class="fin-menu-grupo-tit">Receber & Pagar</div>
+              <button class="fin-menu-item" data-fin="receber">📥 A receber</button>
+              <button class="fin-menu-item" data-fin="contas_pagar">📌 A pagar</button>
+            </div>
+            <div class="fin-menu-grupo">
+              <div class="fin-menu-grupo-tit">Lançar</div>
+              <button class="fin-menu-item" data-fin="receitas">⬆️ Receitas</button>
+              <button class="fin-menu-item" data-fin="despesas">⬇️ Despesas</button>
+              <button class="fin-menu-item" data-fin="movimentacoes">📒 Movimentações</button>
+            </div>
+            <div class="fin-menu-grupo">
+              <div class="fin-menu-grupo-tit">Compras</div>
+              <button class="fin-menu-item" data-fin="acai">🫐 Compra de Açaí</button>
+              <button class="fin-menu-item" data-fin="fornecedores">🏭 Fornecedores</button>
+            </div>
+            <div class="fin-menu-grupo">
+              <div class="fin-menu-grupo-tit">Gestão</div>
+              <button class="fin-menu-item" data-fin="painel">📊 Painel Financeiro</button>
+              <button class="fin-menu-item" data-fin="relatorios">📈 Relatórios</button>
+              <button class="fin-menu-item" data-fin="conciliacao">🔎 Conciliação</button>
+            </div>
+            <div class="fin-menu-grupo">
+              <div class="fin-menu-grupo-tit">Cadastros</div>
+              <button class="fin-menu-item" data-fin="contas">🏦 Contas</button>
+              <button class="fin-menu-item" data-fin="categorias">🏷️ Categorias</button>
+              <button class="fin-menu-item" data-fin="centro_custos">🎯 Centro de Custos</button>
+              <button class="fin-menu-item" data-fin="config">⚙️ Configurações</button>
+            </div>
+          </div>
+          <!-- Operador: só o fechamento do caixa dele -->
+          <div id="fin-menu-operador" style="display:none">
+            <button class="fin-menu-item" data-fin="conferencia">🧮 Fechamento / Conferência</button>
+            <button class="fin-menu-item" data-fin="conciliacao">🔎 Conciliação</button>
+          </div>
+        </aside>
+        <div class="fin-conteudo" id="fin-conteudo"></div>
+      </div>
+    </section>
+
+    <!-- Modal genérico do ERP (fornecedor/compra/pagamento) — Fase 26 -->
+    <div class="overlay" id="overlay-erp">
+      <div class="modal-erp" id="modal-erp-box"></div>
+    </div>
+
+    <!-- ══════════ TELA BI / GESTÃO (Fase 25 — admin + supervisor) ══════════ -->
+    <section class="tela" id="tela-bi">
+      <div class="bi-negado" id="bi-negado" style="display:none">
+        <div class="ico">🔒</div>
+        <p><strong>Acesso restrito.</strong><br>Os relatórios de gestão são para <em>administrador</em> e <em>supervisor</em>.</p>
+      </div>
+      <div class="bi-wrap" id="bi-wrap">
+        <div class="bi-topo">
+          <div class="bi-filtros" id="bi-filtros">
+            <button class="bi-per" data-per="hoje">Hoje</button>
+            <button class="bi-per" data-per="ontem">Ontem</button>
+            <button class="bi-per" data-per="7d">7 dias</button>
+            <button class="bi-per ativo" data-per="30d">30 dias</button>
+            <button class="bi-per" data-per="mes">Este mês</button>
+            <button class="bi-per" data-per="mes_passado">Mês passado</button>
+            <button class="bi-per" data-per="tudo">Tudo</button>
+            <span class="bi-custom">
+              <input type="date" id="bi-de" title="De"><span class="bi-ate-sep">até</span><input type="date" id="bi-ate" title="Até">
+              <button class="bi-btn-custom" id="bi-aplicar-custom">Aplicar</button>
+            </span>
+            <span class="bi-periodo-label" id="bi-periodo-label"></span>
+          </div>
+        </div>
+        <div class="bi-abas" id="bi-abas">
+          <button class="bi-aba ativo" data-biaba="geral">📊 Visão Geral</button>
+          <button class="bi-aba" data-biaba="financeiro">💰 Financeiro</button>
+          <button class="bi-aba" data-biaba="produtos">🍧 Produtos</button>
+          <button class="bi-aba" data-biaba="clientes">👥 Clientes</button>
+          <button class="bi-aba" data-biaba="delivery">🛵 Delivery</button>
+          <button class="bi-aba" data-biaba="horarios">🕒 Horários</button>
+        </div>
+        <div class="bi-conteudo">
+          <div class="bi-painel ativo" id="bi-geral"></div>
+          <div class="bi-painel" id="bi-financeiro"></div>
+          <div class="bi-painel" id="bi-produtos"></div>
+          <div class="bi-painel" id="bi-clientes"></div>
+          <div class="bi-painel" id="bi-delivery"></div>
+          <div class="bi-painel" id="bi-horarios"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════ TELA ADMINISTRAÇÃO (Fase 13 — só perfil admin) ══════════ -->
+    <section class="tela" id="tela-administracao">
+      <!-- acesso negado (não-admin que chegar aqui direto) -->
+      <div class="adm-negado" id="adm-negado" style="display:none">
+        <div class="ico">🔒</div>
+        <p><strong>Acesso negado.</strong><br>Esta área é restrita ao perfil <em>administrador</em>.</p>
+      </div>
+
+      <div class="adm-conteudo" id="adm-conteudo" style="display:none">
+        <div class="adm-tabs">
+          <button class="adm-tab ativo" data-aba="usuarios">👥 Usuários</button>
+          <button class="adm-tab" data-aba="loja">🏪 Dados da Loja</button>
+          <button class="adm-tab" data-aba="dados">📤 Dados / Exportar</button>
+          <button class="adm-tab" data-aba="logs">🛡 Segurança / Logs</button>
+          <button class="adm-tab" data-aba="backup">💾 Backup</button>
+          <button class="adm-tab" data-aba="midia">🖼 Mídia WhatsApp</button>
+          <button class="adm-tab" data-aba="plataforma">🧩 Plataforma</button>
+        </div>
+
+        <!-- ABA 1 — Usuários -->
+        <div class="adm-pane" id="adm-pane-usuarios">
+          <div class="adm-card">
+            <div class="adm-card-tit">➕ Novo usuário</div>
+            <form class="adm-form-usuario" id="adm-form-usuario">
+              <input type="text" id="au-nome" placeholder="Nome completo" autocomplete="off" required>
+              <input type="text" id="au-usuario" placeholder="usuário (login)" autocomplete="off" required>
+              <input type="password" id="au-senha" placeholder="senha" autocomplete="new-password" required>
+              <select id="au-perfil">
+                <option value="operador">Operador</option>
+                <option value="supervisor">Supervisor</option>
+                <option value="admin">Admin</option>
+              </select>
+              <button type="submit" class="adm-btn destaque">Criar</button>
+            </form>
+          </div>
+          <div class="adm-card">
+            <div class="adm-card-tit">👥 Usuários cadastrados</div>
+            <div class="adm-tabela-wrap">
+              <table class="adm-tabela">
+                <thead><tr><th>Nome</th><th>Usuário</th><th>Perfil</th><th>Status</th><th>Último login</th><th>Ações</th></tr></thead>
+                <tbody id="adm-usuarios-tbody"><tr><td colspan="6" class="adm-vazio">Carregando…</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ABA 2 — Segurança / Logs -->
+        <div class="adm-pane" id="adm-pane-logs" style="display:none">
+          <div class="adm-card">
+            <div class="adm-card-tit">🛡 Logs de segurança e ações críticas</div>
+            <div class="adm-filtros">
+              <input type="text" id="al-acao" placeholder="Filtrar por ação…">
+              <input type="text" id="al-modulo" placeholder="Filtrar por módulo…">
+              <input type="date" id="al-de" title="De">
+              <input type="date" id="al-ate" title="Até">
+              <button type="button" class="adm-btn" id="al-filtrar">🔎 Filtrar</button>
+            </div>
+            <div class="adm-tabela-wrap">
+              <table class="adm-tabela">
+                <thead><tr><th>Data</th><th>Ação</th><th>Módulo</th><th>Origem</th><th>Detalhes</th></tr></thead>
+                <tbody id="adm-logs-tbody"><tr><td colspan="5" class="adm-vazio">Carregando…</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ABA 3 — Backup -->
+        <div class="adm-pane" id="adm-pane-backup" style="display:none">
+          <div class="adm-card">
+            <div class="adm-card-tit-row">
+              <div class="adm-card-tit">💾 Status do backup</div>
+              <button type="button" class="adm-btn destaque" id="ab-criar">💾 Criar backup agora</button>
+            </div>
+            <div class="adm-status-grid" id="ab-status">Carregando…</div>
+          </div>
+          <div class="adm-card">
+            <div class="adm-card-tit">📚 Backups disponíveis</div>
+            <div class="adm-tabela-wrap">
+              <table class="adm-tabela">
+                <thead><tr><th>Arquivo</th><th>Tamanho</th><th>Criado</th></tr></thead>
+                <tbody id="adm-backups-tbody"><tr><td colspan="3" class="adm-vazio">Carregando…</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ABA 4 — Mídia WhatsApp -->
+        <div class="adm-pane" id="adm-pane-midia" style="display:none">
+          <div class="adm-card">
+            <div class="adm-card-tit">🖼 Mídia do WhatsApp no banco</div>
+            <div class="adm-status-grid" id="am-status">Carregando…</div>
+          </div>
+          <div class="adm-card adm-card-perigo">
+            <div class="adm-card-tit">🧹 Limpar mídia antiga</div>
+            <p class="adm-aviso">Remove <strong>só os anexos</strong> (áudio/foto/vídeo) das mensagens mais antigas que o período escolhido — <strong>o texto das conversas é preservado</strong>. Não dá pra desfazer.</p>
+            <div class="adm-limpar-row">
+              <label>Mídia mais antiga que <input type="number" id="am-dias" value="30" min="1" style="width:70px"> dias</label>
+              <button type="button" class="adm-btn perigo" id="am-limpar">🧹 Limpar mídia antiga</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dados da Loja (Fase 20) -->
+        <div class="adm-pane" id="adm-pane-loja" style="display:none">
+          <div class="adm-card">
+            <div class="adm-card-tit">🏪 Dados da loja</div>
+            <p class="adm-aviso">Identificam a loja e são usados em vários lugares do sistema (título da aba, atendimento, taxa padrão de entrega).</p>
+            <form class="adm-form-loja" id="adm-form-loja">
+              <div class="alf-row">
+                <div class="campo"><label>Nome da loja *</label><input id="lj-nome" required></div>
+                <div class="campo"><label>Telefone principal</label><input id="lj-telefone" inputmode="numeric" placeholder="DDD + número"></div>
+              </div>
+              <div class="alf-row">
+                <div class="campo"><label>Endereço</label><input id="lj-endereco"></div>
+                <div class="campo"><label>Bairro / região</label><input id="lj-bairro"></div>
+              </div>
+              <div class="alf-row">
+                <div class="campo"><label>Horário de funcionamento</label><input id="lj-horario" placeholder="Ex.: Seg–Dom, 14h–23h"></div>
+                <div class="campo"><label>Taxa de entrega padrão (R$)</label><input type="number" id="lj-taxa" step="0.01" min="0" placeholder="0,00"></div>
+              </div>
+              <div class="campo"><label>Mensagem padrão de atendimento</label><textarea id="lj-mensagem" rows="2" placeholder="Ex.: Olá! Bem-vindo ao nosso açaí 🫐. Como posso ajudar?"></textarea></div>
+              <button type="submit" class="adm-btn">💾 Salvar dados da loja</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Dados / Exportar / Importar (Fase 20) -->
+        <div class="adm-pane" id="adm-pane-dados" style="display:none">
+          <div class="adm-card">
+            <div class="adm-card-tit">🩺 Status da instalação</div>
+            <div class="adm-status-grid" id="ad-status">Carregando…</div>
+          </div>
+          <div class="adm-card">
+            <div class="adm-card-tit">📤 Exportar dados</div>
+            <p class="adm-aviso">Baixa uma cópia dos dados — backup manual, auditoria ou migração pra outra loja.</p>
+            <div class="ad-export-grid" id="ad-export"></div>
+            <div class="ad-export-tudo">
+              <button type="button" class="adm-btn" data-exp="tudo" data-fmt="json">⬇️ Exportar TUDO (JSON)</button>
+            </div>
+          </div>
+          <div class="adm-card">
+            <div class="adm-card-tit">📥 Importar (assistido)</div>
+            <p class="adm-aviso">Importa <strong>clientes</strong> ou <strong>produtos</strong> de um JSON exportado. É <strong>idempotente</strong> (não duplica): casa clientes pelo telefone e produtos pelo código.</p>
+            <div class="ad-import-row">
+              <label class="adm-btn secundario">📄 Importar clientes<input type="file" id="ad-imp-clientes" accept=".json,application/json" hidden></label>
+              <label class="adm-btn secundario">📦 Importar produtos<input type="file" id="ad-imp-produtos" accept=".json,application/json" hidden></label>
+            </div>
+          </div>
+        </div>
+        <!-- Fase 36/37 — Módulos, roadmap, saúde e manutenção do ERP -->
+        <div class="adm-pane" id="adm-pane-plataforma" style="display:none">
+          <div class="adm-card">
+            <div class="adm-card-tit">🛠️ Manutenção &amp; versão do schema</div>
+            <p class="adm-aviso">Estado técnico da base. "Otimizar" faz checkpoint do WAL, recalcula estatísticas (ANALYZE) e checa a integridade — seguro, não altera dados.</p>
+            <div id="plat-manutencao">Carregando…</div>
+          </div>
+          <div class="adm-card">
+            <div class="adm-card-tit">🩺 Saúde do ERP · consistência entre módulos</div>
+            <p class="adm-aviso">Confere, em tempo real, os invariantes entre Contas a Receber, Financeiro, Compras e Custos. Só leitura — não altera nada.</p>
+            <div id="plat-saude">Carregando…</div>
+          </div>
+          <div class="adm-card">
+            <div class="adm-card-tit">🧩 Módulos ativos</div>
+            <div id="plat-ativos">Carregando…</div>
+          </div>
+          <div class="adm-card">
+            <div class="adm-card-tit">🚀 Próximos módulos (preparados, ainda não implementados)</div>
+            <p class="adm-aviso">A arquitetura já está pronta para receber estes módulos sem retrabalho. Eles aparecem aqui como <strong>planejados</strong>.</p>
+            <div id="plat-planejados">Carregando…</div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -730,19 +1334,38 @@
   <!-- ══════════ MODAL RECEBIMENTO ══════════ -->
   <div class="overlay" id="overlay-recebimento">
     <div class="modal-receb">
-      <header class="modal-head">
+      <!-- BLOCO 1 — Cabeçalho -->
+      <header class="modal-head receb-head">
         <h2>💰 Recebimento</h2>
         <button class="btn-fechar" id="btn-fechar-receb">✕</button>
       </header>
 
       <div class="receb-body">
-        <!-- Total a receber -->
-        <div class="receb-total">
-          <span class="lbl">Total a Receber</span>
-          <span class="val" id="receb-total">R$ 0,00</span>
+        <!-- BLOCO 2 — Resumo da venda (bata o olho: total · informado · restante/troco) -->
+        <div class="receb-resumo">
+          <div class="rv-linha">
+            <span class="rv-lbl">Total da venda</span>
+            <span class="rv-val rv-total" id="receb-total">R$ 0,00</span>
+          </div>
+          <div class="rv-linha">
+            <span class="rv-lbl">Total informado</span>
+            <span class="rv-val" id="receb-pago">R$ 0,00</span>
+          </div>
+          <div class="rv-linha rv-acrescimo" id="receb-acrescimo-linha" style="display:none">
+            <span class="rv-lbl">🍽 Acréscimo alimentação (20%)</span>
+            <span class="rv-val" id="receb-acrescimo">R$ 0,00</span>
+          </div>
+          <div class="rv-linha rv-cobrar" id="receb-cobrar-linha" style="display:none">
+            <span class="rv-lbl">Total a cobrar</span>
+            <span class="rv-val" id="receb-cobrar">R$ 0,00</span>
+          </div>
+          <div class="rv-destaque" id="receb-restante-box">
+            <span class="rv-lbl" id="receb-rest-lbl">Restante</span>
+            <span class="rv-val" id="receb-restante">R$ 0,00</span>
+          </div>
         </div>
 
-        <!-- Formas — digite o valor em cada uma -->
+        <!-- BLOCO 3 — Formas de pagamento (cards; a estrutura é a mesma, o layout vira 2×2 no CSS) -->
         <div class="formas-multi">
           <label class="forma-linha" for="val-pix">
             <span class="forma-nome"><span class="ico">📱</span><span class="forma-texto"><span class="atalho">P</span>IX</span></span>
@@ -756,23 +1379,24 @@
             <span class="forma-nome"><span class="ico">💳</span><span class="forma-texto" id="cartao-texto"><span class="atalho">C</span>artão</span></span>
             <input type="number" id="val-cartao" class="forma-valor" placeholder="0,00" min="0" step="0.50" inputmode="decimal">
           </label>
-          <label class="forma-linha" for="val-fiado">
+          <label class="forma-linha forma-fiado" for="val-fiado">
             <span class="forma-nome"><span class="ico">📒</span><span class="forma-texto">Fiado</span></span>
             <input type="number" id="val-fiado" class="forma-valor" placeholder="0,00" readonly tabindex="-1" title="Automático: total menos o que já foi preenchido em PIX/Dinheiro/Cartão">
           </label>
         </div>
 
+        <!-- BLOCO 4 — Fiado (aparece só quando há valor em fiado) -->
         <div class="receb-fiado-cliente-box" id="receb-fiado-cliente-box" style="display:none">
-          <label>Cliente do fiado (espaço-espaço pra buscar) *</label>
+          <label>📒 Cliente do fiado — <span class="fiado-dica">espaço-espaço pra buscar</span> *</label>
           <input type="text" id="receb-fiado-cliente" placeholder="Nome do cliente cadastrado" autocomplete="off">
+          <div class="fiado-saldo" id="fiado-saldo"></div>
         </div>
 
-        <div class="receb-resumo">
-          <div class="resumo-item"><span>Pago</span><strong id="receb-pago">R$ 0,00</strong></div>
-          <div class="resumo-item" id="receb-restante-box"><span id="receb-rest-lbl">Restante</span><strong id="receb-restante">R$ 0,00</strong></div>
+        <!-- BLOCO 5 — Rodapé de confirmação -->
+        <div class="receb-rodape">
+          <button type="button" class="btn-cancelar-receb" id="btn-cancelar-receb">Cancelar</button>
+          <button type="button" class="btn-confirmar-receb" id="btn-confirmar-receb" disabled>✅ Confirmar venda</button>
         </div>
-
-        <button type="button" class="btn-confirmar-receb" id="btn-confirmar-receb" disabled>✅ Confirmar Recebimento</button>
       </div>
     </div>
   </div>
@@ -790,6 +1414,10 @@
         <button type="button" class="cartao-opc" data-tipo="Débito">
           <span class="num">2</span>
           <span class="lbl">Débito</span>
+        </button>
+        <button type="button" class="cartao-opc cartao-opc-alim" data-tipo="Alimentação">
+          <span class="num">3</span>
+          <span class="lbl">Alimentação <small>+20%</small></span>
         </button>
       </div>
     </div>
@@ -843,6 +1471,7 @@
   <!-- Notificação -->
   <div class="toast" id="toast"></div>
 
+  <script src="js/qrcode.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

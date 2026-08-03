@@ -1,0 +1,214 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN SYSTEM OFICIAL — Açaí do Centro ERP (Etapa 1 do redesenho aprovado)
+   Fonte única de tokens e componentes. Nenhuma tela deve estilizar "à mão"
+   o que existe aqui. Referência: 67_PROPOSTA_NOVA_INTERFACE_ERP.md (§12/§13).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Marca ── */
+  --ds-acai-escuro: #160522;
+  --ds-acai:        #26113b;
+  --ds-acai-med:    #3d1660;
+  --ds-acai-claro:  #9B30FF;
+  --ds-rosa:        #C24BD6;
+  /* ── Neutros (viés roxo — escolhidos, não cinza puro) ── */
+  --ds-tinta:  #F4ECFB;
+  --ds-mut:    #c1b1d6;
+  --ds-mut2:   #93809f;
+  --ds-linha:  rgba(255,255,255,.10);
+  --ds-linha2: rgba(255,255,255,.16);
+  --ds-vidro:  rgba(255,255,255,.05);
+  --ds-vidro2: rgba(255,255,255,.09);
+  /* ── Semânticos ── */
+  --ds-sucesso: #25D07A;
+  --ds-alerta:  #F5B93B;
+  --ds-erro:    #FF5C77;
+  --ds-info:    #37B6F5;
+  /* ── Acento por AMBIENTE (identidade própria) + grupo Inteligência ── */
+  --ds-op: #FF8A3D;   /* Operação  — laranja  */
+  --ds-ge: #37B6F5;   /* Gestão    — azul     */
+  --ds-ad: #A78BE0;   /* Admin     — lilás    */
+  --ds-in: #2DD4BF;   /* Inteligência (grupo) — turquesa */
+  --env:   var(--ds-ge); /* acento do ambiente ATUAL (o JS troca) */
+  /* ── Tipografia (stack de sistema: nativa, rápida, legível) ── */
+  --ds-font: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --ds-t-2xl: 26px; --ds-t-xl: 20px; --ds-t-lg: 16px; --ds-t-md: 14px;
+  --ds-t-sm: 12.5px; --ds-t-xs: 11px; --ds-t-2xs: 10px;
+  /* ── Espaço (base 4) · raios · sombras · bordas ── */
+  --ds-s1: 4px; --ds-s2: 8px; --ds-s3: 12px; --ds-s4: 16px; --ds-s5: 20px; --ds-s6: 24px;
+  --ds-r-sm: 8px; --ds-r-md: 12px; --ds-r-lg: 16px; --ds-r-pill: 22px;
+  --ds-sh1: 0 1px 3px rgba(0,0,0,.3);
+  --ds-sh2: 0 8px 24px rgba(0,0,0,.35);
+  --ds-sh3: 0 20px 60px rgba(0,0,0,.5);
+  --ds-bd:  1px solid var(--ds-linha);
+  --ds-bd2: 1px solid var(--ds-linha2);
+  /* ── Estados ── */
+  --ds-foco: 2px solid var(--ds-alerta);
+  --ds-desabilitado: .45;
+  /* ── HIERARQUIA OFICIAL DE CAMADAS (z-index) — fonte única do ERP inteiro.
+     NUNCA usar número solto: todo z-index novo referencia um destes tokens.
+     conteúdo(1) < barra/menus(100) < dropdown de menu(200) < flutuantes(900)
+     < overlay/modal(1000) < submodal sobre modal(1100) < autocomplete/busca
+     sobre qualquer modal(1200) < confirmação crítica(1250) < toast(1300). ── */
+  --z-conteudo:    1;
+  --z-menu:        100;   /* barra superior, laterais sticky */
+  --z-menu-drop:   200;   /* dropdown "⋯" do topo */
+  --z-flutuante:   900;   /* botão sair do modo operação */
+  --z-overlay:     1000;  /* overlays/modais base (fundo escurecido + caixa) */
+  --z-modal-sobre: 1100;  /* submodal que abre SOBRE outro modal (ex.: tipo de cartão) */
+  --z-dropdown:    1200;  /* busca/autocomplete — acima de QUALQUER modal */
+  --z-confirm:     1250;  /* autorização do supervisor / confirmações críticas */
+  --z-toast:       1300;  /* feedback — acima de tudo, sempre visível */
+}
+
+/* ═══════════ SHELL: BARRA SUPERIOR FIXA (arquitetura final aprovada) ═══════════
+   Todos os módulos a 1 clique, sempre visível nas telas gerenciais.
+   Compacta: em telas menores os atalhos viram só ícone (tooltip = nome). */
+.topo {
+  height: 46px; flex-shrink: 0; display: flex; align-items: center; gap: 8px;
+  padding: 0 10px; border-bottom: var(--ds-bd); background: rgba(0,0,0,.28);
+  position: relative; z-index: var(--z-menu);
+}
+.topo .logo { font-size: 17px; cursor: pointer; user-select: none; flex-shrink: 0; padding: 4px 6px; border-radius: 8px; }
+.topo .logo:hover { background: var(--ds-vidro2); }
+.topo-nav { display: flex; align-items: center; gap: 2px; min-width: 0; flex: 1; }
+.tp-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px;
+  border: 1px solid transparent; border-radius: 8px; background: transparent;
+  color: var(--ds-mut); font-family: inherit; font-size: var(--ds-t-sm); font-weight: 700;
+  cursor: pointer; transition: .14s; white-space: nowrap; position: relative;
+}
+.tp-btn .tp-ic { font-size: 14px; }
+.tp-btn:hover { background: var(--ds-vidro2); color: var(--ds-tinta); }
+.tp-btn.on {
+  color: #fff; background: color-mix(in srgb, var(--ds-acai-claro) 22%, transparent);
+  border-color: color-mix(in srgb, var(--ds-acai-claro) 40%, transparent);
+}
+.tp-btn.on::after {
+  content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px;
+  border-radius: 2px; background: var(--ds-acai-claro);
+}
+.tp-btn:focus-visible { outline: var(--ds-foco); outline-offset: 1px; }
+.sb-badge { margin-left: 2px; background: var(--ds-erro); color: #fff; font-size: 9px; font-weight: 800; border-radius: 9px; padding: 1px 6px; flex-shrink: 0; }
+/* menu "⋯" — o resto dos módulos; dropdown fecha ao clicar fora/ESC, nunca cobre conteúdo em uso */
+.tp-mais-wrap { position: relative; }
+.tp-btn.tp-mais { font-size: 16px; font-weight: 900; padding: 4px 10px; }
+.tp-menu {
+  position: fixed; z-index: var(--z-menu-drop); min-width: 220px; display: none; flex-direction: column;
+  padding: 6px; background: #241033; border: var(--ds-bd2);
+  border-radius: var(--ds-r-md); box-shadow: var(--ds-sh2);
+  max-height: calc(100vh - 60px); overflow-y: auto; /* nunca ultrapassa a área visível */
+}
+.tp-menu.aberto { display: flex; }
+.tp-menu-item {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+  border: 0; border-radius: 8px; background: transparent; color: var(--ds-tinta);
+  font-size: var(--ds-t-sm); font-weight: 600; cursor: pointer; text-align: left; font-family: inherit; width: 100%;
+}
+.tp-menu-item:hover, .tp-menu-item:focus { background: var(--ds-acai-claro); outline: none; }
+.topo-dir { margin-left: auto; display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
+
+/* ═══════════ LATERAL CONTEXTUAL (menu do módulo — fin/cx/cu/cm-menu) ═══════════
+   Só as funções do módulo ativo. Recolhível: expandida = ícone+nome ·
+   recolhida = só ícones (tooltip = nome). Nunca sobrepõe o conteúdo. */
+.fin-menu-toggle {
+  border: var(--ds-bd); background: var(--ds-vidro); color: var(--ds-mut);
+  width: 100%; padding: 4px 0; border-radius: 7px; cursor: pointer; font-size: 12px;
+  font-family: inherit; margin-bottom: 6px; flex-shrink: 0;
+}
+.fin-menu-toggle:hover { background: var(--ds-vidro2); color: var(--ds-tinta); }
+.mi-ico { display: inline-block; min-width: 18px; text-align: center; }
+/* a coluna da lateral vive no grid do módulo (.fin-wrap 190px 1fr) — recolhida vira 52px */
+.fin-wrap:has(.fin-menu.compacta) { grid-template-columns: 52px 1fr; }
+.fin-menu.compacta .mi-txt { display: none; }
+.fin-menu.compacta button { text-align: center; padding-left: 0; padding-right: 0; }
+
+/* ═══════════ BIBLIOTECA DE COMPONENTES (base — telas migram na Etapa 3) ═══════════ */
+/* Botões */
+.ds-btn {
+  border: var(--ds-bd2); background: var(--ds-vidro); color: var(--ds-tinta);
+  font-family: inherit; font-weight: 700; font-size: var(--ds-t-sm); padding: 8px 13px;
+  border-radius: var(--ds-r-sm); cursor: pointer; transition: .14s;
+  display: inline-flex; gap: 6px; align-items: center;
+}
+.ds-btn:hover { background: var(--ds-vidro2); }
+.ds-btn.pri { background: linear-gradient(135deg, var(--ds-acai-claro), #7d1fd6); border-color: transparent; box-shadow: 0 6px 16px rgba(155,48,255,.3); }
+.ds-btn.ghost { background: transparent; border-color: transparent; color: var(--ds-mut); }
+.ds-btn.dang { background: rgba(255,92,119,.14); border-color: rgba(255,92,119,.3); color: var(--ds-erro); }
+.ds-btn.sm { padding: 5px 10px; font-size: var(--ds-t-xs); }
+.ds-btn:disabled { opacity: var(--ds-desabilitado); cursor: not-allowed; }
+.ds-btn:focus-visible { outline: var(--ds-foco); outline-offset: 1px; }
+/* Inputs */
+.ds-inp {
+  background: rgba(0,0,0,.22); border: var(--ds-bd2); border-radius: var(--ds-r-sm);
+  color: var(--ds-tinta); padding: 8px 11px; font-family: inherit; font-size: var(--ds-t-sm);
+}
+.ds-inp::placeholder { color: var(--ds-mut2); }
+.ds-inp:focus { outline: none; border-color: var(--ds-acai-claro); }
+.ds-inp.erro { border-color: var(--ds-erro); }
+/* Filtros (chips) */
+.ds-chip { border: var(--ds-bd2); background: var(--ds-vidro); border-radius: var(--ds-r-pill); padding: 6px 12px; font-size: var(--ds-t-sm); color: var(--ds-mut); cursor: pointer; font-family: inherit; }
+.ds-chip.on { background: color-mix(in srgb, var(--env) 28%, transparent); color: #fff; border-color: var(--env); }
+/* Cards / KPI */
+.ds-card { background: var(--ds-vidro); border: var(--ds-bd); border-radius: var(--ds-r-md); padding: var(--ds-s3); box-shadow: var(--ds-sh1); }
+.ds-kpi { background: var(--ds-vidro); border: var(--ds-bd); border-radius: var(--ds-r-md); padding: 11px 13px; box-shadow: var(--ds-sh1); }
+.ds-kpi .l { font-size: var(--ds-t-2xs); color: var(--ds-mut2); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.ds-kpi .v { font-size: var(--ds-t-xl); font-weight: 800; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.ds-kpi .d { font-size: var(--ds-t-xs); font-weight: 700; margin-top: 2px; }
+.ds-card-alerta { border-left: 3px solid var(--ds-alerta); }
+/* Badges & indicadores */
+.ds-tag { font-size: var(--ds-t-2xs); font-weight: 800; padding: 2px 9px; border-radius: 10px; }
+.ds-tag.v { background: rgba(37,208,122,.16); color: var(--ds-sucesso); }
+.ds-tag.a { background: rgba(245,185,59,.16); color: var(--ds-alerta); }
+.ds-tag.r { background: rgba(255,92,119,.16); color: var(--ds-erro); }
+.ds-tag.n { background: rgba(255,255,255,.1); color: var(--ds-mut); }
+.ds-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.ds-dot.on { background: var(--ds-sucesso); box-shadow: 0 0 6px var(--ds-sucesso); }
+.ds-dot.off { background: var(--ds-erro); box-shadow: 0 0 6px var(--ds-erro); }
+.ds-dot.warn { background: var(--ds-alerta); box-shadow: 0 0 6px var(--ds-alerta); }
+/* Cabeçalho de tela (shell) */
+.ds-sh { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+.ds-sh h2 { font-size: var(--ds-t-xl); font-weight: 800; letter-spacing: -.01em; }
+.ds-sh .acts { margin-left: auto; display: flex; gap: 7px; }
+.ds-sh-sub { color: var(--ds-mut2); font-size: var(--ds-t-sm); margin-bottom: var(--ds-s3); }
+/* Loader · Vazio · Erro */
+.ds-spin { width: 26px; height: 26px; border-radius: 50%; border: 3px solid rgba(255,255,255,.15); border-top-color: var(--ds-acai-claro); animation: ds-sp 1s linear infinite; }
+@keyframes ds-sp { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ds-spin { animation: none; } }
+.ds-vazio { text-align: center; padding: 18px; color: var(--ds-mut2); font-size: var(--ds-t-sm); }
+.ds-vazio .ei { font-size: 26px; opacity: .6; display: block; margin-bottom: 4px; }
+/* Timeline */
+.ds-tl { border-left: 2px solid var(--ds-linha2); margin-left: 6px; padding-left: 14px; }
+.ds-tl .tli { position: relative; padding: 4px 0 10px; font-size: var(--ds-t-sm); }
+.ds-tl .tli::before { content: ""; position: absolute; left: -19px; top: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--ds-acai-claro); }
+.ds-tl .tli small { color: var(--ds-mut2); display: block; }
+/* Paginação */
+.ds-pag { display: flex; gap: 5px; align-items: center; justify-content: flex-end; margin-top: 10px; font-size: var(--ds-t-sm); }
+.ds-pag button { border: var(--ds-bd2); background: var(--ds-vidro); color: var(--ds-tinta); border-radius: 6px; width: 28px; height: 28px; cursor: pointer; font-family: inherit; }
+.ds-pag button.on { background: var(--ds-acai-claro); border-color: transparent; color: #fff; }
+
+/* ── MODO OPERAÇÃO (Etapa 2) — PDV e Produção em TELA CHEIA:
+   barra superior e navegação somem; só a tela operacional + botão de sair (ou ESC). ── */
+body.modo-operacao .topo { display: none; }
+.op-sair {
+  position: fixed; top: 10px; right: 12px; z-index: var(--z-flutuante);
+  display: none; align-items: center; gap: 6px;
+  border: var(--ds-bd2); background: rgba(0,0,0,.4); color: var(--ds-tinta);
+  font-family: inherit; font-weight: 700; font-size: var(--ds-t-xs);
+  padding: 6px 12px; border-radius: var(--ds-r-pill); cursor: pointer; backdrop-filter: blur(6px);
+}
+body.modo-operacao .op-sair { display: inline-flex; }
+.op-sair:hover { background: rgba(255,92,119,.25); border-color: var(--ds-erro); }
+.op-sair:focus-visible { outline: var(--ds-foco); outline-offset: 1px; }
+
+/* ── Responsivo (1366 / 1600 / 1920 — sem scroll horizontal, nada cortado) ──
+   ≤1600: atalhos mais justos · ≤1440: atalhos só com ícone (tooltip mostra o nome). */
+@media (max-width: 1600px) {
+  .tp-btn { padding: 6px 7px; font-size: var(--ds-t-xs); gap: 5px; }
+  .topo { gap: 6px; }
+}
+@media (max-width: 1440px) {
+  .tp-btn .tp-txt { display: none; }
+  .tp-btn { padding: 6px 9px; }
+  .tp-btn .tp-ic { font-size: 16px; }
+}

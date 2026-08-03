@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2a0a3a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Entregador">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icone-entregador.svg">
+  <link rel="icon" href="/icone-entregador.svg" type="image/svg+xml">
+  <title>Entregador</title>
+  <style>
+    :root{
+      --bg:#1a0526; --bg2:#2a0a3a; --card:rgba(255,255,255,.06); --borda:rgba(255,255,255,.12);
+      --txt:#f3eafb; --roxo:#9b30ff; --rosa:#c24bd6; --verde:#00e676; --amarelo:#ffc107; --vermelho:#ff5370; --azul:#29b6f6;
+    }
+    *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+    body{margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; color:var(--txt);
+      background:linear-gradient(160deg,var(--bg),var(--bg2)); min-height:100vh; min-height:100dvh;}
+    .wrap{max-width:560px; margin:0 auto; padding:14px 14px calc(24px + env(safe-area-inset-bottom));}
+    /* ── login ── */
+    .login{min-height:100dvh; display:flex; flex-direction:column; justify-content:center; gap:18px; padding:22px; max-width:420px; margin:0 auto}
+    .login h1{font-size:26px; margin:0; text-align:center}
+    .login .sub{opacity:.7; text-align:center; margin:-8px 0 6px; font-size:14px}
+    .campo label{display:block; font-size:13px; font-weight:700; opacity:.8; margin-bottom:6px}
+    .campo input{width:100%; padding:15px 16px; font-size:17px; border-radius:14px; border:1px solid var(--borda);
+      background:rgba(0,0,0,.28); color:var(--txt); outline:none}
+    .campo input:focus{border-color:var(--roxo)}
+    .btn-grande{width:100%; padding:17px; font-size:18px; font-weight:800; border:none; border-radius:16px; cursor:pointer;
+      color:#fff; background:linear-gradient(135deg,var(--roxo),var(--rosa))}
+    .btn-grande:active{filter:brightness(.92)}
+    .erro{color:var(--vermelho); text-align:center; font-size:14px; min-height:18px; font-weight:600}
+    /* ── painel ── */
+    .topo{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px}
+    .topo .loja{font-size:12px; opacity:.7}
+    .topo .nome{font-size:19px; font-weight:800}
+    .topo .st{font-size:11px; color:var(--verde)}
+    .btn-refresh{border:1px solid var(--borda); background:var(--card); color:var(--txt); border-radius:12px;
+      padding:10px 12px; font-size:14px; font-weight:700; cursor:pointer; white-space:nowrap}
+    .btn-sair-ent{border:1px solid rgba(255,83,112,.4); background:rgba(255,83,112,.12); color:var(--vermelho);
+      border-radius:12px; padding:10px 12px; font-size:13px; font-weight:700; cursor:pointer}
+    .resumo{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px}
+    .rz{background:var(--card); border:1px solid var(--borda); border-radius:14px; padding:12px 8px; text-align:center}
+    .rz b{display:block; font-size:24px; font-weight:800; line-height:1.1}
+    .rz span{font-size:11px; opacity:.7}
+    .rz.rota b{color:var(--rosa)} .rz.hoje b{color:var(--verde)} .rz.tempo b{color:var(--azul)}
+    .lista{display:flex; flex-direction:column; gap:14px}
+    .ped{background:var(--card); border:1px solid var(--borda); border-radius:18px; padding:16px; }
+    .ped.novo{animation:pisca 1s ease 2}
+    @keyframes pisca{50%{border-color:var(--rosa)}}
+    .ped-top{display:flex; align-items:baseline; justify-content:space-between; gap:8px}
+    .ped-num{font-size:15px; font-weight:800; color:var(--rosa)}
+    .ped-total{font-size:20px; font-weight:800}
+    .ped-cli{font-size:20px; font-weight:800; margin:6px 0 2px}
+    .ped-linha{font-size:15px; margin:5px 0; line-height:1.4; display:flex; gap:8px}
+    .ped-linha .ic{flex-shrink:0}
+    .ped-obs{font-size:13.5px; background:rgba(255,193,7,.12); border-radius:10px; padding:8px 10px; margin:8px 0; color:var(--amarelo)}
+    .ped-meta{font-size:12.5px; opacity:.65; margin-top:6px}
+    .ped-meta .atras{color:var(--vermelho); font-weight:700}
+    .acoes-rap{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:12px 0}
+    .acoes-rap a{display:flex; align-items:center; justify-content:center; gap:6px; padding:12px 6px; border-radius:12px;
+      text-decoration:none; font-weight:700; font-size:14px; border:1px solid var(--borda); background:rgba(0,0,0,.2); color:var(--txt)}
+    .acoes-rap a.wa{color:var(--verde)} .acoes-rap a.tel{color:var(--azul)} .acoes-rap a.map{color:var(--rosa)}
+    .btn-entregue{width:100%; padding:16px; font-size:17px; font-weight:800; border:none; border-radius:14px; cursor:pointer;
+      color:#082; background:var(--verde)}
+    .btn-entregue:active{filter:brightness(.92)}
+    .vazio{text-align:center; opacity:.6; padding:40px 20px; font-size:15px; line-height:1.6}
+    .toast{position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom)); transform:translateX(-50%);
+      background:#111; color:#fff; padding:12px 18px; border-radius:12px; font-weight:700; font-size:14px; opacity:0;
+      transition:.25s; pointer-events:none; z-index:50; max-width:90vw; text-align:center}
+    .toast.show{opacity:1}
+    .oculto{display:none!important}
+  </style>
+</head>
+<body>
+  <!-- LOGIN -->
+  <div class="login" id="tela-login">
+    <div>
+      <h1>🛵 Entregador</h1>
+      <div class="sub" id="login-loja">Açaí do Centro</div>
+    </div>
+    <div class="campo"><label>Seu telefone (com DDD)</label><input id="in-tel" type="tel" inputmode="numeric" placeholder="Ex.: 91 99999-9999" autocomplete="username"></div>
+    <div class="campo"><label>PIN de acesso</label><input id="in-pin" type="password" inputmode="numeric" placeholder="••••" autocomplete="current-password"></div>
+    <div class="erro" id="login-erro"></div>
+    <button class="btn-grande" id="btn-entrar">Entrar</button>
+    <div style="text-align:center; opacity:.5; font-size:12px">Peça seu PIN ao responsável da loja.</div>
+  </div>
+
+  <!-- PAINEL -->
+  <div class="wrap oculto" id="tela-painel">
+    <div class="topo">
+      <div>
+        <div class="loja" id="p-loja">—</div>
+        <div class="nome" id="p-nome">—</div>
+        <div class="st" id="p-status">● atualizado agora</div>
+      </div>
+      <div style="display:flex; gap:8px; flex-direction:column">
+        <button class="btn-refresh" id="btn-atualizar">🔄 Atualizar</button>
+        <button class="btn-sair-ent" id="btn-sair-ent">Sair</button>
+      </div>
+    </div>
+    <div class="resumo">
+      <div class="rz rota"><b id="rz-rota">0</b><span>Em rota</span></div>
+      <div class="rz hoje"><b id="rz-hoje">0</b><span>Entregues hoje</span></div>
+      <div class="rz tempo"><b id="rz-tempo">—</b><span>Tempo médio</span></div>
+    </div>
+    <div class="lista" id="lista-pedidos"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+  const $ = id => document.getElementById(id);
+  let toastT;
+  function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2600); }
+  const soDigitos = s => (s||'').replace(/\D/g,'');
+  function telWa(t){ let d=soDigitos(t); if(d.length>=10 && !d.startsWith('55')) d='55'+d; return d; }
+
+  async function api(url, opts){ const r = await fetch(url, {cache:'no-store', ...opts}); return r; }
+
+  // ── LOGIN ──
+  async function entrar(){
+    const telefone = $('in-tel').value.trim(), pin = $('in-pin').value.trim();
+    $('login-erro').textContent='';
+    if(!telefone || !pin){ $('login-erro').textContent='Preencha telefone e PIN.'; return; }
+    try{
+      const r = await api('/api/entregador/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({telefone, pin})});
+      const j = await r.json();
+      if(!r.ok){ $('login-erro').textContent = j.erro || 'Não foi possível entrar.'; return; }
+      $('in-pin').value='';
+      mostrarPainel(j);
+    }catch{ $('login-erro').textContent='Sem conexão com o servidor.'; }
+  }
+  $('btn-entrar').addEventListener('click', entrar);
+  $('in-pin').addEventListener('keydown', e=>{ if(e.key==='Enter') entrar(); });
+
+  // ── PAINEL ──
+  function mostrarPainel(me){
+    $('tela-login').classList.add('oculto');
+    $('tela-painel').classList.remove('oculto');
+    $('p-loja').textContent = me.loja || 'Loja';
+    $('p-nome').textContent = me.nome || 'Entregador';
+    document.title = 'Entregador — ' + (me.loja||'');
+    carregarPedidos();
+    iniciarPoll();
+  }
+  let vistos = new Set();
+  async function carregarPedidos(){
+    let d;
+    try{ const r = await api('/api/entregador/pedidos'); if(r.status===401){ voltarLogin(); return; } d = await r.json(); }
+    catch{ $('p-status').textContent='● sem conexão'; $('p-status').style.color='var(--vermelho)'; return; }
+    $('p-status').textContent='● atualizado ' + new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    $('p-status').style.color='var(--verde)';
+    $('rz-rota').textContent = d.resumo.emRota;
+    $('rz-hoje').textContent = d.resumo.entreguesHoje;
+    $('rz-tempo').textContent = d.resumo.tempoMedio ? d.resumo.tempoMedio+'min' : '—';
+    const lista = $('lista-pedidos');
+    if(!d.emRota.length){ lista.innerHTML = '<div class="vazio">🎉 Nenhum pedido na sua rota agora.<br>Quando a loja despachar um pedido pra você, ele aparece aqui.</div>'; return; }
+    lista.innerHTML = d.emRota.map(cardPedido).join('');
+    // marca os que já existiam pra destacar os novos na próxima
+    vistos = new Set(d.emRota.map(p=>p.id));
+  }
+  function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  function cardPedido(p){
+    const end = [p.endereco, p.bairro].filter(Boolean).join(', ');
+    const wa = telWa(p.telefone), tel = soDigitos(p.telefone);
+    const mapsQ = encodeURIComponent(end || p.endereco || '');
+    const troco = (p.pagamento==='Dinheiro' && p.troco>0) ? ' · troco p/ '+brl(p.troco) : '';
+    const saiu = p.saiu_para_entrega_em ? new Date(p.saiu_para_entrega_em).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—';
+    const atras = (p.min_em_rota!=null && p.min_em_rota>=45);
+    const novo = !vistos.has(p.id) && vistos.size ? ' novo' : '';
+    return `<div class="ped${novo}">
+      <div class="ped-top"><span class="ped-num">Pedido #${esc(p.numero)}</span><span class="ped-total">${brl(p.total)}</span></div>
+      <div class="ped-cli">${esc(p.cliente||'Cliente')}</div>
+      <div class="ped-linha"><span class="ic">📍</span><span>${esc(end||'—')}${p.complemento?' — '+esc(p.complemento):''}</span></div>
+      <div class="ped-linha"><span class="ic">💳</span><span>${esc(p.pagamento||'—')}${troco}</span></div>
+      ${p.itens?`<div class="ped-linha"><span class="ic">🧾</span><span>${esc(p.itens)}</span></div>`:''}
+      ${p.rota_obs?`<div class="ped-obs">📝 ${esc(p.rota_obs)}</div>`:''}
+      <div class="acoes-rap">
+        <a class="tel" href="tel:${tel}">📞 Ligar</a>
+        <a class="wa" href="https://wa.me/${wa}" target="_blank" rel="noopener">💬 Zap</a>
+        <a class="map" href="https://www.google.com/maps/search/?api=1&query=${mapsQ}" target="_blank" rel="noopener">🗺️ Mapa</a>
+      </div>
+      <div class="ped-meta">🕘 Saiu ${saiu} · <span class="${atras?'atras':''}">há ${p.min_em_rota!=null?p.min_em_rota:'?'} min${atras?' ⚠️':''}</span></div>
+      <button class="btn-entregue" onclick="marcarEntregue(${p.id}, this)">✅ Marcar entregue</button>
+    </div>`;
+  }
+  function brl(v){ return 'R$ '+Number(v||0).toFixed(2).replace('.',','); }
+
+  window.marcarEntregue = async function(id, btn){
+    if(!confirm('Confirmar entrega deste pedido?')) return;
+    btn.disabled = true; btn.textContent = '⏳ Enviando...';
+    try{
+      const r = await api('/api/entregador/pedidos/'+id+'/entregue', {method:'POST'});
+      if(r.status===401){ voltarLogin(); return; }
+      const j = await r.json();
+      if(!r.ok){ toast(j.erro||'Falha ao registrar'); btn.disabled=false; btn.textContent='✅ Marcar entregue'; return; }
+      toast('✅ Entregue!' + (j.tempo_entrega_min!=null?' ('+j.tempo_entrega_min+' min)':''));
+      carregarPedidos();
+    }catch{ toast('Sem conexão'); btn.disabled=false; btn.textContent='✅ Marcar entregue'; }
+  };
+
+  $('btn-atualizar').addEventListener('click', carregarPedidos);
+  $('btn-sair-ent').addEventListener('click', async ()=>{
+    try{ await api('/api/entregador/logout', {method:'POST'}); }catch{}
+    voltarLogin();
+  });
+  function voltarLogin(){ pararPoll(); $('tela-painel').classList.add('oculto'); $('tela-login').classList.remove('oculto'); }
+
+  // refresh leve a cada 20s enquanto o painel está aberto
+  let pollT=null;
+  function iniciarPoll(){ if(pollT) return; pollT=setInterval(()=>{ if(document.visibilityState==='visible') carregarPedidos(); }, 20000); }
+  function pararPoll(){ if(pollT){ clearInterval(pollT); pollT=null; } }
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && !$('tela-painel').classList.contains('oculto')) carregarPedidos(); });
+
+  // ── boot: se já tem sessão (cookie), pula o login ──
+  (async ()=>{
+    try{
+      const r = await api('/api/entregador/me');
+      if(r.ok){ mostrarPainel(await r.json()); }
+      else{ try{ const c = await (await api('/api/entregador/loja')).json(); if(c && c.loja){ $('login-loja').textContent=c.loja; } }catch{} }
+    }catch{}
+  })();
+
+  // ── PWA: registra o service worker (falha silenciosa se não suportado) ──
+  if('serviceWorker' in navigator){ navigator.serviceWorker.register('/sw-entregador.js').catch(()=>{}); }
+  </script>
+</body>
+</html>

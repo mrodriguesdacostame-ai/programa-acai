@@ -12,6 +12,12 @@ acai.db-journal
 acai.db-wal
 acai.db-shm
 
+# 💾 Backups do banco (contêm TODOS os dados dos clientes) — NUNCA versionar
+backups/
+
+# 📝 Logs (erro + ações) — podem ter dados operacionais — NUNCA versionar
+logs/
+
 # 📱 Sessão/cache do WhatsApp — NUNCA versionar (dá controle do WhatsApp a quem pegar)
 .wwebjs_auth/
 .wwebjs_cache/
