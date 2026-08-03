@@ -1,0 +1,47 @@
+==========================================================
+   PROGRAMA ACAI  —  INSTALAR E ATUALIZAR
+==========================================================
+
+>>> INSTALAR NUMA MAQUINA NOVA (primeira vez) <<<
+
+  PASSO 1 -> Instale o Node.js 22 ou superior
+             Baixe em:  https://nodejs.org   (versao LTS)
+
+  PASSO 2 -> Duplo clique em   INSTALAR.bat
+             Confere o Node, cria o .env e instala tudo.
+             (pode demorar uns minutos; precisa de internet)
+
+  PASSO 3 -> Duplo clique em   iniciar.bat
+             Abre o sistema no navegador:  http://localhost:3001
+
+  PRIMEIRO LOGIN:  usuario  admin   senha  admin
+             >> Troque a senha depois de entrar.
+
+
+>>> ATUALIZAR PARA UMA VERSAO NOVA (ja instalado) <<<
+
+  Duplo clique em   ATUALIZAR.bat
+     - Troca so o CODIGO pela versao nova.
+     - PRESERVA seus dados: banco (acai.db), .env e backups.
+     - Se o programa foi baixado do GitHub, ele atualiza sozinho
+       pela internet (git pull). Senao, ele pede a pasta nova
+       (o pendrive) e copia de la.
+  Depois, rode o iniciar.bat de novo.
+
+
+>>> GERAR O PACOTE (voce, no computador de desenvolvimento) <<<
+
+  Depois de programar, duplo clique em   GERAR_PACOTE.bat
+     - Regenera a pasta ACAI-INSTALADOR (so o codigo, sem dados).
+     - Copie essa pasta pro pendrive e leve pra loja.
+
+
+  O QUE **NAO** VAI NO PACOTE (por seguranca):
+     - Banco (acai.db) ....... criado vazio no 1o uso
+     - .env (chaves/senhas) .. configure na maquina
+     - node_modules .......... baixado pelo INSTALAR.bat
+     - Backups e WhatsApp .... ficam so na maquina
+
+  Mais detalhes:  README_INSTALACAO.md
+  Versionar no GitHub (opcional):  VERSIONAR_ONLINE.md
+==========================================================
