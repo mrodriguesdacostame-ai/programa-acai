@@ -7,6 +7,9 @@ o `.env` (chaves), o `acai.db` (dados dos clientes), os backups e a sessão do W
 
 > ⚠️ Use um repositório **PRIVADO**. Este é o sistema da sua loja — não deixe público.
 
+> 🚀 **Atalho:** depois de criar o repositório privado no site (passo 1), rode o **`SUBIR_GITHUB.bat`**
+> e cole a URL — ele faz o `remote add` + `push` sozinho. Os passos manuais abaixo são a alternativa.
+
 ---
 
 ## 1. Uma vez só — criar a conta e o repositório
