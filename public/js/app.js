@@ -216,6 +216,37 @@ function prepararMenusLaterais() {
 document.addEventListener('DOMContentLoaded', prepararMenusLaterais);
 if (document.readyState !== 'loading') prepararMenusLaterais();
 
+/* ── ACESSIBILIDADE: tamanho da letra (zoom) + alto contraste, lembrados ── */
+(function acessibilidade() {
+  const ESCALAS = [85, 100, 115, 130, 150, 175, 200];
+  let escala = parseInt(localStorage.getItem('acai_escala'), 10) || 100;
+  let contraste = localStorage.getItem('acai_contraste') === '1';
+  function aplicar() {
+    try { document.body.style.zoom = (escala / 100); } catch {}
+    document.body.classList.toggle('alto-contraste', contraste);
+    const pct = document.getElementById('acessi-pct'); if (pct) pct.textContent = escala + '%';
+    const cb = document.getElementById('acessi-contraste'); if (cb) cb.checked = contraste;
+  }
+  function mudarEscala(dir) {
+    let i = ESCALAS.indexOf(escala); if (i < 0) i = 1;
+    i = Math.max(0, Math.min(ESCALAS.length - 1, i + dir));
+    escala = ESCALAS[i]; localStorage.setItem('acai_escala', escala); aplicar();
+  }
+  function wire() {
+    const btn = document.getElementById('btn-acessi'), pop = document.getElementById('acessi-pop');
+    if (!btn || !pop || btn.dataset.wired) { aplicar(); return; }
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', e => { e.stopPropagation(); pop.hidden = !pop.hidden; });
+    document.addEventListener('click', e => { if (!pop.hidden && !pop.contains(e.target) && e.target !== btn && !btn.contains(e.target)) pop.hidden = true; });
+    document.getElementById('acessi-menos').addEventListener('click', () => mudarEscala(-1));
+    document.getElementById('acessi-mais').addEventListener('click', () => mudarEscala(1));
+    document.getElementById('acessi-contraste').addEventListener('change', e => { contraste = e.target.checked; localStorage.setItem('acai_contraste', contraste ? '1' : '0'); aplicar(); });
+    document.getElementById('acessi-reset').addEventListener('click', () => { escala = 100; contraste = false; localStorage.setItem('acai_escala', 100); localStorage.setItem('acai_contraste', '0'); aplicar(); pop.hidden = true; });
+    aplicar();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire); else wire();
+})();
+
 /* ═══════════════════════════════════════════════════════════
    PDV — Espelho do Cupom
    ═══════════════════════════════════════════════════════════ */

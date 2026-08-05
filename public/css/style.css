@@ -169,6 +169,27 @@ body {
   transition: 0.16s ease;
 }
 .btn-sair:hover { background: var(--vermelho); color: #fff; }
+/* ── Acessibilidade: tamanho da letra + alto contraste ── */
+.btn-acessi { display: flex; align-items: baseline; gap: 1px; padding: 7px 11px; border-radius: 9px; border: 1px solid var(--vidro-borda); background: var(--vidro); color: var(--branco); font-weight: 800; cursor: pointer; font-size: 15px; line-height: 1; }
+.btn-acessi small { font-size: 11px; }
+.btn-acessi:hover { border-color: var(--acai-claro); background: rgba(155, 48, 255, 0.18); }
+.acessi-pop { position: absolute; top: 60px; right: 12px; z-index: 9999; background: #20083a; border: 1px solid var(--vidro-borda); border-radius: 13px; padding: 13px 15px; width: 250px; display: flex; flex-direction: column; gap: 11px; box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55); }
+.acessi-tit { font-size: 13px; font-weight: 800; color: var(--acai-rosa); }
+.acessi-lin { display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: var(--branco); }
+.acessi-tam { display: flex; align-items: center; gap: 8px; }
+.acessi-tam button { width: 36px; height: 32px; border-radius: 9px; border: 1px solid var(--vidro-borda); background: var(--vidro); color: var(--branco); font-weight: 800; cursor: pointer; font-size: 15px; }
+.acessi-tam button:hover { border-color: var(--acai-claro); background: rgba(155, 48, 255, 0.2); }
+.acessi-tam b { min-width: 48px; text-align: center; font-variant-numeric: tabular-nums; font-size: 15px; }
+.acessi-lin input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--verde); cursor: pointer; }
+.acessi-reset { padding: 8px; border-radius: 9px; border: 1px solid var(--vidro-borda); background: transparent; color: rgba(243, 234, 251, 0.7); cursor: pointer; font-size: 12.5px; font-weight: 700; }
+.acessi-reset:hover { color: var(--branco); border-color: var(--acai-claro); }
+/* ALTO CONTRASTE — texto mais claro, painéis mais sólidos, fundo mais escuro */
+body.alto-contraste { --vidro: rgba(255, 255, 255, 0.17); --vidro-borda: rgba(255, 255, 255, 0.45); --branco: #ffffff; background: #0a0116; }
+body.alto-contraste small, body.alto-contraste .fin-hint, body.alto-contraste .adm-aviso,
+body.alto-contraste .conf-sub, body.alto-contraste .cxd-sub, body.alto-contraste .fin-box-tit,
+body.alto-contraste .dash-sub, body.alto-contraste [class$="-sub"], body.alto-contraste [class*="-hint"] { color: rgba(255, 255, 255, 0.92) !important; }
+body.alto-contraste input, body.alto-contraste select, body.alto-contraste textarea { color: #fff !important; background: rgba(0, 0, 0, 0.4) !important; border-color: rgba(255, 255, 255, 0.5) !important; }
+body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-contraste .crm-btn { color: #fff; }
 
 /* Topbar centro: navegação principal de todos os módulos (Correção de navegação).
    Ocupa o espaço do meio e rola na horizontal se a tela for estreita — nenhum
