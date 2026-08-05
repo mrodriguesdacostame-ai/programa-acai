@@ -174,6 +174,7 @@ body {
 .btn-acessi small { font-size: 11px; }
 .btn-acessi:hover { border-color: var(--acai-claro); background: rgba(155, 48, 255, 0.18); }
 .acessi-pop { position: absolute; top: 60px; right: 12px; z-index: 9999; background: #20083a; border: 1px solid var(--vidro-borda); border-radius: 13px; padding: 13px 15px; width: 250px; display: flex; flex-direction: column; gap: 11px; box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55); }
+.acessi-pop[hidden] { display: none; }
 .acessi-tit { font-size: 13px; font-weight: 800; color: var(--acai-rosa); }
 .acessi-lin { display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: var(--branco); }
 .acessi-tam { display: flex; align-items: center; gap: 8px; }
