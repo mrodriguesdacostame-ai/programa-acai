@@ -1,40 +1,36 @@
 @echo off
-title PROGRAMA ACAI - Iniciando...
-color 5F
-cls
-echo.
-echo  ===========================================
-echo       PROGRAMA ACAI - ACAI DO CENTRO
-echo  ===========================================
-echo.
-
 cd /d "%~dp0"
+title Acai do Centro
 
-echo  Encerrando qualquer servidor antigo preso (node)...
+REM encerra qualquer servidor antigo preso
 taskkill /F /IM node.exe >nul 2>&1
+
+REM primeira vez: instala as dependencias
+if not exist node_modules call npm install
+
+REM inicia o servidor em segundo plano, minimizado (deixe essa janelinha aberta)
+start "Acai do Centro - servidor (nao feche esta janela)" /min cmd /c node server.js
+
+REM espera o servidor subir (porta 3001)
+echo  Abrindo o Acai do Centro...
+:esperar
 timeout /t 1 /nobreak >nul
-echo  OK.
-echo.
+powershell -NoProfile -Command "try{(New-Object Net.Sockets.TcpClient).Connect('localhost',3001);exit 0}catch{exit 1}" >nul 2>&1
+if errorlevel 1 goto :esperar
 
-if not exist node_modules (
-  echo  Instalando dependencias pela primeira vez...
-  echo  Aguarde...
-  call npm install
-  echo.
-)
+REM abre em MODO APLICATIVO (janela propria, sem barra/abas de navegador)
+set "URL=http://localhost:3001"
+set "PFX86=%ProgramFiles(x86)%"
+set "NAV="
+if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set "NAV=%ProgramFiles%\Google\Chrome\Application\chrome.exe"
+if not defined NAV if exist "%PFX86%\Google\Chrome\Application\chrome.exe" set "NAV=%PFX86%\Google\Chrome\Application\chrome.exe"
+if not defined NAV if exist "%PFX86%\Microsoft\Edge\Application\msedge.exe" set "NAV=%PFX86%\Microsoft\Edge\Application\msedge.exe"
+if not defined NAV if exist "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" set "NAV=%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"
 
-echo  Iniciando servidor (RECARGA AUTOMATICA ligada)...
-echo  - Deixe esta janela ABERTA enquanto usa o sistema.
-echo  - Quando o sistema for atualizado, o servidor se ajusta sozinho.
-echo  - No navegador, use Ctrl+F5 para ver as telas novas.
-echo.
-echo  Acesse: http://localhost:3001
-echo  (Ctrl+C encerra o servidor)
-echo.
-
-start "" http://localhost:3001
-node --watch server.js
-
-echo.
-echo  O servidor PAROU. Rode o iniciar.bat de novo para religar.
-pause
+if not defined NAV goto :semnav
+start "" "%NAV%" --app=%URL% --window-size=1300,860
+goto :fim
+:semnav
+REM sem Chrome/Edge: abre no navegador padrao
+start "" %URL%
+:fim
