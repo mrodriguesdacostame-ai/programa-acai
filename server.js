@@ -6073,6 +6073,10 @@ app.get('/api/atualizacao/status', async (req, res) => {
   if (!gateFinAdmin(req, res)) return;
   try { res.json(await atualizacao.status()); } catch (e) { res.status(500).json({ erro: e.message }); }
 });
+app.post('/api/atualizacao/conectar', async (req, res) => {
+  if (!gateFinAdmin(req, res)) return;
+  try { res.json(await atualizacao.conectar()); } catch (e) { res.status(500).json({ erro: e.message }); }
+});
 app.post('/api/atualizacao/verificar', async (req, res) => {
   if (!gateFinAdmin(req, res)) return;
   try { res.json(await atualizacao.verificar()); } catch (e) { res.status(500).json({ erro: e.message }); }

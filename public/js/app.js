@@ -5250,7 +5250,8 @@ async function admCarregarAtualizacoes() {
       </div>
       ${ultimo}
       <div class="atz-acoes">
-        <button class="adm-btn" id="atz-verificar">🔍 Verificar atualização</button>
+        ${(s.gitDisponivel && !s.conectado) ? '<button class="adm-btn destaque" id="atz-conectar">🔗 Ligar ao GitHub</button>' : ''}
+        <button class="adm-btn" id="atz-verificar" ${s.conectado ? '' : 'disabled'}>🔍 Verificar atualização</button>
         <button class="adm-btn secundario" id="atz-atualizar" disabled>⬆️ Atualizar agora</button>
       </div>
       <div id="atz-resultado" class="atz-resultado"></div>
@@ -5260,9 +5261,20 @@ async function admCarregarAtualizacoes() {
       <div class="adm-card-tit">📜 Histórico de atualizações</div>
       <div id="atz-historico">—</div>
     </div>`;
+  const cbtn = $('atz-conectar'); if (cbtn) cbtn.addEventListener('click', atzConectar);
   const v = $('atz-verificar'); if (v) v.addEventListener('click', atzVerificar);
   const a = $('atz-atualizar'); if (a) a.addEventListener('click', atzAtualizar);
   atzCarregarHistorico();
+}
+async function atzConectar() {
+  const box = $('atz-resultado'), b = $('atz-conectar');
+  box.innerHTML = '<div class="atz-atualizando"><div class="atz-spinner"></div><div><b>Ligando ao GitHub…</b><br><small>Vai abrir uma janela do GitHub pedindo <b>login</b> — faça o login (só na 1ª vez) e aguarde. Não feche esta tela.</small></div></div>';
+  if (b) b.disabled = true;
+  let r; try { r = await (await fetch('/api/atualizacao/conectar', { method: 'POST' })).json(); }
+  catch { box.innerHTML = '<div class="atz-msg erro">Falha ao ligar. Tente de novo.</div>'; if (b) b.disabled = false; return; }
+  if (r.erro) { box.innerHTML = `<div class="atz-msg erro">⚠ ${crmEsc(r.erro)}</div>`; if (b) b.disabled = false; return; }
+  box.innerHTML = '<div class="atz-msg ok">✅ Ligada ao GitHub! Agora é só <b>Verificar</b> e <b>Atualizar</b>.</div>';
+  setTimeout(admCarregarAtualizacoes, 1600);
 }
 async function atzVerificar() {
   const box = $('atz-resultado'), b = $('atz-verificar');

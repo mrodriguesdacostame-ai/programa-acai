@@ -28,6 +28,13 @@ module.exports = function createAtualizacao({ db, rootDir, manut }) {
   });
   const gitSync = (args) => { try { return execFileSync('git', args, { cwd: rootDir, windowsHide: true, timeout: 15000 }).toString().trim(); } catch { return ''; } };
 
+  // versão com timeout longo — usada no fetch da 1ª conexão (o usuário pode
+  // demorar pra fazer o login do GitHub na janela que abre).
+  const gitLongo = (args) => new Promise(res => {
+    execFile('git', args, { cwd: rootDir, windowsHide: false, timeout: 300000 }, (err, out, errout) =>
+      res({ ok: !err, out: (out || '').trim(), errout: (errout || '').trim() }));
+  });
+
   const gitDisponivel = async () => (await gitP(['--version'])).ok;
   const ehRepo = async () => (await gitP(['rev-parse', '--is-inside-work-tree'])).ok;
   const temRemote = async () => (await gitP(['remote', 'get-url', 'origin'])).ok;
@@ -119,5 +126,29 @@ module.exports = function createAtualizacao({ db, rootDir, manut }) {
 
   const historico = () => { try { return db.prepare('SELECT * FROM atualizacoes ORDER BY id DESC LIMIT 20').all(); } catch { return []; } };
 
-  return { status, verificar, aplicar, historico, podeAtualizar, versaoInstalada };
+  // Liga a máquina ao repositório automaticamente (usa a URL do update.config.json).
+  // Na 1ª vez, o Git abre uma janela pedindo login do GitHub (Credential Manager).
+  // NÃO apaga dados: git init/reset só mexe em arquivos versionados (acai.db/.env
+  // são gitignored e ficam intactos).
+  async function conectar() {
+    if (!await gitDisponivel()) return { erro: 'O Git não está instalado nesta máquina.' };
+    const cfg = lerConfig();
+    const url = (cfg.repo || '').trim();
+    const branch = cfg.branch || 'main';
+    if (!url) return { erro: 'A URL do repositório não está configurada (update.config.json).' };
+    if (!await ehRepo()) { const ini = await gitP(['init']); if (!ini.ok) return { erro: 'Falha ao preparar o repositório: ' + ini.errout }; }
+    await gitP(['remote', 'remove', 'origin']); // ignora se não existir
+    const add = await gitP(['remote', 'add', 'origin', url]);
+    if (!add.ok) return { erro: 'Falha ao configurar o repositório: ' + add.errout };
+    const fetch = await gitLongo(['fetch', 'origin', branch]); // aqui abre o login do GitHub
+    if (!fetch.ok) return { erro: 'Não consegui acessar o GitHub. Faça o login na janela que abriu e confira a internet.', detalhe: fetch.errout };
+    await gitP(['checkout', '-B', branch]);
+    await gitP(['branch', `--set-upstream-to=origin/${branch}`, branch]);
+    const reset = await gitP(['reset', '--hard', `origin/${branch}`]);
+    if (!reset.ok) return { erro: 'Falha ao alinhar o código: ' + reset.errout };
+    try { manut.logAcao('máquina ligada ao GitHub', 'atualizacao', { url }, 'admin'); } catch {}
+    return { ok: true };
+  }
+
+  return { status, verificar, aplicar, historico, podeAtualizar, versaoInstalada, conectar };
 };
