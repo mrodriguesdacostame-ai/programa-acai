@@ -1,0 +1,4 @@
+# Scripts do Windows PRECISAM de quebra de linha CRLF, senão o cmd.exe
+# abre e fecha na hora. Isto garante CRLF ao clonar/atualizar em qualquer máquina.
+*.bat text eol=crlf
+*.cmd text eol=crlf
