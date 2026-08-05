@@ -1,84 +1,95 @@
-; -----------------------------------------------------------------------------
-;  INSTALADOR PROFISSIONAL � Programa A�a�  (Inno Setup 6)
+﻿; ─────────────────────────────────────────────────────────────────────────────
+;  INSTALADOR PROFISSIONAL — Açaí do Centro  (Inno Setup 6)
 ;  Gera um Setup.exe que instala o sistema numa maquina Windows:
-;   - confere se o Node.js esta instalado (instala via winget ou orienta)
-;   - copia o codigo (sem banco/segredos/node_modules)
+;   - confere o Node.js (instala via winget ou orienta) e o Git (para atualizacoes)
+;   - copia SO o runtime (sem banco/segredos/node_modules/arquivos de desenvolvimento)
 ;   - instala as dependencias (npm install)
-;   - cria .env a partir do modelo
-;   - cria atalhos na Area de Trabalho e no Menu Iniciar
-;       (Abrir / Atualizar / Conectar ao GitHub)
+;   - cria .env a partir do modelo e a config de atualizacao (sem segredo)
+;   - cria atalhos "Açaí do Centro" e "Desinstalar" (Area de Trabalho + Menu Iniciar)
 ;   - abre o sistema no fim
 ;  O banco (acai.db) e criado VAZIO no primeiro uso (o proprio ERP cria).
+;  A atualizacao acontece DENTRO do ERP (Administracao -> Atualizacoes).
 ;  NAO altera nenhuma regra de negocio do ERP.
-; -----------------------------------------------------------------------------
+; ─────────────────────────────────────────────────────────────────────────────
 
-#define AppNome "Programa Acai"
+#define AppNome "Açaí do Centro"
+#define AppPasta "AcaiDoCentro"
 #define AppVersao "1.0.0"
-#define AppPublisher "Acai do Centro"
-#define AppExeLauncher "iniciar.bat"
+#define AppPublisher "Açaí do Centro"
 
 [Setup]
 AppId={{8F3A2C10-ACA1-4E77-9B21-1A2B3C4D5E6F}
 AppName={#AppNome}
 AppVersion={#AppVersao}
 AppPublisher={#AppPublisher}
-; instala numa pasta do usuario (gravavel, sem exigir Administrador) � o ERP
+; instala numa pasta do usuario (gravavel, sem exigir Administrador) — o ERP
 ; grava o acai.db na propria pasta, entao NAO pode ser Arquivos de Programas.
 PrivilegesRequired=lowest
-DefaultDirName={autopf}\ProgramaAcai
+DefaultDirName={autopf}\{#AppPasta}
 DefaultGroupName={#AppNome}
 DisableProgramGroupPage=yes
 OutputDir=..\dist-instalador
-OutputBaseFilename=ProgramaAcai-Setup
+OutputBaseFilename=AcaiDoCentro-Setup
+SetupIconFile=..\assets\icone-acai.ico
+UninstallDisplayIcon={app}\icone-acai.ico
+UninstallDisplayName={#AppNome}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 ArchitecturesInstallIn64BitMode=x64compatible
-UninstallDisplayName={#AppNome}
 
 [Languages]
 Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Criar atalho na Area de Trabalho"; GroupDescription: "Atalhos:"
+Name: "desktopicon"; Description: "Criar atalho na Área de Trabalho"; GroupDescription: "Atalhos:"
 
 [Files]
-; copia o projeto INTEIRO, exceto o que nao deve ir (dados/segredos/pesados/o proprio instalador)
+; copia o runtime, EXCLUINDO dados/segredos/pesados e os arquivos de desenvolvimento
 Source: "..\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion; \
-  Excludes: "node_modules\*,\.git\*,\.git,backups\*,logs\*,\.wwebjs_auth\*,\.wwebjs_cache\*,\.claude\*,instalador\*,dist-instalador\*,acai.db,acai.db-wal,acai.db-shm,acai.db-journal,.env,*.log"
-; cria o .env a partir do modelo, so se ainda nao existir
+  Excludes: "node_modules\*,\.git\*,\.git,backups\*,logs\*,\.wwebjs_auth\*,\.wwebjs_cache\*,\.claude\*,instalador\*,dist-instalador\*,assets\*,acai.db,acai.db-wal,acai.db-shm,acai.db-journal,.env,*.log,GERAR_INSTALADOR.bat,GERAR_PACOTE.bat,SUBIR_GITHUB.bat,versionar.bat,PUBLICAR_VERSAO.bat,INSTALADOR_PROFISSIONAL.md,VERSIONAR_ONLINE.md"
+; cria o .env a partir do modelo, so se ainda nao existir (nunca sobrescreve o real)
 Source: "..\.env.exemplo"; DestDir: "{app}"; DestName: ".env"; Flags: onlyifdoesntexist
+; icone para os atalhos
+Source: "..\assets\icone-acai.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\Programa Acai";            Filename: "{app}\{#AppExeLauncher}"; WorkingDir: "{app}"; Comment: "Abrir o Programa Acai"
-Name: "{group}\Atualizar Programa Acai";  Filename: "{app}\ATUALIZAR.bat";     WorkingDir: "{app}"; Comment: "Baixar a versao nova (GitHub)"
-Name: "{group}\Conectar ao GitHub";       Filename: "{app}\CONECTAR_GITHUB.bat"; WorkingDir: "{app}"; Comment: "Ligar esta maquina ao repositorio (uma vez)"
-Name: "{group}\Desinstalar Programa Acai"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\Programa Acai";      Filename: "{app}\{#AppExeLauncher}"; WorkingDir: "{app}"; Tasks: desktopicon; Comment: "Abrir o Programa Acai"
+Name: "{group}\{#AppNome}";              Filename: "{app}\iniciar.bat"; WorkingDir: "{app}"; IconFilename: "{app}\icone-acai.ico"; Comment: "Abrir o {#AppNome}"
+Name: "{group}\Desinstalar {#AppNome}";  Filename: "{uninstallexe}"
+Name: "{autodesktop}\{#AppNome}";        Filename: "{app}\iniciar.bat"; WorkingDir: "{app}"; IconFilename: "{app}\icone-acai.ico"; Tasks: desktopicon; Comment: "Abrir o {#AppNome}"
 
 [Run]
-; instala as dependencias (o Node ja foi verificado em PrepareToInstall)
+; instala as dependencias (Node ja verificado em PrepareToInstall; .puppeteerrc.cjs pula o Chrome)
 Filename: "{cmd}"; Parameters: "/c npm install"; WorkingDir: "{app}"; \
-  StatusMsg: "Instalando dependencias (pode demorar alguns minutos)..."; Flags: runhidden
+  StatusMsg: "Instalando componentes (pode demorar alguns minutos)..."; Flags: runhidden
 ; abre o sistema ao final
-Filename: "{app}\{#AppExeLauncher}"; Description: "Abrir o Programa Acai agora"; \
+Filename: "{app}\iniciar.bat"; Description: "Abrir o {#AppNome} agora"; \
   WorkingDir: "{app}"; Flags: postinstall shellexec nowait skipifsilent
 
 [Code]
-// Roda "node -v" e devolve True se o Node.js estiver instalado/no PATH.
-function NodeInstalado(): Boolean;
+function TemComando(cmd: String): Boolean;
 var Rc: Integer;
 begin
-  Result := Exec('cmd.exe', '/c node -v', '', SW_HIDE, ewWaitUntilTerminated, Rc) and (Rc = 0);
+  Result := Exec('cmd.exe', '/c ' + cmd, '', SW_HIDE, ewWaitUntilTerminated, Rc) and (Rc = 0);
 end;
 
-// Antes de copiar os arquivos: garante o Node.js (instala via winget ou orienta).
-// Devolver texto NAO vazio cancela a instalacao mostrando a mensagem.
+// Antes de copiar: Node.js e OBRIGATORIO (instala via winget ou orienta e cancela).
+// O Git e recomendado (para as atualizacoes internas): instala em silencio se faltar,
+// mas NAO cancela a instalacao se nao conseguir.
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var Rc: Integer;
 begin
   Result := '';
-  if NodeInstalado() then exit;
+
+  // --- Git (recomendado, nao bloqueia) ---
+  if not TemComando('git --version') then
+  begin
+    Exec('cmd.exe', '/c winget install -e --id Git.Git --accept-package-agreements --accept-source-agreements',
+         '', SW_SHOW, ewWaitUntilTerminated, Rc);
+  end;
+
+  // --- Node.js (obrigatorio) ---
+  if TemComando('node -v') then exit;
 
   if MsgBox('O Node.js (necessario para o sistema) nao foi encontrado nesta maquina.'#13#10#13#10 +
             'Deseja instalar automaticamente agora? (usa o winget do Windows, precisa de internet e pode demorar alguns minutos)',
@@ -86,7 +97,6 @@ begin
   begin
     Exec('cmd.exe', '/c winget install -e --id OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements',
          '', SW_SHOW, ewWaitUntilTerminated, Rc);
-    // O PATH so atualiza numa nova sessao � pedimos para rodar o instalador de novo.
     Result := 'O Node.js foi instalado (ou o instalador dele abriu).'#13#10 +
               'Por favor, FECHE este instalador e execute-o NOVAMENTE para concluir.'#13#10 +
               'Se der erro, instale manualmente em https://nodejs.org e rode de novo.';

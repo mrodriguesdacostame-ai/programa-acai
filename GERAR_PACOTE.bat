@@ -18,7 +18,8 @@ echo.
 pause
 echo.
 echo  Gerando pacote...
-robocopy "%~dp0." "%DEST%" /E /XD node_modules .git backups .wwebjs_auth .wwebjs_cache logs .claude /XF acai.db acai.db-wal acai.db-shm acai.db-journal .env *.log >nul
+if exist "%DEST%" rmdir /S /Q "%DEST%"
+robocopy "%~dp0." "%DEST%" /E /XD node_modules .git backups .wwebjs_auth .wwebjs_cache logs .claude instalador dist-instalador assets /XF acai.db acai.db-wal acai.db-shm acai.db-journal .env *.log GERAR_INSTALADOR.bat GERAR_PACOTE.bat SUBIR_GITHUB.bat versionar.bat PUBLICAR_VERSAO.bat INSTALADOR_PROFISSIONAL.md VERSIONAR_ONLINE.md >nul
 echo.
 echo  ================================================
 echo    [OK] Pacote gerado em:
