@@ -45,13 +45,14 @@ echo  de uma PASTA com a versao nova (ex.: o pendrive).
 echo.
 echo  Arraste aqui a pasta ACAI-INSTALADOR do pendrive e aperte ENTER
 echo  (ou digite o caminho):
+set "ORIGEM="
 set /p ORIGEM=  Origem:
-set ORIGEM=%ORIGEM:"=%
-if "%ORIGEM%"=="" (
+if not defined ORIGEM (
   echo  [X] Nada informado. Cancelado.
   pause
   exit /b 1
 )
+set ORIGEM=%ORIGEM:"=%
 if not exist "%ORIGEM%\server.js" (
   echo  [X] Nao encontrei o server.js dentro de "%ORIGEM%".
   echo      Confira se e a pasta certa, a que tem o programa novo.

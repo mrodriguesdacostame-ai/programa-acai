@@ -55,13 +55,14 @@ echo    - O GitHub mostra uma URL terminando em  .git
 echo      ex.:  https://github.com/SEU-USUARIO/programa-acai.git
 echo    - Copie e cole aqui embaixo:
 echo.
+set "URL="
 set /p URL=  URL do repositorio (.git):
-set URL=%URL:"=%
-if "%URL%"=="" (
+if not defined URL (
   echo  [X] Nenhuma URL informada. Cancelado.
   pause
   exit /b 1
 )
+set URL=%URL:"=%
 
 echo.
 echo  Ligando e enviando... (o GitHub pode pedir login no navegador)
