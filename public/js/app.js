@@ -5218,7 +5218,7 @@ function renderAdministracao() {
 function abrirAbaAdm(aba) {
   abaAdmAtual = aba;
   document.querySelectorAll('.adm-tab').forEach(b => b.classList.toggle('ativo', b.dataset.aba === aba));
-  ['usuarios', 'loja', 'dados', 'logs', 'backup', 'midia', 'plataforma'].forEach(a => { const el = $('adm-pane-' + a); if (el) el.style.display = a === aba ? '' : 'none'; });
+  ['usuarios', 'loja', 'dados', 'logs', 'backup', 'midia', 'plataforma', 'atualizacoes'].forEach(a => { const el = $('adm-pane-' + a); if (el) el.style.display = a === aba ? '' : 'none'; });
   if (aba === 'usuarios') admCarregarUsuarios();
   if (aba === 'loja') admCarregarLoja();
   if (aba === 'dados') admCarregarDados();
@@ -5226,6 +5226,95 @@ function abrirAbaAdm(aba) {
   if (aba === 'backup') admCarregarBackup();
   if (aba === 'midia') admCarregarMidia();
   if (aba === 'plataforma') admCarregarPlataforma();
+  if (aba === 'atualizacoes') admCarregarAtualizacoes();
+}
+
+/* ── Atualização do sistema (Administração → Atualizações) — só admin ── */
+let atzVerif = null, atzPolling = null;
+async function admCarregarAtualizacoes() {
+  const el = $('atz-conteudo'); if (!el) return;
+  el.innerHTML = biLoading();
+  let s; try { s = await (await fetch('/api/atualizacao/status', { cache: 'no-store' })).json(); }
+  catch { el.innerHTML = '<div class="adm-aviso">Falha ao carregar o estado das atualizações.</div>'; return; }
+  const ur = s.ultimoResultado;
+  const conBadge = s.conectado ? '<span class="atz-badge on">✅ ligada ao GitHub</span>'
+    : (s.gitDisponivel ? '<span class="atz-badge off">⚠️ não ligada ao repositório</span>' : '<span class="atz-badge off">⚠️ Git não instalado</span>');
+  const ultimo = ur ? `<div class="atz-ultimo ${ur.status === 'OK' ? 'ok' : 'erro'}">Última tentativa: <b>${ur.status === 'OK' ? '✅ sucesso' : '🔴 falha'}</b> · ${crmEsc(ur.quando || '')}${ur.detalhe ? `<br><small>${crmEsc(ur.detalhe)}</small>` : ''}</div>` : '';
+  el.innerHTML = `
+    <div class="adm-card">
+      <div class="adm-card-tit">🔄 Atualização do sistema</div>
+      <div class="atz-topo">
+        <div class="atz-kv"><span>Versão instalada</span><b>${crmEsc(s.versao || '?')}</b></div>
+        <div class="atz-kv"><span>Código</span><b>${crmEsc(s.commitLocal || '—')}</b></div>
+        <div class="atz-kv"><span>Conexão</span><b>${conBadge}</b></div>
+      </div>
+      ${ultimo}
+      <div class="atz-acoes">
+        <button class="adm-btn" id="atz-verificar">🔍 Verificar atualização</button>
+        <button class="adm-btn secundario" id="atz-atualizar" disabled>⬆️ Atualizar agora</button>
+      </div>
+      <div id="atz-resultado" class="atz-resultado"></div>
+      <p class="adm-aviso">A atualização baixa só o código do GitHub e <b>preserva todos os dados</b> (clientes, vendas, estoque, configurações). Antes, é feito um <b>backup automático</b>. Se algo falhar, o sistema volta sozinho para a versão anterior.</p>
+    </div>
+    <div class="adm-card">
+      <div class="adm-card-tit">📜 Histórico de atualizações</div>
+      <div id="atz-historico">—</div>
+    </div>`;
+  const v = $('atz-verificar'); if (v) v.addEventListener('click', atzVerificar);
+  const a = $('atz-atualizar'); if (a) a.addEventListener('click', atzAtualizar);
+  atzCarregarHistorico();
+}
+async function atzVerificar() {
+  const box = $('atz-resultado'), b = $('atz-verificar');
+  box.innerHTML = '⏳ Verificando no GitHub…'; b.disabled = true;
+  let r; try { r = await (await fetch('/api/atualizacao/verificar', { method: 'POST' })).json(); }
+  catch { box.innerHTML = '<div class="atz-msg erro">Falha ao verificar.</div>'; b.disabled = false; return; }
+  b.disabled = false;
+  if (r.erro) { box.innerHTML = `<div class="atz-msg erro">⚠ ${crmEsc(r.erro)}</div>`; $('atz-atualizar').disabled = true; return; }
+  atzVerif = r;
+  if (!r.novaVersao) { box.innerHTML = '<div class="atz-msg ok">✅ O sistema já está na versão mais recente.</div>'; $('atz-atualizar').disabled = true; return; }
+  const lista = (r.resumo || []).map(x => `<li>${crmEsc(x)}</li>`).join('');
+  box.innerHTML = `<div class="atz-msg nova">🎉 Nova versão disponível — <b>${r.commitsAtras}</b> atualização(ões). O sistema reinicia ao aplicar.</div>${lista ? `<ul class="atz-resumo">${lista}</ul>` : ''}`;
+  $('atz-atualizar').disabled = false;
+}
+async function atzAtualizar() {
+  if (typeof itensCupom !== 'undefined' && itensCupom && itensCupom.length &&
+      !confirm('Há uma venda em andamento no PDV (carrinho com itens). Atualizar agora vai reiniciar o sistema. Continuar mesmo assim?')) return;
+  if (!confirm('Atualizar o sistema agora?\n\n• Backup automático antes\n• O sistema fecha e reabre sozinho\n• Seus dados são preservados\n\nConfirmar?')) return;
+  const box = $('atz-resultado'), a = $('atz-atualizar'), v = $('atz-verificar');
+  a.disabled = true; v.disabled = true;
+  let r; try { r = await (await fetch('/api/atualizacao/aplicar', { method: 'POST' })).json(); }
+  catch { box.innerHTML = '<div class="atz-msg erro">Falha ao iniciar a atualização.</div>'; a.disabled = false; v.disabled = false; return; }
+  if (r.erro) { box.innerHTML = `<div class="atz-msg erro">⚠ ${crmEsc(r.erro)}</div>`; v.disabled = false; a.disabled = !!r.bloqueado; return; }
+  atzAguardarReinicio(r);
+}
+function atzAguardarReinicio(r) {
+  const box = $('atz-resultado');
+  box.innerHTML = `<div class="atz-atualizando"><div class="atz-spinner"></div><div><b>Atualizando o sistema…</b><br><small>O sistema vai reiniciar.${r.backup ? ' Backup: ' + crmEsc(r.backup) + '.' : ''}<br>Esta tela recarrega sozinha quando terminar. Não feche.</small></div></div>`;
+  let caiu = false, tentativas = 0;
+  clearInterval(atzPolling);
+  atzPolling = setInterval(async () => {
+    tentativas++;
+    try {
+      const resp = await fetch('/api/atualizacao/status', { cache: 'no-store' });
+      if (!resp.ok) throw 0;
+      const s = await resp.json();
+      if (caiu) {
+        clearInterval(atzPolling);
+        const ur = s.ultimoResultado || {};
+        if (ur.status === 'OK') { box.innerHTML = '<div class="atz-msg ok">✅ Sistema atualizado com sucesso! Recarregando…</div>'; setTimeout(() => location.reload(), 1500); }
+        else { box.innerHTML = `<div class="atz-msg erro">🔴 A atualização falhou e a versão anterior foi restaurada.${ur.detalhe ? `<br><small>${crmEsc(ur.detalhe)}</small>` : ''}</div>`; setTimeout(admCarregarAtualizacoes, 2500); }
+      }
+    } catch { caiu = true; }
+    if (tentativas > 120) { clearInterval(atzPolling); box.innerHTML = '<div class="atz-msg erro">A atualização está demorando. Confira o sistema — seu backup está salvo.</div>'; }
+  }, 2000);
+}
+async function atzCarregarHistorico() {
+  const box = $('atz-historico'); if (!box) return;
+  let h; try { h = await (await fetch('/api/atualizacao/historico', { cache: 'no-store' })).json(); } catch { box.innerHTML = '—'; return; }
+  if (!Array.isArray(h) || !h.length) { box.innerHTML = '<div class="adm-aviso">Nenhuma atualização registrada ainda.</div>'; return; }
+  const map = { sucesso: '✅ sucesso', falha: '🔴 falha', iniciada: '⏳ iniciada' };
+  box.innerHTML = `<div class="adm-tabela-wrap"><table class="adm-tabela"><thead><tr><th>Quando</th><th>Por</th><th>De→Para</th><th>Status</th><th>Detalhe</th></tr></thead><tbody>${h.map(x => `<tr><td>${fmtDataHora(x.quando)}</td><td>${crmEsc(x.por || '—')}</td><td>${(x.de_commit || '').slice(0, 7)}→${(x.para_commit || '').slice(0, 7) || '…'}</td><td>${map[x.status] || crmEsc(x.status || '')}</td><td>${crmEsc(x.detalhe || '')}</td></tr>`).join('')}</tbody></table></div>`;
 }
 /* ── Fase 36: Plataforma — saúde do ERP + módulos ativos + próximos módulos ── */
 async function admCarregarPlataforma() {

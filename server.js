@@ -128,6 +128,7 @@ function emTransacao(fn) {
 // ── Manutenção / OPS (Fase 11): backup automático, logs de erro/ações e mídia ──
 // Cria as pastas backups/ e logs/ + a tabela logs_acoes. Ver 24_BACKUP_SEGURANCA_FASE11.md.
 const manut = require('./backend/manutencao')({ db, rootDir: __dirname });
+const atualizacao = require('./backend/atualizacao')({ db, rootDir: __dirname, manut });
 // além do console (blindagem acima), grava os erros de processo em logs/erro.log
 process.on('unhandledRejection', (err) => manut.logErro('unhandledRejection', err));
 process.on('uncaughtException', (err) => manut.logErro('uncaughtException', err));
@@ -6065,6 +6066,25 @@ app.get('/api/manutencao/info', (req, res) => {
   if (!gateFinLancar(req, res)) return;
   res.json({ schema_versao: SCHEMA_VERSAO, migracoes: db.prepare('SELECT chave,aplicada_em FROM schema_migracoes ORDER BY id').all(),
     journal_mode: (db.prepare('PRAGMA journal_mode').get() || {}).journal_mode, indices: db.prepare("SELECT COUNT(*) n FROM sqlite_master WHERE type='index'").get().n });
+});
+
+// ── Atualização do sistema (só admin) — Administração → Atualizações ──
+app.get('/api/atualizacao/status', async (req, res) => {
+  if (!gateFinAdmin(req, res)) return;
+  try { res.json(await atualizacao.status()); } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+app.post('/api/atualizacao/verificar', async (req, res) => {
+  if (!gateFinAdmin(req, res)) return;
+  try { res.json(await atualizacao.verificar()); } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+app.post('/api/atualizacao/aplicar', async (req, res) => {
+  if (!gateFinAdmin(req, res)) return;
+  try { res.json(await atualizacao.aplicar((req.usuario || {}).usuario || (req.usuario || {}).nome || '')); }
+  catch (e) { res.status(500).json({ erro: e.message }); }
+});
+app.get('/api/atualizacao/historico', (req, res) => {
+  if (!gateFinAdmin(req, res)) return;
+  res.json(atualizacao.historico());
 });
 
 /* ══════════════════════════════════════════════════════════════════════════
