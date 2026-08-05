@@ -27,3 +27,6 @@ logs/
 
 # Logs e temporários
 *.log
+
+# Instalador gerado (Setup.exe) - artefato de build, nao versionar
+dist-instalador/

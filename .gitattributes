@@ -2,3 +2,4 @@
 # abre e fecha na hora. Isto garante CRLF ao clonar/atualizar em qualquer máquina.
 *.bat text eol=crlf
 *.cmd text eol=crlf
+*.iss text eol=crlf

@@ -40,8 +40,13 @@ if not errorlevel 1 (
 )
 
 REM ===== MODO 2: pendrive / pasta =====
-echo  Nao ha repositorio online ligado. Vou atualizar a partir
-echo  de uma PASTA com a versao nova (ex.: o pendrive).
+echo  Esta maquina ainda nao esta ligada ao GitHub.
+echo.
+echo  DICA: para atualizar pela INTERNET (sem pendrive), rode uma vez
+echo        o  CONECTAR_GITHUB.bat  e depois use este ATUALIZAR normalmente.
+echo.
+echo  Por agora, vou atualizar a partir de uma PASTA com a versao nova
+echo  (ex.: o pendrive).
 echo.
 echo  Arraste aqui a pasta ACAI-INSTALADOR do pendrive e aperte ENTER
 echo  (ou digite o caminho):
