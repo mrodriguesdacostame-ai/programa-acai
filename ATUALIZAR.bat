@@ -54,7 +54,7 @@ if "%ORIGEM%"=="" (
 )
 if not exist "%ORIGEM%\server.js" (
   echo  [X] Nao encontrei o server.js dentro de "%ORIGEM%".
-  echo      Confira se e a pasta certa (a que tem o programa novo).
+  echo      Confira se e a pasta certa, a que tem o programa novo.
   pause
   exit /b 1
 )

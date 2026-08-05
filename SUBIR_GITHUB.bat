@@ -22,7 +22,7 @@ git rev-parse --is-inside-work-tree >nul 2>&1
 if errorlevel 1 (
   echo  [X] Esta pasta nao e o projeto com historico do git.
   echo      Rode este arquivo dentro da pasta  PROGRAMA ACAI
-  echo      (a original onde voce programa), nao no pacote/pendrive.
+  echo      a original onde voce programa, nao no pacote do pendrive.
   pause
   exit /b 1
 )
