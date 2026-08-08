@@ -65,11 +65,19 @@ module.exports = function createAtualizacao({ db, rootDir, manut }) {
     const disp = await gitDisponivel();
     const repo = disp && await ehRepo();
     const conectado = repo && await temRemote();
+    const branch = lerConfig().branch || 'main';
+    // atrás/à frente do remoto (usa a ref origin/BR já em cache — não faz rede aqui, é rápido)
+    let atras = 0, aFrente = 0;
+    if (conectado) {
+      atras = parseInt((await gitP(['rev-list', '--count', `HEAD..origin/${branch}`])).out, 10) || 0;
+      aFrente = parseInt((await gitP(['rev-list', '--count', `origin/${branch}..HEAD`])).out, 10) || 0;
+    }
     return {
       versao: versaoInstalada(),
       commitLocal: repo ? (await gitP(['rev-parse', '--short', 'HEAD'])).out : '',
       gitDisponivel: disp,
       conectado,
+      atras, aFrente,
       repoUrl: lerConfig().repo,
       ultimoResultado: ultimoResultado(),
     };
@@ -109,6 +117,15 @@ module.exports = function createAtualizacao({ db, rootDir, manut }) {
     if (!await ehRepo() || !await temRemote()) return { erro: 'Esta máquina não está ligada ao repositório.' };
     const chk = podeAtualizar();
     if (!chk.pode) return { erro: chk.motivo, bloqueado: true };
+
+    // BLINDAGEM: só atualiza se houver MESMO versão nova no GitHub. Sem isso, o atualizador
+    // faria `git reset --hard origin/BR` à toa — o que, numa máquina à frente do repositório,
+    // reverteria o código e apagaria trabalho local não enviado. Nunca fazemos isso sem novidade.
+    const branch = lerConfig().branch || 'main';
+    const fetch = await gitP(['fetch', 'origin', branch]);
+    if (!fetch.ok) return { erro: 'Não consegui acessar o GitHub. Confira a internet e o login.', detalhe: fetch.errout };
+    const atras = parseInt((await gitP(['rev-list', '--count', `HEAD..origin/${branch}`])).out, 10) || 0;
+    if (atras === 0) return { ok: true, semNovidade: true, mensagem: 'Você já está na versão mais recente — nada para atualizar.' };
 
     const bk = manut.criarBackup('antes da atualização');
     const de = (await gitP(['rev-parse', 'HEAD'])).out;

@@ -1,6 +1,6 @@
 @echo off
 REM -----------------------------------------------------------------------------
-REM  ATUALIZADOR EXTERNO — Açaí do Centro
+REM  ATUALIZADOR EXTERNO ? A?a? do Centro
 REM  Roda FORA do node (o ERP dispara este .bat destacado). Passos:
 REM   1) guarda o commit atual (ponto de rollback)
 REM   2) encerra o servidor
@@ -35,19 +35,25 @@ taskkill /F /IM node.exe >nul 2>&1
 timeout /t 2 /nobreak >nul
 
 :pull
-git pull --ff-only
+REM descobre o ramo atual (main/master) e baixa via fetch + reset --hard
+REM (mais robusto que "pull --ff-only": alinha ao GitHub mesmo com arvore suja).
+set "BR=main"
+for /f "delims=" %%b in ('git rev-parse --abbrev-ref HEAD 2^>nul') do set "BR=%%b"
+git fetch origin %BR% > "logs\atualizador-git.log" 2>&1
+if errorlevel 1 goto :err_pull
+git reset --hard origin/%BR% >> "logs\atualizador-git.log" 2>&1
 if errorlevel 1 goto :err_pull
 
 for /f "delims=" %%p in ('git rev-parse HEAD:package.json 2^>nul') do set "PKG_DEPOIS=%%p"
 if "%PKG_ANTES%"=="%PKG_DEPOIS%" goto :ok
 echo Atualizando dependencias...
-call npm install
+call npm install >> "logs\atualizador-git.log" 2>&1
 if errorlevel 1 goto :err_npm
 goto :ok
 
 :err_pull
 git reset --hard %ROLLBACK% >nul 2>&1
-call :grava ERRO "falha ao baixar via git pull - versao anterior restaurada"
+call :grava ERRO "falha ao baixar do GitHub - veja logs\atualizador-git.log - versao anterior restaurada"
 goto :restart
 
 :err_npm

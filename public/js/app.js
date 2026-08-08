@@ -5270,7 +5270,15 @@ async function admCarregarAtualizacoes() {
   const ur = s.ultimoResultado;
   const conBadge = s.conectado ? '<span class="atz-badge on">✅ ligada ao GitHub</span>'
     : (s.gitDisponivel ? '<span class="atz-badge off">⚠️ não ligada ao repositório</span>' : '<span class="atz-badge off">⚠️ Git não instalado</span>');
-  const ultimo = ur ? `<div class="atz-ultimo ${ur.status === 'OK' ? 'ok' : 'erro'}">Última tentativa: <b>${ur.status === 'OK' ? '✅ sucesso' : '🔴 falha'}</b> · ${crmEsc(ur.quando || '')}${ur.detalhe ? `<br><small>${crmEsc(ur.detalhe)}</small>` : ''}</div>` : '';
+  // ESTADO ATUAL (o que importa) — só cai pra "falha" antiga como notinha discreta.
+  let estado = '';
+  if (s.conectado) {
+    if (s.atras > 0) estado = `<div class="atz-ultimo nova">🎉 Nova versão disponível (${s.atras} atualização(ões)). Clique em <b>Verificar</b> e <b>Atualizar</b>.</div>`;
+    else if (s.aFrente > 0) estado = '<div class="atz-ultimo ok">✅ Você está na versão mais recente <small>(seu código está à frente do repositório — nada a baixar).</small></div>';
+    else estado = '<div class="atz-ultimo ok">✅ Você está na versão mais recente.</div>';
+  }
+  // a última tentativa vira nota discreta só quando FALHOU e ainda há algo pra atualizar (senão é ruído do passado)
+  const ultimo = estado + (ur && ur.status !== 'OK' && s.atras > 0 ? `<div class="atz-ultimo-nota">Última tentativa falhou (${crmEsc(ur.quando || '')})${ur.detalhe ? ` — <small>${crmEsc(ur.detalhe)}</small>` : ''}. Veja o histórico abaixo.</div>` : '');
   el.innerHTML = `
     <div class="adm-card">
       <div class="adm-card-tit">🔄 Atualização do sistema</div>
@@ -5281,7 +5289,7 @@ async function admCarregarAtualizacoes() {
       </div>
       ${ultimo}
       <div class="atz-acoes">
-        ${(s.gitDisponivel && !s.conectado) ? '<button class="adm-btn destaque" id="atz-conectar">🔗 Ligar ao GitHub</button>' : ''}
+        ${s.gitDisponivel ? `<button class="adm-btn ${s.conectado ? '' : 'destaque'}" id="atz-conectar">${s.conectado ? '🔧 Reparar / realinhar' : '🔗 Ligar ao GitHub'}</button>` : ''}
         <button class="adm-btn" id="atz-verificar" ${s.conectado ? '' : 'disabled'}>🔍 Verificar atualização</button>
         <button class="adm-btn secundario" id="atz-atualizar" disabled>⬆️ Atualizar agora</button>
       </div>
@@ -5329,6 +5337,7 @@ async function atzAtualizar() {
   let r; try { r = await (await fetch('/api/atualizacao/aplicar', { method: 'POST' })).json(); }
   catch { box.innerHTML = '<div class="atz-msg erro">Falha ao iniciar a atualização.</div>'; a.disabled = false; v.disabled = false; return; }
   if (r.erro) { box.innerHTML = `<div class="atz-msg erro">⚠ ${crmEsc(r.erro)}</div>`; v.disabled = false; a.disabled = !!r.bloqueado; return; }
+  if (r.semNovidade) { box.innerHTML = `<div class="atz-msg ok">✅ ${crmEsc(r.mensagem || 'Você já está na versão mais recente.')}</div>`; v.disabled = false; a.disabled = true; return; }
   atzAguardarReinicio(r);
 }
 function atzAguardarReinicio(r) {
