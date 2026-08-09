@@ -14,6 +14,7 @@ acai.db-shm
 
 # 💾 Backups do banco (contêm TODOS os dados dos clientes) — NUNCA versionar
 backups/
+acai-*.db
 
 # 📝 Logs (erro + ações) — podem ter dados operacionais — NUNCA versionar
 logs/

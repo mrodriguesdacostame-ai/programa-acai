@@ -55,7 +55,39 @@ function irPara(tela) {
   if (tela === 'bi') { abrirBI(); }
   if (tela === 'home') { carregarDashboard(); iniciarPollDashboard(); }  // Fase 17: dashboard
   else pararPollDashboard();
+  if (tela === 'pdv' && typeof carregarAnotacoes === 'function') carregarAnotacoes();  // atualiza a caixa de anotações
+  observarFit();   // encaixa a tela na altura visível (auto-encolhe se precisar) — pedido do Melque
 }
+
+/* ── FIT-TO-VIEWPORT ──────────────────────────────────────────────────────────
+   Cada tela cabe na altura visível SEM rolar: se o conteúdo passa da área, encolhe
+   só o necessário (zoom Chrome/Electron + compensação de altura pra seguir preenchendo).
+   Nunca aumenta; tem PISO (FIT_MIN) pra não ficar minúsculo — se ainda não couber,
+   deixa rolar o excedente. Reajusta ao trocar de tela, no resize e quando o conteúdo muda. */
+const FIT_MIN = 0.6;
+function ajustarFitTela() {
+  const tela = document.querySelector('.tela.ativa');
+  if (!tela) return;
+  tela.style.zoom = ''; tela.style.height = '';           // reset pra medir o natural
+  const disp = tela.clientHeight, cont = tela.scrollHeight;
+  if (!disp || cont <= disp + 1) return;                  // já cabe → nada a fazer
+  const f = disp / cont;
+  if (f >= 0.999) return;
+  if (f < FIT_MIN) return;                                // alto demais até pro piso → deixa ROLAR normal (não trava o acesso)
+  tela.style.zoom = f;
+  tela.style.height = (100 / f) + '%';                    // compensa a altura → tela segue preenchendo a área
+}
+let _fitPend, _fitObs;
+function agendarFit() { clearTimeout(_fitPend); _fitPend = setTimeout(ajustarFitTela, 60); }
+function observarFit() {
+  const tela = document.querySelector('.tela.ativa');
+  if (!_fitObs) _fitObs = new MutationObserver(agendarFit);
+  _fitObs.disconnect();
+  if (tela) _fitObs.observe(tela, { childList: true, subtree: true, attributes: false }); // reajusta quando o conteúdo muda (listas async, etc.)
+  agendarFit();
+}
+window.addEventListener('resize', agendarFit);
+window.ajustarFitTela = ajustarFitTela;   // disponível pra chamadas pontuais
 
 // A navegação é a BARRA SUPERIOR (gerada por montarTopo) — a home não repete os atalhos.
 $('btn-home-logo').addEventListener('click', () => irPara('home'));
@@ -219,13 +251,15 @@ if (document.readyState !== 'loading') prepararMenusLaterais();
 /* ── ACESSIBILIDADE: tamanho da letra (zoom) + alto contraste, lembrados ── */
 (function acessibilidade() {
   const ESCALAS = [85, 100, 115, 130, 150, 175, 200];
-  let escala = parseInt(localStorage.getItem('acai_escala'), 10) || 100;
+  const ESCALA_PADRAO = 115;   // fonte um pouco maior por padrão (pedido do Melque) — ajustável no menu de acessibilidade
+  let escala = parseInt(localStorage.getItem('acai_escala'), 10) || ESCALA_PADRAO;
   let contraste = localStorage.getItem('acai_contraste') === '1';
   function aplicar() {
     try { document.body.style.zoom = (escala / 100); } catch {}
     document.body.classList.toggle('alto-contraste', contraste);
     const pct = document.getElementById('acessi-pct'); if (pct) pct.textContent = escala + '%';
     const cb = document.getElementById('acessi-contraste'); if (cb) cb.checked = contraste;
+    try { agendarFit(); } catch {}   // mudou a fonte → reencaixa a tela na altura
   }
   function mudarEscala(dir) {
     let i = ESCALAS.indexOf(escala); if (i < 0) i = 1;
@@ -241,7 +275,7 @@ if (document.readyState !== 'loading') prepararMenusLaterais();
     document.getElementById('acessi-menos').addEventListener('click', () => mudarEscala(-1));
     document.getElementById('acessi-mais').addEventListener('click', () => mudarEscala(1));
     document.getElementById('acessi-contraste').addEventListener('change', e => { contraste = e.target.checked; localStorage.setItem('acai_contraste', contraste ? '1' : '0'); aplicar(); });
-    document.getElementById('acessi-reset').addEventListener('click', () => { escala = 100; contraste = false; localStorage.setItem('acai_escala', 100); localStorage.setItem('acai_contraste', '0'); aplicar(); pop.hidden = true; });
+    document.getElementById('acessi-reset').addEventListener('click', () => { escala = ESCALA_PADRAO; contraste = false; localStorage.setItem('acai_escala', ESCALA_PADRAO); localStorage.setItem('acai_contraste', '0'); aplicar(); pop.hidden = true; });
     aplicar();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire); else wire();
@@ -705,9 +739,47 @@ function finalizarVenda() {
   $('receb-fiado-cliente-box').style.display = 'none';
   confirmarDepoisDoCartao = false;
   $('cartao-texto').innerHTML = '<span class="atalho">C</span>artão';
+  if ($('receb-depois-nome')) $('receb-depois-nome').value = '';
+  if ($('receb-depois-valor')) $('receb-depois-valor').textContent = fmt(totalReceber);
   atualizarResumo();
   $('overlay-recebimento').classList.add('aberto');
   setTimeout(() => $('val-pix').focus(), 100);
+}
+/* Anotar a venda pra pagar depois: finaliza como "Anotado" (baixa estoque + faturamento,
+   mas NÃO entra no caixa) e cria a anotação ligada. Vira caixa quando marcar "✓ pagou". */
+async function anotarVendaDepois() {
+  if (!(totalReceber > 0) || !itensCupom.length) { toast('⚠ Cupom vazio — nada pra anotar'); return; }
+  const nome = ($('receb-depois-nome') ? $('receb-depois-nome').value : '').trim();
+  const desc = itensCupom.map(it => `${it.qtd}× ${it.desc}`).join(', ');
+  const total = totalReceber;
+  fecharRecebimento();
+  await concluirVenda(total, 'Anotado', 0, null, [{ forma: 'Anotado', valor: total }]);
+  const vid = (ultimaVenda && ultimaVenda.vendaId) || null;
+  await anotarNovo(nome, total, desc, vid);
+  toast(`📝 Anotado: ${nome || 'cliente'} deve ${fmt(total)} — fica no PDV até pagar`);
+}
+{ const b = $('btn-receb-depois'); if (b) b.addEventListener('click', anotarVendaDepois);
+  const n = $('receb-depois-nome'); if (n) n.addEventListener('keydown', e => { if (e.key === 'Enter' && ($('rdn-drop') || {}).hidden !== false) { e.preventDefault(); anotarVendaDepois(); } }); }
+// Dropdown CLICÁVEL de nomes (quem já teve anotação/fiado) — escolhe com o mouse, sem redigitar
+{
+  const inp = $('receb-depois-nome'), drop = $('rdn-drop'), btn = $('rdn-drop-btn');
+  if (inp && drop) {
+    const esconder = () => { drop.hidden = true; };
+    const render = (filtro) => {
+      const f = (filtro || '').trim().toLowerCase();
+      const lista = anotNomesCache.filter(n => !f || n.toLowerCase().includes(f));
+      drop.innerHTML = lista.length
+        ? lista.map(n => `<button type="button" class="rdn-item">${crmEsc(n)}</button>`).join('')
+        : '<div class="rdn-vazio">Ninguém salvo ainda — digite o nome</div>';
+      drop.querySelectorAll('.rdn-item').forEach(b => b.addEventListener('mousedown', e => { e.preventDefault(); inp.value = b.textContent; esconder(); inp.focus(); }));
+    };
+    const mostrar = () => { render(inp.value); drop.hidden = false; };
+    inp.addEventListener('focus', mostrar);
+    inp.addEventListener('input', mostrar);
+    inp.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); esconder(); } });
+    if (btn) btn.addEventListener('click', () => { if (drop.hidden) { inp.focus(); mostrar(); } else esconder(); });
+    document.addEventListener('click', e => { const w = inp.closest('.rdn-wrap'); if (w && !w.contains(e.target)) esconder(); });
+  }
 }
 $('btn-finalizar').addEventListener('click', finalizarVenda);
 
@@ -905,12 +977,15 @@ async function concluirVenda(total, descricaoPgto, troco = 0, fiado = null, paga
   itensCupom.forEach(it => {
     const p = PRODUTOS.find(x => x.codigo === it.cod);
     if (p && typeof p.estoque === 'number') {
-      const antes = p.estoque, baixa = it.qtd * (it.unidConsumo || 1);
-      p.estoque = Math.max(0, p.estoque - baixa);
-      logMov(p.codigo, 'saida', baixa, antes, p.estoque, 'venda', 'venda');
+      const baixa = it.qtd * (it.unidConsumo || 1);
+      // vender sem estoque deixa NEGATIVO (a falta fica visível); a entrada SOMA e normaliza (−3 + 10 = 7).
+      p.estoque = Math.round((p.estoque - baixa) * 100) / 100;
     }
   });
-  salvarEstoque();
+  // Só cache local (feedback instantâneo). A baixa no SERVIDOR é feita pelo POST /api/vendas
+  // (movimentarEstoqueVenda) — fonte ÚNICA. Não empurramos o estoque aqui (nem logMov nem sync)
+  // pra não baixar em DOBRO. Vale offline: o cupom fica na fila e a baixa aplica ao reconectar.
+  salvarCacheProdutos();
   ultimaVenda = {
     total, hora: agora, pgto: descricaoPgto || '—', troco: troco || 0,
     itens: itensCupom.map(it => ({ desc: it.desc, qtd: it.qtd, cod: it.cod, pacote: !!it.pacote, unidConsumo: it.unidConsumo || 1 })),
@@ -973,12 +1048,12 @@ async function cancelarUltimaVenda() {
     if (!it.cod) return;
     const p = PRODUTOS.find(x => x.codigo === it.cod);
     if (p && typeof p.estoque === 'number') {
-      const antes = p.estoque, dev = it.qtd * (it.unidConsumo || 1);
-      p.estoque += dev;
-      logMov(p.codigo, 'cancelamento', dev, antes, p.estoque, 'cancelamento venda', 'cancelamento');
+      const dev = it.qtd * (it.unidConsumo || 1);
+      p.estoque = Math.round((p.estoque + dev) * 100) / 100;   // devolve (só UI/cache)
     }
   });
-  salvarEstoque();
+  // devolução do estoque no SERVIDOR é feita pelo POST /api/vendas/:id/cancelar (estorno) — fonte única
+  salvarCacheProdutos();
 
   if (ultimaVenda.fiado) {
     const removido = await removerLancamentoPorId(ultimaVenda.fiado.clienteId, ultimaVenda.fiado.lancamentoId);
@@ -998,6 +1073,157 @@ async function cancelarUltimaVenda() {
 }
 $('btn-cancelar-venda').addEventListener('click', cancelarUltimaVenda);
 
+/* ── 📝 ANOTAÇÕES (pagar depois) ──────────────────────────────────────────────
+   Recebível rápido no PDV: fica até dar baixa; ao pagar vira entrada no financeiro
+   (backend). Some do total "a receber" quando pago. */
+let anotacoesCache = [], fiadosCache = [];
+async function carregarAnotacoes() {
+  try { const d = await (await fetch('/api/anotacoes', { cache: 'no-store' })).json();
+    anotacoesCache = Array.isArray(d.lista) ? d.lista : [];
+    fiadosCache = Array.isArray(d.fiados) ? d.fiados : [];
+    preencherNomesAnotacao(d.nomes || []);
+    renderAnotacoes(d.totalPendente != null ? d.totalPendente : null); }
+  catch { /* offline: mantém o que tem */ }
+}
+// Nomes já usados (anotações + clientes com fiado) — pra escolher com o mouse, sem redigitar
+let anotNomesCache = [];
+function preencherNomesAnotacao(nomes) {
+  const set = new Set([...(nomes || []), ...fiadosCache.map(f => f.nome)].filter(Boolean));
+  anotNomesCache = [...set].sort((a, b) => String(a).localeCompare(String(b)));
+}
+function renderAnotacoes(total) {
+  const box = $('anot-lista'); if (!box) return;
+  if (total == null) total = anotacoesCache.reduce((s, a) => s + (+a.valor || 0), 0) + fiadosCache.reduce((s, f) => s + (+f.saldo || 0), 0);
+  const badge = $('anot-total-badge'); if (badge) badge.textContent = fmt(total);
+  if (!anotacoesCache.length && !fiadosCache.length) { box.innerHTML = '<div class="anot-vazio">Ninguém devendo por aqui 🙌</div>'; return; }
+  // fiados em aberto (📒) — pagam na própria caixa, escolhendo a forma
+  const htmlFiado = fiadosCache.map(f => `
+    <div class="anot-item anot-fiado" data-cli="${f.cliente_id}">
+      <span class="anot-hora">🕒 ${f.hora || ''}</span>
+      <span class="anot-quem">📒 ${crmEsc(f.nome || 'cliente')}</span>
+      <span class="anot-desc">— fiado em aberto</span>
+      <span class="anot-vlr">${fmt(f.saldo)}</span>
+      <button class="anot-ok" data-fiado="${f.cliente_id}" title="Receber o fiado deste cliente">✓ pagou</button>
+    </div>`).join('');
+  const htmlAnot = anotacoesCache.map(a => `
+    <div class="anot-item" data-id="${a.id}">
+      <span class="anot-hora">🕒 ${a.hora || ''}</span>
+      <span class="anot-quem">${crmEsc(a.nome || 'sem nome')}</span>
+      <span class="anot-desc">${(a.nCompras > 1) ? `— ${a.nCompras} compras` : (a.descricao ? '— ' + crmEsc(a.descricao) : '')}</span>
+      <span class="anot-vlr">${fmt(a.valor)}</span>
+      <button class="anot-rel" data-rel="${a.id}" title="Ver o relatório desta pessoa">📄</button>
+      <button class="anot-ok" data-pagar="${a.id}" title="Recebeu — dar baixa">✓ pagou</button>
+      <button class="anot-del" data-del="${a.id}" title="Remover anotação">🗑</button>
+    </div>`).join('');
+  box.innerHTML = htmlFiado + htmlAnot;
+  box.querySelectorAll('[data-pagar]').forEach(b => b.addEventListener('click', () => pagarAnotacao(+b.dataset.pagar)));
+  box.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => excluirAnotacao(+b.dataset.del)));
+  box.querySelectorAll('[data-fiado]').forEach(b => b.addEventListener('click', () => pagarFiadoCaixa(+b.dataset.fiado)));
+  box.querySelectorAll('[data-rel]').forEach(b => b.addEventListener('click', () => verRelatorioAnotacao(+b.dataset.rel)));
+}
+// Relatório da pessoa na própria anotação: cada compra (hora · itens · valor) + total
+function verRelatorioAnotacao(id) {
+  const a = anotacoesCache.find(x => x.id === id); if (!a) return;
+  const hist = (a.historico && a.historico.length) ? a.historico : [{ data: a.criado_em, descricao: a.descricao, valor: a.valor }];
+  const nCompras = hist.filter(h => !(h.pagamento || (+h.valor < 0))).length || 1;
+  const linhas = hist.map(h => {
+    const dt = h.data ? new Date(h.data) : null;
+    const quando = dt ? dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+    const pag = h.pagamento || (+h.valor < 0);
+    return `<div class="arel-linha${pag ? ' arel-pag' : ''}"><span class="arel-quando">${quando}</span><span class="arel-desc">${crmEsc(h.descricao || '—')}</span><span class="arel-vlr">${pag ? '− ' + fmt(Math.abs(+h.valor || 0)) : fmt(h.valor)}</span></div>`;
+  }).join('');
+  abrirErpModal(`<h3 class="erp-modal-tit">📄 Relatório · ${crmEsc(a.nome || 'sem nome')}</h3>
+    <div class="arel-box">
+      <div class="arel-cab"><span>${nCompras} compra(s) · em aberto</span><b>${fmt(a.valor)}</b></div>
+      <div class="arel-lista">${linhas}</div>
+      <div class="arel-acoes">
+        <button class="crm-btn" id="arel-pagar">✅ Receber tudo (${fmt(a.valor)})</button>
+        <button class="crm-btn arel-fechar" id="arel-fechar">Fechar</button>
+      </div>
+    </div>`);
+  const p = $('arel-pagar'); if (p) p.addEventListener('click', () => { fecharErpModal(); pagarAnotacao(id); });
+  const f = $('arel-fechar'); if (f) f.addEventListener('click', fecharErpModal);
+}
+// Recebe o fiado de um cliente direto na caixa "quem paga depois" (quita o saldo, escolhendo a forma)
+function pagarFiadoCaixa(clienteId) {
+  const f = fiadosCache.find(x => x.cliente_id === clienteId); if (!f) return;
+  receberContaModal(`📒 Receber fiado · ${f.nome || 'cliente'}`, f.saldo, async (valor, forma) => {
+    const r = await (await fetch(`/api/clientes/${clienteId}/lancamentos`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tipo: 'pagamento', valor, formas: [{ nome: forma, valor }], descricao: 'Recebimento de fiado (caixa do PDV)' }) })).json();
+    if (r && r.erro) { toast('⚠ ' + r.erro); return; }
+    const parcial = valor < f.saldo - 0.001;
+    toast(parcial ? `✅ ${f.nome || 'Cliente'} pagou ${fmt(valor)} do fiado — falta ${fmt(f.saldo - valor)}` : `✅ ${f.nome || 'Cliente'} quitou o fiado ${fmt(f.saldo)}`);
+    await carregarAnotacoes();
+    try { if (typeof carregarClientes === 'function') carregarClientes(); } catch {}
+  });
+}
+async function anotarNovo(nome, valor, descricao, vendaId) {
+  const r = await (await fetch('/api/anotacoes', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nome: nome || '', valor: +valor || 0, descricao: descricao || '', venda_id: vendaId || null }) })).json();
+  if (r && r.erro) { toast('⚠ ' + r.erro); return null; }
+  await carregarAnotacoes();
+  return r;
+}
+function pagarAnotacao(id) {
+  const a = anotacoesCache.find(x => x.id === id); if (!a) return;
+  receberContaModal(`Receber · ${a.nome || 'cliente'}`, a.valor, async (valor, forma) => {
+    const r = await (await fetch(`/api/anotacoes/${id}/pagar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor, forma }) })).json();
+    if (r && r.erro) { toast('⚠ ' + r.erro); return; }
+    const parcial = valor < a.valor - 0.001;
+    toast(parcial ? `✅ ${a.nome || 'Cliente'} pagou ${fmt(valor)} — falta ${fmt(a.valor - valor)}` : `✅ ${a.nome || 'Anotação'} quitou ${fmt(a.valor)} — entrou no caixa`);
+    await carregarAnotacoes();
+    if ($('tela-financeiro') && $('tela-financeiro').classList.contains('ativa') && typeof finCarregarBase === 'function') { try { finCarregarBase(); } catch {} }
+  });
+}
+async function excluirAnotacao(id) {
+  const a = anotacoesCache.find(x => x.id === id);
+  if (!confirm(`Remover a anotação de ${a ? (a.nome || 'sem nome') : ''} (${a ? fmt(a.valor) : ''})?`)) return;
+  await fetch(`/api/anotacoes/${id}`, { method: 'DELETE' }).catch(() => {});
+  await carregarAnotacoes();
+}
+// Modal de recebimento com PARCIAL: mostra o saldo, deixa escolher QUANTO pagar (padrão = tudo)
+// e a FORMA. onConfirm(valor, forma). Usado pela anotação e pelo fiado da caixa do PDV.
+function receberContaModal(titulo, saldo, onConfirm) {
+  const rr = x => Math.round((+x || 0) * 100) / 100;
+  saldo = rr(saldo);
+  abrirErpModal(`<h3 class="erp-modal-tit">${titulo}</h3>
+    <div class="rcm">
+      <div class="rcm-saldo">Está devendo <b>${fmt(saldo)}</b></div>
+      <label class="rcm-lbl">Quanto vai pagar agora?</label>
+      <div class="rcm-valrow">
+        <input type="number" id="rcm-valor" class="rcm-input" step="0.01" min="0.01" max="${saldo}" value="${saldo.toFixed(2)}" inputmode="decimal">
+        <button type="button" class="rcm-tudo" id="rcm-tudo">Tudo</button>
+      </div>
+      <div class="rcm-resto" id="rcm-resto"></div>
+      <label class="rcm-lbl">Forma <small>(clique pra confirmar · teclas 1/2/3)</small></label>
+      <div class="anot-formas">${['Dinheiro', 'PIX', 'Cartão'].map((f, i) => `<button class="anot-forma-btn" data-f="${f}"><span class="num">${i + 1}</span>${f}</button>`).join('')}</div>
+    </div>`);
+  const inp = $('rcm-valor'), resto = $('rcm-resto');
+  const atualiza = () => {
+    let v = rr(+inp.value || 0); if (v > saldo) { v = saldo; inp.value = saldo.toFixed(2); }
+    const r = rr(saldo - v);
+    if (v > 0 && r > 0.001) { resto.textContent = `Fica devendo ${fmt(r)} pra pagar depois`; resto.className = 'rcm-resto parcial'; }
+    else if (v >= saldo) { resto.textContent = 'Quita a conta ✅'; resto.className = 'rcm-resto ok'; }
+    else { resto.textContent = ''; resto.className = 'rcm-resto'; }
+  };
+  inp.addEventListener('input', atualiza); atualiza();
+  $('rcm-tudo').addEventListener('click', () => { inp.value = saldo.toFixed(2); atualiza(); inp.focus(); inp.select(); });
+  const confirmar = (forma) => {
+    const v = Math.min(rr(+inp.value || 0), saldo);
+    if (!(v > 0)) { toast('⚠ Informe o valor'); inp.focus(); return; }
+    fecharErpModal(); onConfirm(v, forma);
+  };
+  document.querySelectorAll('.anot-forma-btn').forEach(b => b.addEventListener('click', () => confirmar(b.dataset.f)));
+  const tecla = (e) => {
+    if (document.activeElement === inp && !['Enter'].includes(e.key)) return;   // digitando o valor → não sequestra
+    if (e.key === '1') confirmar('Dinheiro'); else if (e.key === '2') confirmar('PIX'); else if (e.key === '3') confirmar('Cartão');
+    else if (e.key === 'Enter') confirmar('Dinheiro'); else if (e.key === 'Escape') fecharErpModal();
+  };
+  document.addEventListener('keydown', tecla);
+  const ov = $('overlay-erp'); const obs = new MutationObserver(() => { if (ov && !ov.classList.contains('aberto')) { document.removeEventListener('keydown', tecla); obs.disconnect(); } });
+  if (ov) obs.observe(ov, { attributes: true, attributeFilter: ['class'] });
+  setTimeout(() => { inp.focus(); inp.select(); }, 60);
+}
 /* ── Submodal: tipo de cartão (Crédito / Débito) ─────────── */
 function abrirCartaoTipo() {
   $('overlay-cartao-tipo').classList.add('aberto');
@@ -1013,6 +1239,12 @@ function escolherCartaoTipo(tipo) {
   $('cartao-texto').innerHTML = `<span class="atalho">C</span>artão <small>(${extra})</small>`;
   $('overlay-cartao-tipo').classList.remove('aberto');
   atualizarResumo();   // reflete o acréscimo de 20% do Alimentação na hora
+  // Alimentação: antes de finalizar, mostra o valor JÁ com +20% pra confirmar
+  if (tipo === 'Alimentação') { confirmarAlimentacao(); return; }
+  prosseguirAposCartao();
+}
+// Depois de escolhido o tipo (e confirmado, no caso do Alimentação): finaliza ou volta pro campo do valor.
+function prosseguirAposCartao() {
   if (confirmarDepoisDoCartao) {
     confirmarDepoisDoCartao = false;
     setTimeout(confirmarRecebimento, 50);
@@ -1020,6 +1252,23 @@ function escolherCartaoTipo(tipo) {
     setTimeout(() => $('val-cartao').focus(), 50);
   }
 }
+// Tela de confirmação do Cartão Alimentação: mostra valor, acréscimo de 20% e total que "fica no cartão".
+function confirmarAlimentacao() {
+  const base = +$('val-cartao').value || 0;
+  const acrescimo = Math.round(base * 0.20 * 100) / 100;
+  const total = Math.round(base * 1.20 * 100) / 100;
+  $('alim-base').textContent = fmt(base);
+  $('alim-acrescimo').textContent = '+ ' + fmt(acrescimo);
+  $('alim-total').textContent = fmt(total);
+  $('overlay-alimentacao').classList.add('aberto');
+  setTimeout(() => $('alim-confirmar').focus(), 50);
+}
+function fecharAlimentacao() { $('overlay-alimentacao').classList.remove('aberto'); }
+// Confirmou o valor do alimentação → segue o fluxo (finaliza a venda ou volta pro campo)
+$('alim-confirmar').addEventListener('click', () => { fecharAlimentacao(); prosseguirAposCartao(); });
+// Voltar → reabre a escolha de tipo de cartão (deixa trocar Crédito/Débito)
+$('alim-voltar').addEventListener('click', () => { fecharAlimentacao(); cartaoTipo = null; abrirCartaoTipo(); });
+$('overlay-alimentacao').addEventListener('click', e => { if (e.target === $('overlay-alimentacao')) { $('alim-voltar').click(); } });
 
 // Abre ao SAIR do campo do cartão se o usuário digitou um valor sem ter escolhido o tipo
 $('val-cartao').addEventListener('blur', () => {
@@ -1038,6 +1287,12 @@ document.addEventListener('keydown', e => {
   // só quando logado (app visível)
   if ($('app-principal').classList.contains('oculto')) return;
 
+  // ── Confirmação do Cartão Alimentação (fica ACIMA de tudo) ──
+  if ($('overlay-alimentacao').classList.contains('aberto')) {
+    if (e.key === 'Enter') { e.preventDefault(); $('alim-confirmar').click(); }
+    else if (e.key === 'Escape') { e.preventDefault(); $('alim-voltar').click(); }
+    return;
+  }
   // ── Submodal de tipo de cartão (a mais "em cima") ──
   if ($('overlay-cartao-tipo').classList.contains('aberto')) {
     if (e.key === '1') { e.preventDefault(); escolherCartaoTipo('Crédito'); }
@@ -1051,8 +1306,10 @@ document.addEventListener('keydown', e => {
 
   // ── Dentro do modal de recebimento ──
   if ($('overlay-recebimento').classList.contains('aberto')) {
-    // campo de texto (nome do cliente do fiado) digita livremente — duplo-espaço tratado por listener próprio
-    if (document.activeElement && document.activeElement.id === 'receb-fiado-cliente') return;
+    // QUALQUER campo de texto (nome do fiado / nome da anotação) digita livremente — os atalhos
+    // de letra (P/D/C) NÃO devem sequestrar a tecla enquanto se escreve um nome.
+    const ae = document.activeElement;
+    if (ae && ae.tagName === 'INPUT' && /^(text|search|)$/.test(ae.type || '')) return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -1202,8 +1459,15 @@ async function confirmarConsumoInterno() {
   let ok = 0; const erros = []; const okCodigos = new Set();
   for (const it of ciItens) {
     const r = await (await fetch('/api/movimentacoes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ produto_codigo: it.codigo, tipo: 'consumo_interno', quantidade: it.qtd, funcionario: func, obs }) })).json();
-    if (r && !r.erro) { ok++; okCodigos.add(it.codigo); } else erros.push(it.nome + (r && r.erro ? ' (' + r.erro + ')' : ''));
+    if (r && !r.erro) {
+      ok++; okCodigos.add(it.codigo);
+      // baixa TAMBÉM no cache local (o servidor já baixou via /api/movimentacoes) → a tela de Produtos
+      // reflete na hora e a próxima entrada/sync não apaga a baixa. Pode ficar negativo.
+      const p = PRODUTOS.find(x => x.codigo === it.codigo);
+      if (p && typeof p.estoque === 'number') p.estoque = Math.round((p.estoque - it.qtd) * 100) / 100;
+    } else erros.push(it.nome + (r && r.erro ? ' (' + r.erro + ')' : ''));
   }
+  if (ok) { salvarCacheProdutos(); if ($('tela-produtos') && $('tela-produtos').classList.contains('ativa')) renderProdutos(); }
   if (ok) toast(`✅ Consumo interno registrado (${ok} ${ok > 1 ? 'itens' : 'item'})`);
   if (erros.length) toast('⚠ Falhou: ' + erros.join(', '));
   // itens vindos do cupom do PDV: o que virou consumo SAI do cupom (não é venda)
@@ -1261,12 +1525,20 @@ function consumoPesqHTML(d) {
     <div class="prod-tabela-wrap cpq-lista"><table class="prod-tabela"><thead><tr><th>Quando</th><th>Produto</th><th class="col-num">Qtd</th><th>Quem</th></tr></thead><tbody>${lista}</tbody></table></div>`;
 }
 
+/* Aceita o formato NOVO (objetos {valor,codigo,nome} — cada botão é um produto) e o ANTIGO
+   (só números), pra não quebrar caches/servidores desatualizados. */
+function normalizarValoresLitros(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(v => (v && typeof v === 'object')
+    ? { valor: r2loc(+v.valor || 0), codigo: v.codigo || '', nome: v.nome || '' }
+    : { valor: r2loc(+v || 0), codigo: '', nome: '' }).filter(v => v.valor > 0);
+}
 /* F8 — LITROS produzidos, em 3 passos guiados: (1) digita os litros → Enter · (2) escolhe o
-   valor por número (atalhos = preços dos produtos) · (3) confirma (registrar ou editar).
+   PRODUTO/valor por número (cada botão é um produto) · (3) confirma (registrar ou editar).
    Os lançamentos ficam PENDENTES até o F10 (fechar o dia → rendimento). */
 async function abrirLitros() {
   let valores = []; try { valores = await (await fetch('/api/litros/valores', { cache: 'no-store' })).json(); } catch {}
-  if (!Array.isArray(valores)) valores = [];
+  valores = normalizarValoresLitros(valores);
   abrirErpModal(`<h3 class="erp-modal-tit">🫐 Litros produzidos <small class="op-ci-sub">(F8)</small></h3>
     <div class="ltr">
       <div class="ltr-entrada"><div class="ltr-steps" id="ltr-steps"></div></div>
@@ -1277,7 +1549,7 @@ async function abrirLitros() {
     </div>`);
 
   // Fluxo guiado em 3 passos: (1) litros → Enter · (2) valor por número · (3) confirma (registrar/editar).
-  let passo = 1, litros = 0, valorSel = null;
+  let passo = 1, litros = 0, valorSel = null, codigoSel = '', nomeSel = '';
   const stepBox = $('ltr-steps');
   const wrap = document.querySelector('.ltr');
 
@@ -1310,22 +1582,26 @@ async function abrirLitros() {
         <div class="ltr-val-cab"><label class="ltr-lbl">Açaí de qual valor?</label>${ehAdmin ? '<button class="ltr-edit-val" id="ltr-editar-valores">✏️ editar valores</button>' : ''}</div>
         <div class="ltr-valores-lbl"><small>clique ou tecle 1–9</small></div>
         <div class="ltr-valores ltr-valores-fila" id="ltr-valores">
-          ${valores.length ? valores.map((v, i) => `<button type="button" class="ltr-valbtn ltr-valbtn-fila" data-v="${v}">${i < 9 ? `<span class="num">${i + 1}</span>` : ''}<span class="ltr-valbtn-preco">${fmt(v)}</span></button>`).join('') : `<span class="ltr-semval">Nenhum valor cadastrado. ${ehAdmin ? 'Clique em “editar valores”.' : 'Peça ao administrador pra cadastrar.'}</span>`}
+          ${valores.length ? valores.map((v, i) => `<button type="button" class="ltr-valbtn ltr-valbtn-fila" data-i="${i}">${i < 9 ? `<span class="num">${i + 1}</span>` : ''}<span class="ltr-valbtn-preco">${fmt(v.valor)}</span>${v.nome ? `<span class="ltr-valbtn-nome">${v.nome}</span>` : ''}</button>`).join('') : `<span class="ltr-semval">Nenhum produto com preço cadastrado. ${ehAdmin ? 'Cadastre produtos ou clique em “editar valores”.' : 'Peça ao administrador pra cadastrar.'}</span>`}
         </div>
         <label class="ltr-lbl-outro">Outro valor <input type="number" step="0.01" min="0" id="ltr-valor-outro" class="ltr-input-mini" placeholder="R$"></label>
       </div>`;
-    stepBox.querySelectorAll('.ltr-valbtn').forEach(b => b.addEventListener('click', () => escolherValor(b.dataset.v)));
+    stepBox.querySelectorAll('.ltr-valbtn').forEach(b => b.addEventListener('click', () => escolherValor(valores[+b.dataset.i])));
     const outro = $('ltr-valor-outro');
     outro.addEventListener('keydown', e => { if (e.key === 'Enter' && outro.value) { e.preventDefault(); escolherValor(outro.value); } });
     $('ltr-volta2').addEventListener('click', () => { passo = 1; render(); });
     if (ehAdmin) { const eb = $('ltr-editar-valores'); if (eb) eb.addEventListener('click', abrirEditorValores); }
     setTimeout(() => { const f = stepBox.querySelector('.ltr-valbtn'); if (f) f.focus(); }, 40);
   }
-  function escolherValor(v) { const val = r2loc(+v || 0); if (!(val > 0)) { toast('⚠ Valor inválido'); return; } valorSel = val; passo = 3; render(); }
+  function escolherValor(sel) {
+    const obj = (sel && typeof sel === 'object') ? sel : { valor: r2loc(+sel || 0), codigo: '', nome: '' };
+    if (!(obj.valor > 0)) { toast('⚠ Valor inválido'); return; }
+    valorSel = obj.valor; codigoSel = obj.codigo || ''; nomeSel = obj.nome || ''; passo = 3; render();
+  }
 
   // Editor dos valores do F8 — só o admin chega aqui (o botão só aparece pra admin).
   function abrirEditorValores() {
-    let edit = [...valores];
+    let edit = valores.map(v => v.valor);   // o editor mexe só nos NÚMEROS; o vínculo com o produto é refeito ao salvar
     stepBox.innerHTML = `
       <div class="ltr-passo">
         <div class="ltr-passo-n">✏️ Editar valores do açaí · <button class="ltr-voltar" id="ltr-edit-volta">‹ voltar</button></div>
@@ -1349,7 +1625,8 @@ async function abrirLitros() {
     $('ltr-salvar-valores').addEventListener('click', async () => {
       const r = await (await fetch('/api/litros/valores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valores: edit }) })).json();
       if (r && r.erro) { toast('⚠ ' + r.erro); return; }
-      valores = Array.isArray(r.valores) ? r.valores : edit;
+      // recarrega já no formato novo (com produto vinculado a cada valor)
+      try { valores = normalizarValoresLitros(await (await fetch('/api/litros/valores', { cache: 'no-store' })).json()); } catch { valores = normalizarValoresLitros(edit); }
       toast('💾 Valores salvos'); passo = 2; render();
     });
     setTimeout(() => $('ltr-novo-valor').focus(), 50);
@@ -1359,7 +1636,7 @@ async function abrirLitros() {
     stepBox.innerHTML = `
       <div class="ltr-passo ltr-passo-conf">
         <div class="ltr-passo-n">Passo 3 de 3 · confirmação</div>
-        <div class="ltr-conf-grande">Você está dando entrada de<br><b class="ltr-conf-litros">${biNum(litros)} litros</b> de <b class="ltr-conf-valor">${fmt(valorSel)}</b>.<br>Posso registrar?</div>
+        <div class="ltr-conf-grande">Você está dando entrada de<br><b class="ltr-conf-litros">${biNum(litros)} litros</b> de <b class="ltr-conf-valor">${nomeSel ? nomeSel + ' · ' : ''}${fmt(valorSel)}</b>.<br>Posso registrar?</div>
         <div class="ltr-conf-acoes">
           <button class="fin-btn-salvar" id="ltr-registrar">✅ Registrar (Enter)</button>
           <button class="crm-btn" id="ltr-edit-litros">✏️ Editar litros</button>
@@ -1374,9 +1651,9 @@ async function abrirLitros() {
 
   async function registrar() {
     if (!(litros > 0 && valorSel > 0)) { toast('⚠ Preencha litros e valor'); return; }
-    const r = await (await fetch('/api/litros', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ litros, valor: valorSel }) })).json();
+    const r = await (await fetch('/api/litros', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ litros, valor: valorSel, produto_codigo: codigoSel }) })).json();
     if (r && r.erro) { toast('⚠ ' + r.erro); return; }
-    toast(`🫐 ${biNum(litros)} L de ${fmt(valorSel)} registrados`);
+    toast(`🫐 ${biNum(litros)} L de ${nomeSel || fmt(valorSel)} registrados`);
     fecharErpModal(); // fecha a tela inteira após confirmar — reabre no próximo F8
   }
 
@@ -1395,8 +1672,13 @@ async function abrirLitros() {
   async function carregarDia() {
     let d; try { d = await (await fetch('/api/litros', { cache: 'no-store' })).json(); } catch { $('ltr-lista').innerHTML = biErro(); return; }
     const rz = d.resumo || {};
-    const porValor = (rz.porValor || []).map(p => `<span class="ltr-chip">${fmt(p.valor)}: <b>${biNum(p.litros)} L</b></span>`).join('');
-    const linhas = (d.lista || []).map(x => `<div class="ltr-item"><span>${biNum(x.litros)} L · ${fmt(x.valor_unit)}</span><button class="ac-mini del" data-del="${x.id}" title="Remover">🗑</button></div>`).join('') || '<div class="ac-vazio">Nada ainda hoje.</div>';
+    const porValor = (rz.porValor || []).map(p => `<span class="ltr-chip">${p.nome ? p.nome + ' · ' : ''}${fmt(p.valor)}: <b>${biNum(p.litros)} L</b></span>`).join('');
+    const linhas = (d.lista || []).map(x => {
+      const hora = x.criado_em ? new Date(x.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+      const prod = x.produto_codigo ? PRODUTOS.find(p => p.codigo === x.produto_codigo) : null;
+      const nome = prod ? prod.nome : '';
+      return `<div class="ltr-item"><span class="ltr-item-hora">🕒 ${hora}</span><span class="ltr-item-desc"><b>${biNum(x.litros)} L</b> · ${nome ? nome + ' · ' : ''}${fmt(x.valor_unit)}</span><button class="ac-mini del" data-del="${x.id}" title="Remover">🗑</button></div>`;
+    }).join('') || '<div class="ac-vazio">Nada ainda hoje.</div>';
     $('ltr-lista').innerHTML = `<div class="ltr-total">Total: <b>${biNum(rz.totalLitros || 0)} litros</b></div><div class="ltr-porvalor">${porValor}</div>${linhas}`;
     $('ltr-lista').querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => { await fetch('/api/litros/' + b.dataset.del, { method: 'DELETE' }); carregarDia(); }));
   }
@@ -1407,7 +1689,7 @@ async function abrirFechamentoLitros() {
   let d; try { d = await (await fetch('/api/litros', { cache: 'no-store' })).json(); } catch { d = { resumo: {}, lista: [] }; }
   const rz = d.resumo || {};
   if (!(rz.totalLitros > 0)) { toast('🫐 Nenhum litro pendente pra fechar. Use F8 pra lançar a produção.'); return; }
-  const porValor = (rz.porValor || []).map(p => `<div class="ltr-fx-linha"><span>${fmt(p.valor)}</span><b>${biNum(p.litros)} L</b></div>`).join('');
+  const porValor = (rz.porValor || []).map(p => `<div class="ltr-fx-linha"><span>${p.nome ? p.nome + ' · ' : ''}${fmt(p.valor)}</span><b>${biNum(p.litros)} L</b></div>`).join('');
   abrirErpModal(`<h3 class="erp-modal-tit">🧮 Fechar o dia — sacas produzidas <small class="op-ci-sub">(F10)</small></h3>
     <div class="ltr-fx">
       <div class="ltr-fx-resumo"><div class="ltr-fx-tot">Produzido hoje: <b>${biNum(rz.totalLitros)} litros</b></div>${porValor}</div>
@@ -1432,8 +1714,14 @@ async function abrirFechamentoLitros() {
   });
 }
 let litrosFechamentoPendente = null;
+// Um produto é "de açaí" se o nome ou o departamento tiver "açaí"/"acai" (ignora acento/maiúscula).
+// Serve pra o F10 casar litros→produto SEM pescar Farinha/complemento que tenha o mesmo preço.
+function ehProdutoAcai(p) {
+  const t = (((p && p.nome) || '') + ' ' + ((p && p.departamento) || '')).toLowerCase();
+  return t.includes('açaí') || t.includes('açai') || t.includes('acaí') || t.includes('acai');
+}
 // Pré-preenche o rendimento a partir do fechamento dos litros: sacas → matéria-prima (entrada);
-// cada valor → uma linha de saída (litros na qtd, preço = valor; puxa o produto pelo preço de venda).
+// cada valor → uma linha de saída (litros na qtd, preço = valor; produto = o gravado no F8, ou açaí de mesmo preço).
 function preencherRendimentoDeLitros() {
   if (!litrosFechamentoPendente) return;
   const { sacas, valorSaca, resumo } = litrosFechamentoPendente;
@@ -1447,7 +1735,10 @@ function preencherRendimentoDeLitros() {
     porValor.forEach(pv => {
       addLinhaRendimento();
       const linha = $('rend-linhas').lastElementChild;
-      const prod = PRODUTOS.find(p => Math.abs((+p.precoVenda || 0) - (+pv.valor || 0)) < 0.005); // puxa o produto pelo preço
+      // 1º o produto EXATO gravado no F8; se não houver (lançamento antigo), casa por preço
+      // SÓ entre produtos de AÇAÍ (nunca Farinha/complemento, mesmo com preço igual).
+      let prod = pv.codigo ? PRODUTOS.find(p => p.codigo === pv.codigo) : null;
+      if (!prod) prod = PRODUTOS.find(p => ehProdutoAcai(p) && Math.abs((+p.precoVenda || 0) - (+pv.valor || 0)) < 0.005);
       if (prod) { linha.querySelector('.rl-cod').value = prod.codigo; linha.querySelector('.rl-desc').value = prod.nome; }
       linha.querySelector('.rl-preco').value = pv.valor;
       linha.querySelector('.rl-qtd').value = pv.litros;
@@ -1463,6 +1754,8 @@ document.addEventListener('keydown', e => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   // F9 → abrir a tela de VENDAS de qualquer lugar (não fica preso em modal aberto)
   if (e.key === 'F9') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); irPara('pdv'); setTimeout(() => $('codigo').focus(), 60); return; }
+  // F3 → abrir a tela de PRODUTOS (entrada de mercadoria/estoque) de qualquer lugar
+  if (e.key === 'F3') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); irPara('produtos'); return; }
   if (algumOverlayAberto && algumOverlayAberto()) return;
   if ($('overlay-erp') && $('overlay-erp').classList.contains('aberto')) return;
   const naOperacao = $('tela-pdv').classList.contains('ativa');
@@ -2833,7 +3126,7 @@ function renderDelivery() {
 
   // agrupa por status preservando a ordem que veio do servidor (id DESC = mais novo primeiro)
   const grupos = { pendente: [], preparo: [], rota: [], entregue: [] };
-  for (const p of pedidos) { const g = p.status === 'pronto' ? 'preparo' : p.status; if (grupos[g]) grupos[g].push(p); } // Fase 22: 'pronto' aparece na coluna de preparo
+  for (const p of (Array.isArray(pedidos) ? pedidos : [])) { const g = p.status === 'pronto' ? 'preparo' : p.status; if (grupos[g]) grupos[g].push(p); } // Fase 22: 'pronto' aparece na coluna de preparo (guarda: sessão expirada → não-lista)
   const entreguesHoje = grupos.entregue.filter(p => (p.criado || '').slice(0, 10) === hoje);
   const faturamento = entreguesHoje.reduce((s, p) => s + (p.total || 0), 0);
 
@@ -2987,6 +3280,7 @@ function recarregarDadosPosLogin() {
   carregarEstoque().then(importarFinanceiroInicial).catch(() => {});
   carregarClientes();
   carregarPedidos().then(renderDelivery).catch(() => {});
+  if (typeof carregarAnotacoes === 'function') carregarAnotacoes();   // caixa de anotações do PDV
   atualizarBadgeFila();
   processarFila(); // reenvia pendências offline assim que loga
 }
@@ -4506,6 +4800,7 @@ async function carregarAvisos() {
   if (!box) return;
   let avisos = [];
   try { avisos = await (await fetch('/api/avisos', { cache: 'no-store' })).json(); } catch { return; }
+  if (!Array.isArray(avisos)) return;   // sessão expirada/erro → resposta não é lista (evita quebrar)
   box.innerHTML = avisos.map(a => {
     const on = !!a.ativo;
     return `<div class="aviso-linha" data-id="${a.id}">

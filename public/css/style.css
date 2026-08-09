@@ -1208,6 +1208,20 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 .cartao-opc-alim { grid-column: 1 / -1; flex-direction: row; justify-content: center; padding: 16px; border-color: rgba(245, 185, 59, 0.4); background: rgba(245, 185, 59, 0.1); }
 .cartao-opc-alim:hover, .cartao-opc-alim:focus { background: rgba(245, 185, 59, 0.2); border-color: var(--amarelo); }
 .cartao-opc .lbl small { color: var(--amarelo); font-weight: 800; margin-left: 4px; }
+/* Confirmação do Cartão Alimentação (mostra o valor já com +20% antes de finalizar) */
+.modal-alim { border-color: rgba(245, 185, 59, 0.45); }
+.alim-resumo { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 18px; text-align: left; }
+.alim-linha { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 15px; color: rgba(243, 234, 251, 0.75); padding: 6px 4px; }
+.alim-linha b { color: var(--branco); font-variant-numeric: tabular-nums; font-weight: 800; }
+.alim-mais { color: var(--amarelo) !important; }
+.alim-linha.alim-total { border-top: 1px solid var(--vidro-borda); padding-top: 12px; margin-top: 2px; font-size: 16px; }
+.alim-linha.alim-total b { font-size: 26px; color: var(--amarelo); }
+.alim-acoes { display: flex; gap: 10px; }
+.alim-btn-voltar { flex: none; padding: 13px 16px; border-radius: 12px; border: 1px solid var(--vidro-borda); background: transparent; color: rgba(243, 234, 251, 0.75); font-family: inherit; font-weight: 700; font-size: 14px; cursor: pointer; }
+.alim-btn-voltar:hover { background: var(--vidro); color: var(--branco); }
+.alim-btn-ok { flex: 1; padding: 14px; border-radius: 12px; border: none; background: linear-gradient(135deg, var(--amarelo), #E0A800); color: #3a2c00; font-family: inherit; font-weight: 800; font-size: 15px; cursor: pointer; transition: 0.15s; }
+.alim-btn-ok:hover { transform: translateY(-1px); }
+.alim-btn-ok:focus { outline: 2px solid var(--amarelo); outline-offset: 2px; }
 .cartao-opc:hover, .cartao-opc:focus {
   background: rgba(155, 48, 255, 0.25);
   border-color: var(--acai-claro);
@@ -1410,6 +1424,82 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 .ultima-venda.cancelada { opacity: 0.55; }
 .ultima-venda.cancelada .uv-itens,
 .ultima-venda.cancelada .uv-linha strong { text-decoration: line-through; }
+
+/* 📝 Anotações (pagar depois) — caixa no PDV */
+.anotacoes-box { border: 1px solid rgba(245, 185, 59, 0.4); background: rgba(245, 185, 59, 0.06); border-radius: 14px; padding: 12px 14px; }
+.anot-titulo { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; color: var(--amarelo); }
+.anot-titulo small { font-weight: 600; color: rgba(243, 234, 251, 0.6); text-transform: none; }
+.anot-total { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--amarelo); }
+.anot-add { display: flex; gap: 6px; margin: 10px 0; }
+.anot-add input { flex: 1; min-width: 0; padding: 9px 11px; border-radius: 9px; border: 1px solid var(--vidro-borda); background: rgba(0, 0, 0, 0.25); color: var(--branco); font-size: 13px; }
+.anot-add input:focus { outline: none; border-color: var(--amarelo); }
+.anot-add input[type=number] { flex: 0 0 76px; }
+.anot-add button { flex: none; padding: 9px 12px; border-radius: 9px; border: none; background: var(--amarelo); color: #3a2c00; font-weight: 800; font-size: 13px; cursor: pointer; }
+.anot-lista { display: flex; flex-direction: column; }
+.anot-vazio { font-size: 12.5px; color: rgba(243, 234, 251, 0.45); padding: 6px 2px; }
+.anot-item { display: flex; align-items: center; gap: 7px; padding: 7px 4px; border-top: 1px solid rgba(255, 255, 255, 0.07); font-size: 13px; }
+.anot-hora { font-size: 11px; font-weight: 700; color: var(--acai-rosa); white-space: nowrap; flex: none; }
+.anot-quem { font-weight: 800; color: var(--branco); white-space: nowrap; }
+.anot-fiado .anot-quem { color: #ffd98a; }   /* fiado (📒) — tom distinto da anotação rápida */
+.anot-desc { color: rgba(243, 234, 251, 0.6); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.anot-vlr { color: var(--amarelo); font-weight: 800; font-variant-numeric: tabular-nums; flex: none; }
+.anot-ok { flex: none; border: none; background: rgba(0, 230, 118, 0.18); color: var(--verde); border-radius: 7px; padding: 4px 8px; cursor: pointer; font-weight: 800; font-size: 12px; }
+.anot-ok:hover { background: var(--verde); color: #04321c; }
+.anot-del { flex: none; border: none; background: rgba(255, 83, 112, 0.15); color: var(--vermelho); border-radius: 7px; padding: 4px 7px; cursor: pointer; }
+.anot-del:hover { background: var(--vermelho); color: #fff; }
+.anot-rel { flex: none; border: none; background: rgba(155, 48, 255, 0.16); color: var(--acai-rosa); border-radius: 7px; padding: 4px 7px; cursor: pointer; }
+.anot-rel:hover { background: var(--acai-claro); color: #fff; }
+/* relatório da pessoa (histórico de compras da anotação) */
+.arel-box { display: flex; flex-direction: column; gap: 10px; }
+.arel-cab { display: flex; align-items: baseline; justify-content: space-between; font-size: 14px; color: rgba(243, 234, 251, 0.7); padding-bottom: 8px; border-bottom: 1px solid var(--vidro-borda); }
+.arel-cab b { color: var(--amarelo); font-size: 20px; font-variant-numeric: tabular-nums; }
+.arel-lista { display: flex; flex-direction: column; max-height: 46vh; overflow-y: auto; }
+.arel-linha { display: flex; align-items: baseline; gap: 10px; font-size: 13px; padding: 8px 2px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.arel-quando { color: var(--acai-rosa); font-weight: 700; white-space: nowrap; font-size: 11.5px; flex: none; }
+.arel-desc { flex: 1; min-width: 0; color: var(--branco); }
+.arel-vlr { color: var(--amarelo); font-weight: 800; font-variant-numeric: tabular-nums; flex: none; }
+.arel-acoes { display: flex; gap: 10px; margin-top: 4px; }
+.arel-acoes .crm-btn { flex: 1; }
+.arel-fechar { flex: 0 0 auto !important; }
+.arel-pag .arel-desc { color: var(--verde); }
+.arel-pag .arel-vlr { color: var(--verde); }
+/* modal de recebimento com parcial */
+.rcm { display: flex; flex-direction: column; gap: 8px; }
+.rcm-saldo { font-size: 15px; color: rgba(243, 234, 251, 0.75); }
+.rcm-saldo b { color: var(--amarelo); font-size: 20px; }
+.rcm-lbl { font-size: 12px; font-weight: 700; color: rgba(243, 234, 251, 0.6); margin-top: 4px; }
+.rcm-lbl small { font-weight: 500; opacity: 0.8; }
+.rcm-valrow { display: flex; gap: 8px; }
+.rcm-input { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--vidro-borda); background: rgba(0, 0, 0, 0.25); color: var(--branco); font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.rcm-input:focus { outline: none; border-color: var(--amarelo); }
+.rcm-tudo { flex: none; padding: 0 16px; border-radius: 10px; border: 1px solid var(--vidro-borda); background: rgba(155, 48, 255, 0.14); color: var(--branco); font-weight: 800; cursor: pointer; }
+.rcm-tudo:hover { background: rgba(155, 48, 255, 0.28); }
+.rcm-resto { min-height: 16px; font-size: 12.5px; font-weight: 700; }
+.rcm-resto.parcial { color: var(--amarelo); }
+.rcm-resto.ok { color: var(--verde); }
+/* mini-seletor de forma ao dar baixa */
+.anot-formas { display: flex; gap: 10px; margin-top: 8px; }
+.anot-forma-btn { flex: 1; padding: 16px; border-radius: 12px; border: 1px solid var(--vidro-borda); background: rgba(155, 48, 255, 0.08); color: var(--branco); font-family: inherit; font-weight: 800; font-size: 15px; cursor: pointer; position: relative; }
+.anot-forma-btn:hover, .anot-forma-btn:focus { background: rgba(155, 48, 255, 0.22); border-color: var(--acai-claro); outline: none; }
+.anot-forma-btn .num { position: absolute; top: 4px; left: 7px; font-size: 10px; opacity: 0.6; }
+/* bloco "pagar depois" na tela de finalizar */
+.receb-depois { border: 1px dashed rgba(245, 185, 59, 0.55); background: rgba(245, 185, 59, 0.08); border-radius: 12px; padding: 12px; margin-top: 4px; }
+.receb-depois-tit { font-size: 13px; font-weight: 800; color: var(--amarelo); margin-bottom: 8px; }
+.receb-depois-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.receb-depois-row input { flex: 1; min-width: 140px; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--vidro-borda); background: rgba(0, 0, 0, 0.25); color: var(--branco); font-size: 14px; }
+.receb-depois-row input:focus { outline: none; border-color: var(--amarelo); }
+.btn-receb-depois { flex: none; padding: 10px 14px; border-radius: 9px; border: none; background: var(--amarelo); color: #3a2c00; font-weight: 800; font-size: 13px; cursor: pointer; }
+.btn-receb-depois:hover { filter: brightness(1.05); }
+/* dropdown clicável de nomes (quem já pagou depois) */
+.rdn-wrap { position: relative; flex: 1; min-width: 140px; display: flex; }
+.rdn-wrap #receb-depois-nome { flex: 1; min-width: 0; padding: 10px 34px 10px 12px; border-radius: 9px; border: 1px solid var(--vidro-borda); background: rgba(0, 0, 0, 0.25); color: var(--branco); font-size: 14px; }
+.rdn-wrap #receb-depois-nome:focus { outline: none; border-color: var(--amarelo); }
+.rdn-drop-btn { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 26px; height: 28px; border: none; background: transparent; color: var(--acai-rosa); font-size: 15px; cursor: pointer; border-radius: 7px; }
+.rdn-drop-btn:hover { background: rgba(155, 48, 255, 0.18); }
+.rdn-drop { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 40; max-height: 200px; overflow-y: auto; background: #2a0a3d; border: 1px solid rgba(155, 48, 255, 0.4); border-radius: 10px; box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5); padding: 4px; }
+.rdn-item { display: block; width: 100%; text-align: left; padding: 9px 11px; border: none; background: transparent; color: var(--branco); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; border-radius: 8px; }
+.rdn-item:hover { background: rgba(155, 48, 255, 0.25); }
+.rdn-vazio { padding: 10px 11px; font-size: 12.5px; color: rgba(243, 234, 251, 0.5); }
 .uv-itens {
   list-style: none;
   padding: 0 0 6px;
@@ -1450,16 +1540,24 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 
 .prod-painel { display: none; flex: 1; min-height: 0; }
 .prod-painel.ativo {
-  display: grid; grid-template-columns: 380px minmax(0, 760px); gap: 24px;
-  max-width: 1180px; width: 100%; margin: 0 auto; justify-content: center;
+  /* form OCUPA a maior parte (grupos em 2 colunas) e a lista fica enxuta à direita — usa a largura toda */
+  display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px;
+  max-width: 1500px; width: 100%; margin: 0 auto;
 }
 #ptab-hist.ativo { display: flex; flex-direction: column; gap: 16px; }
 
 .prod-form {
   background: rgba(0, 0, 0, 0.25); border: 1px solid var(--vidro-borda); border-radius: 16px;
-  padding: 20px; display: flex; flex-direction: column; gap: 12px; align-self: start;
+  padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; align-self: start;
 }
 .prod-form h3 { font-size: 16px; color: var(--branco); }
+/* Cabeçalho do form (título + botão rendimento) numa linha só */
+.pf-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+/* Grupos do form em 2 COLUNAS → o form fica largo e baixo (aproveita o espaço, cabe sem rolar) */
+.pf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; align-items: start; }
+.pf-grupo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pf-grupo-full { grid-column: 1 / -1; }   /* "Dar entrada" ocupa a largura toda */
+@media (max-width: 1024px) { .prod-painel.ativo { grid-template-columns: 1fr; } .pf-grid { grid-template-columns: 1fr; } }
 .prod-nota { font-size: 12px; color: rgba(243, 234, 251, 0.55); line-height: 1.5; }
 .prod-nota strong { color: var(--acai-rosa); }
 .pf-hint { font-size: 11px; color: var(--acai-rosa); margin: -4px 0 0; min-height: 14px; }
@@ -3724,7 +3822,10 @@ button.crm-compra:hover { background: rgba(155, 48, 255, 0.18); border-color: rg
 .ltr-porvalor { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .ltr-chip { font-size: 12px; color: rgba(243, 234, 251, 0.75); background: rgba(255, 255, 255, 0.05); border-radius: 999px; padding: 3px 10px; }
 .ltr-chip b { color: var(--branco); }
-.ltr-item { display: flex; align-items: center; justify-content: space-between; font-size: 13px; padding: 6px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+.ltr-item { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 6px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+.ltr-item-hora { font-size: 11.5px; font-weight: 700; color: var(--acai-rosa); opacity: 0.85; white-space: nowrap; flex: none; font-variant-numeric: tabular-nums; }
+.ltr-item-desc { flex: 1; text-align: right; }
+.ltr-item .ac-mini { flex: none; }
 .ltr-fx { display: flex; flex-direction: column; gap: 10px; max-width: 460px; }
 .ltr-fx-resumo { background: rgba(155, 48, 255, 0.08); border: 1px solid rgba(155, 48, 255, 0.2); border-radius: 11px; padding: 11px 14px; }
 .ltr-fx-tot { font-size: 14px; margin-bottom: 6px; }
@@ -3755,6 +3856,7 @@ button.crm-compra:hover { background: rgba(155, 48, 255, 0.18); border-color: rg
 .ltr-valbtn-fila .num { position: static; font-size: 13px; opacity: 0.7; width: 24px; height: 24px; line-height: 24px; text-align: center; border-radius: 7px; background: rgba(255, 255, 255, 0.08); flex: none; }
 .ltr-valbtn-fila:focus { outline: none; border-color: var(--acai-claro); box-shadow: 0 0 0 2px rgba(155, 48, 255, 0.35); }
 .ltr-valbtn-preco { font-weight: 800; font-size: 21px; }
+.ltr-valbtn-nome { font-size: 13px; font-weight: 700; opacity: 0.75; margin-left: auto; text-align: right; }
 .ltr-editlista { display: flex; flex-direction: column; gap: 7px; }
 .ltr-editrow { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; border-radius: 10px; border: 1px solid var(--vidro-borda); background: rgba(0, 0, 0, 0.22); }
 .ltr-editrow b { font-size: 17px; color: var(--branco); }

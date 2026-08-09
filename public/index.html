@@ -208,6 +208,12 @@
           <div class="uv-linha"><span>Hora</span><strong id="uv-hora">--:--</strong></div>
         </div>
 
+        <!-- 📝 Anotações (pagar depois): fica no PDV até dar baixa; conta como "a receber" -->
+        <div class="anotacoes-box" id="anotacoes-box">
+          <div class="anot-titulo">📝 Anotações</div>
+          <div class="anot-lista" id="anot-lista"></div>
+        </div>
+
         <div class="atalhos-dica">
           <span class="atalhos-titulo">⚡ Atalhos do operador</span>
           <span><kbd>Enter</kbd> adicionar</span>
@@ -349,72 +355,89 @@
       <!-- ─ MERCADORIAS ─ -->
       <div class="prod-painel ativo" id="ptab-merc">
         <form class="prod-form" id="form-produto" autocomplete="off">
-          <h3>📥 Entrada de Mercadoria</h3>
-          <button type="button" class="btn-rendimento" id="btn-abrir-rendimento" title="Comprei uma matéria-prima (ex.: saca de açaí) e vou gerar vários produtos com preços diferentes">🫐 <span class="atalho">P</span>rocessar em vários produtos <small>(rendimento)</small></button>
-
-          <div class="pf-grupo-tit">🏷️ Unidade</div>
-          <div class="pf-row pf-row-3u">
-            <div class="campo"><label>Código *</label><input id="pf-codigo" required></div>
-            <div class="campo"><label>Descrição *</label><input id="pf-nome" required></div>
-            <div class="campo"><label>Preço venda un. (R$)</label><input type="number" id="pf-venda" step="0.01" min="0" placeholder="0,00"></div>
+          <div class="pf-topo">
+            <h3>📥 Entrada de Mercadoria</h3>
+            <button type="button" class="btn-rendimento" id="btn-abrir-rendimento" title="Comprei uma matéria-prima (ex.: saca de açaí) e vou gerar vários produtos com preços diferentes">🫐 <span class="atalho">P</span>rocessar em vários produtos <small>(rendimento)</small></button>
           </div>
 
-          <div class="pf-grupo-tit">📦 Caixa / conjunto <small>(vender a caixa inteira)</small></div>
-          <div class="pf-row pf-row-4c">
-            <div class="campo"><label>Cód. conjunto</label><input id="pf-conjunto" placeholder="opcional"></div>
-            <div class="campo"><label>Descrição conjunto</label><input id="pf-conjunto-nome" placeholder="ex.: Caixa 12 un"></div>
-            <div class="campo"><label>Unid. por caixa</label><input type="number" id="pf-unidcaixa" step="1" min="0" placeholder="1"></div>
-            <div class="campo"><label>Preço venda cx (R$)</label><input type="number" id="pf-vendacaixa" step="0.01" min="0" placeholder="0,00" title="Preço de venda da caixa inteira (pacote)"></div>
-          </div>
-          <p class="pf-hint">💡 Cód. conjunto + preço da caixa liberam vender a caixa inteira na Venda (desconta "Unid. por caixa" do estoque de uma vez).</p>
-
-          <div class="pf-grupo-tit">🏭 Origem</div>
-          <div class="pf-row">
-            <div class="campo"><label>Fornecedor</label><input id="pf-fornecedor" placeholder="Ex: Distribuidora X"></div>
-            <div class="campo"><label>Departamento</label><input id="pf-departamento" list="lista-departamentos" placeholder="Ex: Açaí"></div>
-          </div>
-          <label class="pf-granel-check"><input type="checkbox" id="pf-granel"> 🛍️ Produto a granel <small>(açaí/farinha/tapioca — na venda baixa 1 saco + 1 sacola; os demais só 1 sacola)</small></label>
-
-          <div class="pf-row pf-est-row">
-            <div class="pf-est-card"><span>Estoque conjunto</span><b id="pf-est-conj">—</b></div>
-            <div class="pf-est-card"><span>Unidades</span><b id="pf-est-un">—</b></div>
-            <div class="pf-est-card total"><span>Total (unid.)</span><b id="pf-est-total">—</b></div>
-            <div class="campo"><label>Estoque mínimo</label><input type="number" id="pf-min" step="1" min="0" placeholder="0"></div>
-          </div>
-
-          <button type="button" class="pf-avancado-btn" id="pf-avancado-btn">💲 Custo e lucro <span class="pf-av-seta">▾</span></button>
-          <div class="pf-avancado" id="pf-avancado" style="display:none">
-            <div class="pf-row">
-              <div class="campo"><label>Preço compra unit. (R$)</label><input type="number" id="pf-compra" step="0.01" min="0" placeholder="0,00"></div>
-              <div class="campo"><label>Caixas compradas</label><input type="number" id="pf-caixas" step="1" min="0" placeholder="opcional"></div>
-              <div class="campo"><label>Valor cx compra (R$)</label><input type="number" id="pf-valorcaixa" step="0.01" min="0" placeholder="0,00"></div>
+          <div class="pf-grid">
+            <div class="pf-grupo">
+              <div class="pf-grupo-tit">🏷️ Unidade</div>
+              <div class="pf-row pf-row-3u">
+                <div class="campo"><label>Código *</label><input id="pf-codigo" required></div>
+                <div class="campo"><label>Descrição *</label><input id="pf-nome" required></div>
+                <div class="campo"><label>Preço venda un. (R$)</label><input type="number" id="pf-venda" step="0.01" min="0" placeholder="0,00"></div>
+              </div>
             </div>
-            <div class="pf-margem"><span>Margem de lucratividade</span><strong id="pf-margem">—</strong></div>
-            <p class="pf-hint">💡 Valor total ÷ quantidade = custo unitário · Caixas × unid. = quantidade · Caixas × valor cx = valor total.</p>
-          </div>
 
-          <div class="pf-entrada-bar">
-            <div class="pf-entrada-tit">📥 Dar entrada (reabastecimento)</div>
-            <div class="pf-row pf-entrada-row">
-              <div class="campo"><label>Nº da nota</label><input id="pf-nota" placeholder="opcional"></div>
-              <div class="campo"><label>Data</label><input type="date" id="pf-data-entrada"></div>
-              <div class="campo"><label>Entrada (qtd)</label><input type="number" id="pf-entrada" step="1" min="0" placeholder="0"></div>
-              <div class="campo"><label>Pagamento</label><select id="pf-pagamento"><option value="">—</option><option>Dinheiro</option><option>PIX</option><option>Cartão</option><option>A prazo</option><option>Boleto</option></select></div>
-              <div class="campo"><label>Valor total pago (R$)</label><input type="number" id="pf-valortotal" step="0.01" min="0" placeholder="0,00"></div>
+            <div class="pf-grupo">
+              <div class="pf-grupo-tit">📦 Caixa / conjunto <small>(vender a caixa inteira)</small></div>
+              <div class="pf-row pf-row-4c">
+                <div class="campo"><label>Cód. conjunto</label><input id="pf-conjunto" placeholder="opcional"></div>
+                <div class="campo"><label>Descrição conjunto</label><input id="pf-conjunto-nome" placeholder="ex.: Caixa 12 un"></div>
+                <div class="campo"><label>Unid. por caixa</label><input type="number" id="pf-unidcaixa" step="1" min="0" placeholder="1"></div>
+                <div class="campo"><label>Preço venda cx (R$)</label><input type="number" id="pf-vendacaixa" step="0.01" min="0" placeholder="0,00" title="Preço de venda da caixa inteira (pacote)"></div>
+              </div>
+              <p class="pf-hint">💡 Cód. conjunto + preço da caixa liberam vender a caixa inteira na Venda.</p>
             </div>
-            <div class="pf-nota-resumo" id="pf-nota-resumo" style="display:none">
-              <span>📋 Total da nota <strong id="pf-nota-resumo-num">—</strong></span>
-              <span><strong id="pf-nota-resumo-total">R$ 0,00</strong> · <span id="pf-nota-resumo-qtd">0 entradas</span></span>
+
+            <div class="pf-grupo">
+              <div class="pf-grupo-tit">🏭 Origem</div>
+              <div class="pf-row">
+                <div class="campo"><label>Fornecedor</label><input id="pf-fornecedor" placeholder="Ex: Distribuidora X"></div>
+                <div class="campo"><label>Departamento</label><input id="pf-departamento" list="lista-departamentos" placeholder="Ex: Açaí"></div>
+              </div>
+              <label class="pf-granel-check"><input type="checkbox" id="pf-granel"> 🛍️ Produto a granel <small>(açaí/farinha/tapioca — na venda baixa 1 saco + 1 sacola; os demais só 1 sacola)</small></label>
             </div>
-            <div class="pf-nota-lista" id="pf-nota-lista"></div>
+
+            <div class="pf-grupo">
+              <div class="pf-grupo-tit">📊 Estoque</div>
+              <div class="pf-row pf-est-row">
+                <div class="pf-est-card"><span>Estoque conjunto</span><b id="pf-est-conj">—</b></div>
+                <div class="pf-est-card"><span>Unidades</span><b id="pf-est-un">—</b></div>
+                <div class="pf-est-card total"><span>Total (unid.)</span><b id="pf-est-total">—</b></div>
+                <div class="campo"><label>Estoque mínimo</label><input type="number" id="pf-min" step="1" min="0" placeholder="0"></div>
+              </div>
+            </div>
+
+            <div class="pf-grupo">
+              <button type="button" class="pf-avancado-btn" id="pf-avancado-btn">💲 Custo e lucro <span class="pf-av-seta">▾</span></button>
+              <div class="pf-avancado" id="pf-avancado" style="display:none">
+                <div class="pf-row">
+                  <div class="campo"><label>Preço compra unit. (R$)</label><input type="number" id="pf-compra" step="0.01" min="0" placeholder="0,00"></div>
+                  <div class="campo"><label>Caixas compradas</label><input type="number" id="pf-caixas" step="1" min="0" placeholder="opcional"></div>
+                  <div class="campo"><label>Valor cx compra (R$)</label><input type="number" id="pf-valorcaixa" step="0.01" min="0" placeholder="0,00"></div>
+                </div>
+                <div class="pf-margem"><span>Margem de lucratividade</span><strong id="pf-margem">—</strong></div>
+                <p class="pf-hint">💡 Valor total ÷ quantidade = custo unitário · Caixas × unid. = quantidade.</p>
+              </div>
+            </div>
+
+            <div class="pf-grupo pf-grupo-full">
+              <div class="pf-entrada-bar">
+                <div class="pf-entrada-tit">📥 Dar entrada (reabastecimento)</div>
+                <div class="pf-row pf-entrada-row">
+                  <div class="campo"><label>Nº da nota</label><input id="pf-nota" placeholder="opcional"></div>
+                  <div class="campo"><label>Data</label><input type="date" id="pf-data-entrada"></div>
+                  <div class="campo"><label>Entrada (qtd)</label><input type="number" id="pf-entrada" step="1" min="0" placeholder="0"></div>
+                  <div class="campo"><label>Pagamento</label><select id="pf-pagamento"><option value="">—</option><option>Dinheiro</option><option>PIX</option><option>Cartão</option><option>A prazo</option><option>Boleto</option></select></div>
+                  <div class="campo"><label>Valor total pago (R$)</label><input type="number" id="pf-valortotal" step="0.01" min="0" placeholder="0,00"></div>
+                </div>
+                <div class="pf-nota-resumo" id="pf-nota-resumo" style="display:none">
+                  <span>📋 Total da nota <strong id="pf-nota-resumo-num">—</strong></span>
+                  <span><strong id="pf-nota-resumo-total">R$ 0,00</strong> · <span id="pf-nota-resumo-qtd">0 entradas</span></span>
+                </div>
+                <div class="pf-nota-lista" id="pf-nota-lista"></div>
+              </div>
+            </div>
           </div>
 
           <div class="pf-acoes">
             <button type="button" class="btn-prod-limpar" id="btn-prod-limpar"><span class="atalho">L</span>impar</button>
             <button type="button" class="btn-prod-excluir" id="btn-prod-excluir" title="Excluir definitivamente o produto deste código">🗑 E<span class="atalho">x</span>cluir</button>
+            <button type="button" class="btn-prod-zerar" id="btn-prod-zerar" title="Apagar TODOS os produtos cadastrados (recomeçar do zero)">🧹 <span class="atalho">Z</span>erar</button>
             <button type="submit" class="btn-prod-salvar">💾 <span class="atalho">G</span>ravar / dar entrada</button>
           </div>
-          <button type="button" class="btn-prod-zerar" id="btn-prod-zerar" title="Apagar TODOS os produtos cadastrados (recomeçar do zero)">🧹 <span class="atalho">Z</span>erar todos os cadastros</button>
         </form>
 
         <div class="prod-detalhe" id="prod-detalhe">
@@ -1406,6 +1429,19 @@
           <div class="fiado-saldo" id="fiado-saldo"></div>
         </div>
 
+        <!-- BLOCO 4b — Anotar pra pagar depois (recebível rápido, sem cadastrar cliente) -->
+        <div class="receb-depois" id="receb-depois">
+          <div class="receb-depois-tit">📝 Ou anote pra pagar depois</div>
+          <div class="receb-depois-row">
+            <div class="rdn-wrap">
+              <input type="text" id="receb-depois-nome" placeholder="Nome do cliente…" autocomplete="off">
+              <button type="button" class="rdn-drop-btn" id="rdn-drop-btn" title="Escolher da lista de quem já pagou depois">▾</button>
+              <div class="rdn-drop" id="rdn-drop" hidden></div>
+            </div>
+            <button type="button" class="btn-receb-depois" id="btn-receb-depois">📝 Anotar <span id="receb-depois-valor">R$ 0,00</span> pra depois</button>
+          </div>
+        </div>
+
         <!-- BLOCO 5 — Rodapé de confirmação -->
         <div class="receb-rodape">
           <button type="button" class="btn-cancelar-receb" id="btn-cancelar-receb">Cancelar</button>
@@ -1433,6 +1469,23 @@
           <span class="num">3</span>
           <span class="lbl">Alimentação <small>+20%</small></span>
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirmação do Cartão Alimentação: mostra o valor JÁ com +20% antes de finalizar -->
+  <div class="overlay" id="overlay-alimentacao">
+    <div class="modal-cartao-tipo modal-alim">
+      <h2>🍽️ Cartão Alimentação</h2>
+      <p class="cartao-sub">No cartão alimentação o valor sobe <b>20%</b></p>
+      <div class="alim-resumo">
+        <div class="alim-linha"><span>Valor</span><b id="alim-base">R$ 0,00</b></div>
+        <div class="alim-linha"><span>Acréscimo (20%)</span><b id="alim-acrescimo" class="alim-mais">+ R$ 0,00</b></div>
+        <div class="alim-linha alim-total"><span>Fica no cartão</span><b id="alim-total">R$ 0,00</b></div>
+      </div>
+      <div class="alim-acoes">
+        <button type="button" class="alim-btn-voltar" id="alim-voltar">‹ Voltar</button>
+        <button type="button" class="alim-btn-ok" id="alim-confirmar">✅ Confirmar (Enter)</button>
       </div>
     </div>
   </div>

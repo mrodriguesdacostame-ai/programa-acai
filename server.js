@@ -1678,17 +1678,31 @@ app.get('/api/balanco/:id', (req, res) => {
 /* ══ CONTROLE DE LITROS (F8 registra litros produzidos por valor; F10 fecha o dia com as sacas
    e joga no rendimento). Os lançamentos ficam PENDENTES até o fechamento (consumido=1). ══════ */
 db.exec(`CREATE TABLE IF NOT EXISTS litros_producao (id INTEGER PRIMARY KEY AUTOINCREMENT, litros REAL, valor_unit REAL, data TEXT, consumido INTEGER DEFAULT 0, criado_em TEXT, criado_por TEXT)`);
+try { db.exec('ALTER TABLE litros_producao ADD COLUMN produto_codigo TEXT'); } catch {} // liga a produção ao PRODUTO (não só ao valor) — o F10 usa o produto exato
 function litrosResumo(rows) {
-  const porValor = {}; let total = 0;
-  for (const r of rows) { const v = r2(+r.valor_unit || 0), l = r2(+r.litros || 0); total += l; (porValor[v] = porValor[v] || { valor: v, litros: 0, n: 0 }); porValor[v].litros = r2(porValor[v].litros + l); porValor[v].n++; }
-  return { totalLitros: r2(total), porValor: Object.values(porValor).sort((a, b) => a.valor - b.valor), n: rows.length };
+  // Agrupa por PRODUTO quando houver código; senão pelo valor (retrocompat com lançamentos antigos).
+  // Assim dois produtos de mesmo preço NÃO se misturam, e o F10 preenche o produto certo.
+  const grupos = {}; let total = 0;
+  for (const r of rows) {
+    const v = r2(+r.valor_unit || 0), l = r2(+r.litros || 0), cod = r.produto_codigo || '';
+    const key = cod ? ('c:' + cod) : ('v:' + v);
+    total += l;
+    if (!grupos[key]) {
+      let nome = '';
+      if (cod) { try { const p = db.prepare('SELECT nome FROM produtos WHERE codigo=?').get(cod); nome = p ? p.nome : ''; } catch {} }
+      grupos[key] = { valor: v, codigo: cod, nome, litros: 0, n: 0 };
+    }
+    grupos[key].litros = r2(grupos[key].litros + l); grupos[key].n++;
+  }
+  return { totalLitros: r2(total), porValor: Object.values(grupos).sort((a, b) => a.valor - b.valor), n: rows.length };
 }
 app.post('/api/litros', (req, res) => {
   const d = req.body || {}, litros = r2(+d.litros || 0), valor = r2(+d.valor || +d.valor_unit || 0);
+  const codigo = (d.produto_codigo || d.codigo || '').toString().trim();
   if (litros <= 0) return res.status(400).json({ erro: 'Informe os litros (maior que zero).' });
   if (valor <= 0) return res.status(400).json({ erro: 'Informe o valor.' });
-  const info = db.prepare('INSERT INTO litros_producao (litros,valor_unit,data,consumido,criado_em,criado_por) VALUES (?,?,?,0,?,?)')
-    .run(litros, valor, ymdLocal(new Date()), new Date().toISOString(), (req.usuario || {}).usuario || '');
+  const info = db.prepare('INSERT INTO litros_producao (litros,valor_unit,produto_codigo,data,consumido,criado_em,criado_por) VALUES (?,?,?,?,0,?,?)')
+    .run(litros, valor, codigo || null, ymdLocal(new Date()), new Date().toISOString(), (req.usuario || {}).usuario || '');
   res.json(db.prepare('SELECT * FROM litros_producao WHERE id=?').get(info.lastInsertRowid));
 });
 app.get('/api/litros', (req, res) => {
@@ -1696,13 +1710,29 @@ app.get('/api/litros', (req, res) => {
   res.json({ lista: rows, resumo: litrosResumo(rows) });
 });
 app.delete('/api/litros/:id', (req, res) => { db.prepare('DELETE FROM litros_producao WHERE id=? AND consumido=0').run(+req.params.id); res.json({ ok: true }); });
-// valores do F8: se o admin cadastrou uma lista própria (config litros_valores), usa ela;
-// senão cai nos preços de venda distintos dos produtos (atalhos automáticos).
+// valores/produtos do F8: cada botão é um PRODUTO DE AÇAÍ CADASTRADO (código+nome+valor), pra o F10
+// preencher o produto EXATO e nunca aparecer valor "fantasma" sem produto por trás. Fonte = o que está
+// cadastrado. Só cai na lista curada/todos se NENHUM produto for classificado como açaí (não trava o F8).
 app.get('/api/litros/valores', (req, res) => {
+  const prods = db.prepare('SELECT codigo, nome, precoVenda, departamento FROM produtos WHERE COALESCE(precoVenda,0)>0 ORDER BY precoVenda, nome').all();
+  const ehAcai = p => { const t = ((p.nome || '') + ' ' + (p.departamento || '')).toLowerCase(); return t.includes('aça') || t.includes('aca'); };
+  const acai = prods.filter(ehAcai);
+  if (acai.length) return res.json(acai.map(p => ({ valor: r2(+p.precoVenda || 0), codigo: p.codigo, nome: p.nome })));
+  // sem nenhum açaí classificado: mantém a lista curada (se o admin cadastrou) ou todos os produtos
   const cfg = getConfig('litros_valores', '');
-  if (cfg) { try { const arr = JSON.parse(cfg); if (Array.isArray(arr) && arr.length) return res.json(arr.map(v => r2(+v || 0)).filter(v => v > 0)); } catch {} }
-  const vs = db.prepare('SELECT DISTINCT precoVenda v FROM produtos WHERE COALESCE(precoVenda,0)>0 ORDER BY precoVenda').all().map(r => r2(r.v));
-  res.json(vs);
+  if (cfg) {
+    try {
+      const arr = JSON.parse(cfg);
+      if (Array.isArray(arr) && arr.length) {
+        return res.json(arr.map(v => r2(+v || 0)).filter(v => v > 0).map(v => {
+          const iguais = prods.filter(p => Math.abs(r2(+p.precoVenda || 0) - v) < 0.005);
+          const p = iguais.length === 1 ? iguais[0] : null;
+          return { valor: v, codigo: p ? p.codigo : '', nome: p ? p.nome : '' };
+        }));
+      }
+    } catch {}
+  }
+  res.json(prods.map(p => ({ valor: r2(+p.precoVenda || 0), codigo: p.codigo, nome: p.nome })));
 });
 // Edita os valores do F8 — SÓ o administrador. Lista vazia volta ao automático (preços dos produtos).
 app.post('/api/litros/valores', (req, res) => {
@@ -1718,6 +1748,106 @@ app.post('/api/litros/fechar', (req, res) => {
   const resumo = litrosResumo(rows);
   db.prepare('UPDATE litros_producao SET consumido=1 WHERE consumido=0').run();
   res.json({ ok: true, resumo });
+});
+
+/* ── ANOTAÇÕES ("pagar depois") ──────────────────────────────────────────────
+   Recebível RÁPIDO, sem precisar cadastrar cliente. Fica no PDV até dar baixa.
+   Enquanto ABERTA conta como "a receber" (entra no resumo/relatórios). Ao PAGAR,
+   vira ENTRADA no financeiro (caixa) — igual ao recebimento de fiado. Se veio de
+   uma venda (botão na tela de finalizar), a venda já baixou o estoque e entrou no
+   faturamento com forma "Anotado" (tratada como NÃO-caixa, igual fiado). ───────── */
+db.exec(`CREATE TABLE IF NOT EXISTS anotacoes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, descricao TEXT, valor REAL,
+  venda_id INTEGER, pago INTEGER DEFAULT 0, pago_em TEXT, pago_formas TEXT,
+  criado_em TEXT, criado_por TEXT)`);
+try { db.exec('ALTER TABLE anotacoes ADD COLUMN historico TEXT'); } catch {} // log de cada compra da MESMA pessoa (pra somar + relatório)
+function anotacaoFront(a) {
+  let hist = []; try { hist = JSON.parse(a.historico || '[]'); } catch {}
+  if (!Array.isArray(hist)) hist = [];
+  return { id: a.id, nome: a.nome || '', descricao: a.descricao || '', valor: r2(+a.valor || 0),
+    venda_id: a.venda_id || null, pago: !!a.pago, pago_em: a.pago_em || null, criado_por: a.criado_por || '',
+    criado_em: a.criado_em, hora: a.criado_em ? new Date(a.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '',
+    historico: hist.map(h => ({ ...h, valor: r2(+h.valor || 0) })), nCompras: (hist.filter(h => !h.pagamento).length || 1) };
+}
+const anotacoesPendentesTotal = () => r2(db.prepare('SELECT COALESCE(SUM(valor),0) t FROM anotacoes WHERE pago=0').get().t || 0);
+
+app.get('/api/anotacoes', (req, res) => {
+  const rows = db.prepare(`SELECT * FROM anotacoes ${req.query.todas === '1' ? '' : 'WHERE pago=0'} ORDER BY id DESC LIMIT 300`).all();
+  // nomes já usados (pra sugerir/autocompletar e não redigitar)
+  const nomes = db.prepare("SELECT DISTINCT nome FROM anotacoes WHERE COALESCE(nome,'')<>'' ORDER BY nome").all().map(r => r.nome);
+  // fiados em ABERTO por cliente (saldo positivo) — a caixa "quem paga depois" mostra fiado + anotações juntos
+  const fiados = db.prepare(`SELECT c.id cliente_id, c.nome, COALESCE(SUM(CASE WHEN e.tipo='compra' THEN e.valor ELSE -e.valor END),0) saldo, MAX(e.criado_em) ultimo
+      FROM clientes_extrato e JOIN clientes c ON c.id=e.cliente_id GROUP BY e.cliente_id HAVING saldo > 0.009 ORDER BY ultimo DESC`).all()
+    .map(f => ({ cliente_id: f.cliente_id, nome: f.nome, saldo: r2(f.saldo), hora: f.ultimo ? new Date(f.ultimo).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '' }));
+  const fiadoTotal = r2(fiados.reduce((s, f) => s + f.saldo, 0));
+  res.json({ lista: rows.map(anotacaoFront), fiados, fiadoTotal, totalAnotacoes: anotacoesPendentesTotal(), nomes,
+    totalPendente: r2(anotacoesPendentesTotal() + fiadoTotal),
+    nPendentes: db.prepare('SELECT COUNT(*) n FROM anotacoes WHERE pago=0').get().n + fiados.length });
+});
+app.post('/api/anotacoes', (req, res) => {
+  const d = req.body || {}, valor = r2(+d.valor || 0);
+  if (valor <= 0) return res.status(400).json({ erro: 'Informe o valor da anotação.' });
+  const nome = (d.nome || '').trim(), descricao = (d.descricao || '').trim(), agora = new Date().toISOString();
+  const entrada = { data: agora, descricao, valor, venda_id: d.venda_id || null };
+  // Mesma pessoa com anotação ABERTA → SOMA na existente (vira uma conta corrente) e guarda no histórico.
+  const existente = nome ? db.prepare('SELECT * FROM anotacoes WHERE pago=0 AND lower(trim(nome))=lower(?) ORDER BY id DESC LIMIT 1').get(nome) : null;
+  let id;
+  if (existente) {
+    let hist = []; try { hist = JSON.parse(existente.historico || '[]'); } catch {}
+    if (!Array.isArray(hist)) hist = [];
+    if (!hist.length) hist.push({ data: existente.criado_em, descricao: existente.descricao || '', valor: r2(+existente.valor || 0), venda_id: existente.venda_id || null });
+    hist.push(entrada);
+    db.prepare('UPDATE anotacoes SET valor=?, descricao=?, historico=? WHERE id=?')
+      .run(r2((+existente.valor || 0) + valor), descricao || existente.descricao || '', JSON.stringify(hist), existente.id);
+    id = existente.id;
+  } else {
+    const info = db.prepare('INSERT INTO anotacoes (nome,descricao,valor,venda_id,pago,historico,criado_em,criado_por) VALUES (?,?,?,?,0,?,?,?)')
+      .run(nome, descricao, valor, d.venda_id || null, JSON.stringify([entrada]), agora, (req.usuario || {}).nome || (req.usuario || {}).usuario || '');
+    id = info.lastInsertRowid;
+  }
+  try { manut.logAcao(existente ? 'anotação somada (pagar depois)' : 'anotação criada (pagar depois)', 'financeiro', { id, valor, nome }, 'pdv'); } catch {}
+  res.json(anotacaoFront(db.prepare('SELECT * FROM anotacoes WHERE id=?').get(id)));
+});
+app.post('/api/anotacoes/:id/pagar', (req, res) => {
+  const a = db.prepare('SELECT * FROM anotacoes WHERE id=?').get(+req.params.id);
+  if (!a) return res.status(404).json({ erro: 'Anotação não encontrada.' });
+  if (a.pago) return res.json(anotacaoFront(a));
+  const d = req.body || {};
+  const saldo = r2(+a.valor || 0);
+  // valor pago: se não vier, quita tudo. NUNCA paga mais que o saldo. Menor que o saldo = PARCIAL.
+  let valorPago = d.valor != null ? r2(+d.valor || 0) : saldo;
+  if (valorPago <= 0) return res.status(400).json({ erro: 'Informe quanto foi pago.' });
+  if (valorPago > saldo) valorPago = saldo;
+  const parcial = valorPago < saldo - 0.001;
+  // formas: usa as informadas OU uma só (forma) com o valor pago
+  let formas = Array.isArray(d.formas) ? d.formas.filter(f => (+f.valor || 0) > 0) : [];
+  if (!formas.length) formas = [{ nome: d.forma || 'Dinheiro', valor: valorPago }];
+  const agora = new Date().toISOString(), cat = catFinId('Recebimento anotação');
+  for (const f of formas) {
+    const valor = r2(+f.valor || 0); if (valor <= 0) continue;
+    inserirMovimento({ data: agora, tipo: 'entrada', conta_id: contaParaForma(f.nome || f.forma || 'Dinheiro'),
+      categoria_id: cat, valor, descricao: `Recebimento anotação${parcial ? ' (parcial)' : ''} · ${a.nome || 'sem nome'}`, origem: 'anotacao',
+      responsavel: (req.usuario || {}).nome || '', situacao: 'confirmado', referencia_tipo: 'anotacao', referencia_id: a.id });
+  }
+  // registra o pagamento no histórico (valor negativo = abateu)
+  let hist = []; try { hist = JSON.parse(a.historico || '[]'); } catch {}
+  if (!Array.isArray(hist)) hist = [];
+  hist.push({ data: agora, descricao: (parcial ? 'Pagamento parcial' : 'Pagamento') + ' · ' + formas.map(f => f.nome || f.forma).join(' + '), valor: -valorPago, pagamento: true });
+  if (parcial) {
+    db.prepare('UPDATE anotacoes SET valor=?, historico=? WHERE id=?').run(r2(saldo - valorPago), JSON.stringify(hist), a.id);
+  } else {
+    db.prepare('UPDATE anotacoes SET pago=1, valor=0, pago_em=?, pago_formas=?, historico=? WHERE id=?').run(agora, JSON.stringify(formas), JSON.stringify(hist), a.id);
+  }
+  try { manut.logAcao(parcial ? 'anotação paga parcial' : 'anotação paga', 'financeiro', { id: a.id, valorPago, restante: r2(saldo - valorPago) }, 'pdv'); } catch {}
+  res.json(anotacaoFront(db.prepare('SELECT * FROM anotacoes WHERE id=?').get(a.id)));
+});
+app.delete('/api/anotacoes/:id', (req, res) => {
+  const a = db.prepare('SELECT * FROM anotacoes WHERE id=?').get(+req.params.id);
+  if (!a) return res.json({ ok: true });
+  try { for (const m of movsDaReferencia('anotacao', a.id)) if (m.situacao !== 'estornado') estornarMovimento(m.id, 'anotação removida', 'sistema'); } catch {}
+  db.prepare('DELETE FROM anotacoes WHERE id=?').run(a.id);
+  try { manut.logAcao('anotação removida', 'financeiro', { id: a.id }, 'pdv'); } catch {}
+  res.json({ ok: true });
 });
 
 // ── Produção / Rendimento (Fase 19) ──
@@ -2768,6 +2898,7 @@ function assistenteResumo() {
   const cp = db.prepare("SELECT * FROM contas_pagar WHERE status IN ('aberto','parcial')").all();
   const pagar = r2(cp.reduce((s, c) => s + r2((c.valor_total || 0) - valorPagoConta(c.id)), 0));
   let receber = 0; try { receber = crResumo(crCarteira()).total; } catch {}
+  try { receber = r2(receber + anotacoesPendentesTotal()); } catch {}   // + anotações "pagar depois" em aberto
   const ins = assistenteInsights();
   return { periodo: fx.label, faturamento_mes: r2(bi.faturamento || 0), lucro_mes: r2(bi.lucroEstimado || 0), saldo_caixa: saldo, a_pagar: pagar, a_receber: r2(receber),
     alertas: { critico: ins.filter(i => i.severidade === 'critico').length, atencao: ins.filter(i => i.severidade === 'atencao').length, info: ins.filter(i => i.severidade === 'info').length } };
@@ -3116,9 +3247,13 @@ function movncFront(m) {
     hora: dt ? String(dt.getHours()).padStart(2, '0') + ':' + String(dt.getMinutes()).padStart(2, '0') : '' };
 }
 // Registra UMA movimentação → move o estoque via registrarMovimento (único ponto). NUNCA toca financeiro.
+// Custo do dia carimbado em cada movimentação (consumo/perda/brinde…): congela o precoCompra
+// vigente no momento do lançamento, pra o valor não mudar depois se o custo do produto mudar.
+try { db.exec('ALTER TABLE movimentacoes_nc ADD COLUMN custo_unit REAL'); } catch {}
+try { db.exec('ALTER TABLE movimentacoes_nc ADD COLUMN valor REAL'); } catch {}
 function salvarMovNC(d, usuario, origem) {
   const cod = d.produto_codigo || d.codigo; if (!cod) throw new Error('Produto é obrigatório.');
-  const prod = db.prepare("SELECT codigo, nome, COALESCE(unidade,'un') unidade, COALESCE(estoque,0) estoque FROM produtos WHERE codigo=?").get(cod);
+  const prod = db.prepare("SELECT codigo, nome, COALESCE(unidade,'un') unidade, COALESCE(estoque,0) estoque, COALESCE(precoCompra,0) custo FROM produtos WHERE codigo=?").get(cod);
   if (!prod) throw new Error('Produto não encontrado.');
   const t = movncTipo(d.tipo); if (!t) throw new Error('Tipo de movimentação inválido.');
   if (!movncTiposDoProduto(cod).some(x => x.chave === t.chave)) throw new Error('Produto não habilitado para "' + t.label + '".');
@@ -3128,10 +3263,12 @@ function salvarMovNC(d, usuario, origem) {
   const efet = t.sentido === 'ajuste' ? (d.sentido_ajuste === 'entrada' ? 'entrada' : 'saida') : t.sentido;
   const delta = efet === 'entrada' ? qtd : -qtd;
   const estoqueNovo = Math.max(0, r2(atual + delta));
+  const custoUnit = r2(+prod.custo || 0);         // custo do dia = precoCompra vigente agora
+  const valor = r2(custoUnit * qtd);              // valor da movimentação (mercadoria que saiu/entrou)
   const agora = new Date().toISOString(), dataYmd = ymdLocal(new Date());
-  const id = db.prepare(`INSERT INTO movimentacoes_nc (produto_codigo,produto_nome,unidade,tipo,sentido,quantidade,delta,estoque_anterior,estoque_novo,funcionario,usuario,obs,referencia,origem,data,criado_em,estornado)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)`).run(cod, prod.nome, prod.unidade, t.chave, t.sentido, qtd, r2(delta), r2(atual), estoqueNovo,
-    (d.funcionario || '').trim(), usuario || '', (d.obs || '').trim(), '', origem || 'modulo', dataYmd, agora).lastInsertRowid;
+  const id = db.prepare(`INSERT INTO movimentacoes_nc (produto_codigo,produto_nome,unidade,tipo,sentido,quantidade,delta,estoque_anterior,estoque_novo,funcionario,usuario,obs,referencia,origem,data,criado_em,estornado,custo_unit,valor)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?)`).run(cod, prod.nome, prod.unidade, t.chave, t.sentido, qtd, r2(delta), r2(atual), estoqueNovo,
+    (d.funcionario || '').trim(), usuario || '', (d.obs || '').trim(), '', origem || 'modulo', dataYmd, agora, custoUnit, valor).lastInsertRowid;
   // move o estoque: ajuste usa valor absoluto; saída/entrada usam a quantidade
   const movTipo = t.sentido === 'ajuste' ? 'ajuste' : (delta > 0 ? 'entrada' : 'saida');
   registrarMovimento(cod, movTipo, { quantidade: qtd, estoque_novo: t.sentido === 'ajuste' ? estoqueNovo : undefined, estoque_anterior: atual,
@@ -3206,11 +3343,14 @@ app.get('/api/consumo/inteligente', (req, res) => {
   if (req.query.ate) { w.push('data<=?'); a.push(req.query.ate); }
   if (req.query.funcionario) { w.push('funcionario=?'); a.push(req.query.funcionario); }
   if (req.query.q) { const t = '%' + req.query.q + '%'; w.push('(produto_nome LIKE ? OR funcionario LIKE ?)'); a.push(t, t); }
-  const lista = db.prepare(`SELECT id, produto_codigo, produto_nome, unidade, quantidade, funcionario, usuario, data, criado_em FROM movimentacoes_nc WHERE ${w.join(' AND ')} ORDER BY id DESC LIMIT 300`).all(...a);
+  const lista = db.prepare(`SELECT id, produto_codigo, produto_nome, unidade, quantidade, funcionario, usuario, data, criado_em, COALESCE(custo_unit,0) custo_unit, COALESCE(valor,0) valor FROM movimentacoes_nc WHERE ${w.join(' AND ')} ORDER BY id DESC LIMIT 300`).all(...a);
   const custoDe = {}, porFunc = {}, porProd = {}; let totalQtd = 0, totalValor = 0;
   for (const m of lista) {
-    if (custoDe[m.produto_codigo] === undefined) { const p = db.prepare('SELECT COALESCE(precoCompra,0) c FROM produtos WHERE codigo=?').get(m.produto_codigo); custoDe[m.produto_codigo] = p ? +p.c : 0; }
-    const q = +m.quantidade || 0, val = r2(q * custoDe[m.produto_codigo]);
+    const q = +m.quantidade || 0;
+    // usa o CUSTO DO DIA carimbado no lançamento; só recalcula pelo custo atual em registros antigos (valor=0)
+    let val;
+    if (+m.valor > 0) val = r2(+m.valor);
+    else { if (custoDe[m.produto_codigo] === undefined) { const p = db.prepare('SELECT COALESCE(precoCompra,0) c FROM produtos WHERE codigo=?').get(m.produto_codigo); custoDe[m.produto_codigo] = p ? +p.c : 0; } val = r2(q * custoDe[m.produto_codigo]); }
     totalQtd += q; totalValor += val;
     const fn = m.funcionario || '—'; (porFunc[fn] = porFunc[fn] || { nome: fn, qtd: 0, valor: 0, n: 0 }); porFunc[fn].qtd += q; porFunc[fn].valor += val; porFunc[fn].n++;
     const pn = m.produto_nome || m.produto_codigo; (porProd[pn] = porProd[pn] || { nome: pn, unidade: m.unidade, qtd: 0, valor: 0 }); porProd[pn].qtd += q; porProd[pn].valor += val;
@@ -3610,7 +3750,7 @@ function sincronizarFinanceiroVenda(vendaId) {
   const cat = catFinId('Venda PDV');
   const lista = pagamentos.length ? pagamentos : [{ forma: '', valor: v.total }];
   for (const p of lista) {
-    if (/fiado|prazo/i.test(p.forma || '')) continue;
+    if (/fiado|prazo|anota/i.test(p.forma || '')) continue;   // fiado E anotado = recebível, não entra no caixa até pagar
     const valor = +p.valor || 0; if (valor <= 0) continue;
     inserirMovimento({ data: v.data || v.criado_em, tipo: 'entrada', conta_id: contaParaForma(p.forma), categoria_id: cat,
       valor, descricao: `Venda #${v.numero || v.id}` + (p.forma ? ` · ${normalizarForma(p.forma)}` : ''), origem: 'pdv',
@@ -5376,7 +5516,7 @@ app.get('/api/financeiro/dashboard', (req, res) => {
   const serieAno = serie("SELECT strftime('%Y',data,'localtime') k, COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE -valor END),0) v FROM financeiro_movimentos WHERE situacao='confirmado' GROUP BY k ORDER BY k");
   res.json({
     saldos: { caixa: somaTipo(['caixa']), banco: somaTipo(['banco', 'maquininha']), total: r2(contas.reduce((s, c) => s + c.saldo, 0)), contas: contas.map(c => ({ nome: c.nome, tipo: c.tipo, saldo: c.saldo })) },
-    receber: { hoje: 0, semana: 0, total: fiadoReceber, obs: 'a receber = fiado em aberto (Contas a Receber é fase futura)' },
+    receber: { hoje: 0, semana: 0, total: r2(fiadoReceber + anotacoesPendentesTotal()), fiado: fiadoReceber, anotacoes: anotacoesPendentesTotal(), obs: 'a receber = fiado + anotações "pagar depois" em aberto' },
     pagar: { hoje: pagarHoje, semana: pagarSemana, total: pagarTotal, vencido: pagarVencido },
     mes: { vendas: r2(bi.faturamento), receitas: recMes, despesas: despMes, compras: comprasMes, lucro: r2(bi.lucroEstimado), coberturaCusto: bi.coberturaCusto },
     maiorFornecedor: maiorForn ? { nome: maiorForn.nome, total: r2(maiorForn.tot) } : null,
