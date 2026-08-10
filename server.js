@@ -3312,9 +3312,37 @@ app.get('/api/movimentacoes/produtos', (req, res) => {
 });
 // Nomes de funcionários já usados + usuários ativos (autocomplete do "responsável").
 app.get('/api/movimentacoes/funcionarios', (req, res) => {
-  const usados = db.prepare("SELECT DISTINCT funcionario FROM movimentacoes_nc WHERE funcionario IS NOT NULL AND funcionario<>'' ORDER BY funcionario").all().map(r => r.funcionario);
+  const funcs = db.prepare("SELECT nome FROM funcionarios WHERE ativo=1 ORDER BY nome").all().map(r => r.nome);
   const users = db.prepare("SELECT nome FROM usuarios WHERE ativo=1 ORDER BY nome").all().map(r => r.nome);
-  res.json({ funcionarios: [...new Set([...usados, ...users])] });
+  const usados = db.prepare("SELECT DISTINCT funcionario FROM movimentacoes_nc WHERE funcionario IS NOT NULL AND funcionario<>'' ORDER BY funcionario").all().map(r => r.funcionario);
+  res.json({ funcionarios: [...new Set([...funcs, ...users, ...usados])] });   // cadastrados 1º, depois usuários, depois nomes já usados
+});
+// ── CADASTRO de FUNCIONÁRIOS (quem pega consumo interno) — não precisa ser usuário do sistema ──
+db.exec(`CREATE TABLE IF NOT EXISTS funcionarios (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT NOT NULL, ativo INTEGER DEFAULT 1, criado_em TEXT)`);
+app.get('/api/funcionarios', (req, res) => {
+  res.json(db.prepare('SELECT id,nome,ativo FROM funcionarios ORDER BY nome').all().map(f => ({ id: f.id, nome: f.nome, ativo: !!f.ativo })));
+});
+app.post('/api/funcionarios', (req, res) => {
+  const nome = ((req.body || {}).nome || '').trim();
+  if (!nome) return res.status(400).json({ erro: 'Informe o nome do funcionário.' });
+  const ja = db.prepare('SELECT id FROM funcionarios WHERE lower(trim(nome))=lower(?)').get(nome);
+  if (ja) { db.prepare('UPDATE funcionarios SET ativo=1 WHERE id=?').run(ja.id); return res.json({ id: ja.id, nome, ativo: true, jaExistia: true }); }
+  const info = db.prepare('INSERT INTO funcionarios (nome,ativo,criado_em) VALUES (?,1,?)').run(nome, new Date().toISOString());
+  try { manut.logAcao('funcionário cadastrado', 'cadastro', { id: info.lastInsertRowid, nome }, 'admin'); } catch {}
+  res.json({ id: info.lastInsertRowid, nome, ativo: true });
+});
+app.put('/api/funcionarios/:id', (req, res) => {
+  const d = req.body || {}, f = db.prepare('SELECT * FROM funcionarios WHERE id=?').get(+req.params.id);
+  if (!f) return res.status(404).json({ erro: 'Funcionário não encontrado.' });
+  const nome = d.nome != null ? String(d.nome).trim() : f.nome;
+  const ativo = d.ativo != null ? (d.ativo ? 1 : 0) : f.ativo;
+  db.prepare('UPDATE funcionarios SET nome=?, ativo=? WHERE id=?').run(nome || f.nome, ativo, f.id);
+  res.json({ id: f.id, nome: nome || f.nome, ativo: !!ativo });
+});
+app.delete('/api/funcionarios/:id', (req, res) => {
+  db.prepare('DELETE FROM funcionarios WHERE id=?').run(+req.params.id);
+  try { manut.logAcao('funcionário removido', 'cadastro', { id: +req.params.id }, 'admin'); } catch {}
+  res.json({ ok: true });
 });
 app.get('/api/movimentacoes', (req, res) => {
   const w = [], a = [];

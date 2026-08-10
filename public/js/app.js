@@ -5544,8 +5544,9 @@ function renderAdministracao() {
 function abrirAbaAdm(aba) {
   abaAdmAtual = aba;
   document.querySelectorAll('.adm-tab').forEach(b => b.classList.toggle('ativo', b.dataset.aba === aba));
-  ['usuarios', 'loja', 'dados', 'logs', 'backup', 'midia', 'plataforma', 'atualizacoes'].forEach(a => { const el = $('adm-pane-' + a); if (el) el.style.display = a === aba ? '' : 'none'; });
+  ['usuarios', 'funcionarios', 'loja', 'dados', 'logs', 'backup', 'midia', 'plataforma', 'atualizacoes'].forEach(a => { const el = $('adm-pane-' + a); if (el) el.style.display = a === aba ? '' : 'none'; });
   if (aba === 'usuarios') admCarregarUsuarios();
+  if (aba === 'funcionarios') admCarregarFuncionarios();
   if (aba === 'loja') admCarregarLoja();
   if (aba === 'dados') admCarregarDados();
   if (aba === 'logs') admCarregarLogs();
@@ -5876,6 +5877,47 @@ $('adm-usuarios-tbody').addEventListener('click', async e => {
     } catch { toast('⚠ Servidor indisponível'); }
   }
 });
+
+/* ── Aba Funcionários (quem pega consumo interno) ── */
+async function admCarregarFuncionarios() {
+  const tbody = $('adm-funcionarios-tbody'); if (!tbody) return;
+  try {
+    const lista = await (await fetch('/api/funcionarios', { cache: 'no-store' })).json();
+    if (!Array.isArray(lista) || !lista.length) { tbody.innerHTML = '<tr><td colspan="3" class="adm-vazio">Nenhum funcionário cadastrado ainda.</td></tr>'; return; }
+    tbody.innerHTML = lista.map(f => `
+      <tr data-id="${f.id}">
+        <td>${escapar(f.nome)}</td>
+        <td><span class="adm-tag ${f.ativo ? 'on' : 'off'}">${f.ativo ? 'ativo' : 'inativo'}</span></td>
+        <td class="adm-acoes-td">
+          <button class="adm-btn mini ${f.ativo ? 'perigo' : ''}" data-facao="ativo" data-id="${f.id}" data-ativo="${f.ativo ? 1 : 0}">${f.ativo ? '⛔ Desativar' : '✔ Ativar'}</button>
+          <button class="adm-btn mini perigo" data-facao="excluir" data-id="${f.id}" title="Remover da lista">🗑</button>
+        </td>
+      </tr>`).join('');
+  } catch { tbody.innerHTML = '<tr><td colspan="3" class="adm-vazio">⚠ Não consegui carregar os funcionários.</td></tr>'; }
+}
+{ const form = $('adm-form-funcionario'); if (form) form.addEventListener('submit', async e => {
+  e.preventDefault();
+  const nome = $('af-nome').value.trim(); if (!nome) return;
+  try {
+    const r = await fetch('/api/funcionarios', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome }) });
+    const j = await r.json();
+    if (!r.ok) { toast('⚠ ' + (j.erro || 'Não foi possível cadastrar')); return; }
+    toast(j.jaExistia ? `✅ ${j.nome} reativado` : `✅ ${j.nome} cadastrado`, 'sucesso');
+    form.reset(); admCarregarFuncionarios();
+  } catch { toast('⚠ Servidor indisponível'); }
+}); }
+{ const tb = $('adm-funcionarios-tbody'); if (tb) tb.addEventListener('click', async e => {
+  const btn = e.target.closest('button[data-facao]'); if (!btn) return;
+  const id = btn.dataset.id;
+  if (btn.dataset.facao === 'ativo') {
+    const ativar = btn.dataset.ativo !== '1';
+    try { await fetch('/api/funcionarios/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ativo: ativar }) }); toast(ativar ? '✅ Reativado' : '⛔ Desativado', 'sucesso'); admCarregarFuncionarios(); }
+    catch { toast('⚠ Servidor indisponível'); }
+  } else if (btn.dataset.facao === 'excluir') {
+    if (!confirm('Remover este funcionário da lista?')) return;
+    try { await fetch('/api/funcionarios/' + id, { method: 'DELETE' }); admCarregarFuncionarios(); } catch {}
+  }
+}); }
 
 /* ── Aba Segurança / Logs ── */
 async function admCarregarLogs() {

@@ -1025,6 +1025,7 @@
       <div class="adm-conteudo" id="adm-conteudo" style="display:none">
         <div class="adm-tabs">
           <button class="adm-tab ativo" data-aba="usuarios">👥 Usuários</button>
+          <button class="adm-tab" data-aba="funcionarios">🧑‍🍳 Funcionários</button>
           <button class="adm-tab" data-aba="loja">🏪 Dados da Loja</button>
           <button class="adm-tab" data-aba="dados">📤 Dados / Exportar</button>
           <button class="adm-tab" data-aba="logs">🛡 Segurança / Logs</button>
@@ -1056,6 +1057,27 @@
               <table class="adm-tabela">
                 <thead><tr><th>Nome</th><th>Usuário</th><th>Perfil</th><th>Status</th><th>Último login</th><th>Ações</th></tr></thead>
                 <tbody id="adm-usuarios-tbody"><tr><td colspan="6" class="adm-vazio">Carregando…</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ABA — Funcionários (quem pega consumo interno) -->
+        <div class="adm-pane" id="adm-pane-funcionarios" style="display:none">
+          <div class="adm-card">
+            <div class="adm-card-tit">➕ Novo funcionário <small>(quem pega consumo interno)</small></div>
+            <form class="adm-form-usuario" id="adm-form-funcionario">
+              <input type="text" id="af-nome" placeholder="Nome do funcionário" autocomplete="off" required>
+              <button type="submit" class="adm-btn destaque">Cadastrar</button>
+            </form>
+            <p class="adm-nota">Aparecem como botões na tela de <b>Consumo Interno</b> (tecla <b>C</b> no PDV) pra escolher quem pegou — sem precisar digitar o nome.</p>
+          </div>
+          <div class="adm-card">
+            <div class="adm-card-tit">🧑‍🍳 Funcionários cadastrados</div>
+            <div class="adm-tabela-wrap">
+              <table class="adm-tabela">
+                <thead><tr><th>Nome</th><th>Status</th><th>Ações</th></tr></thead>
+                <tbody id="adm-funcionarios-tbody"><tr><td colspan="3" class="adm-vazio">Carregando…</td></tr></tbody>
               </table>
             </div>
           </div>
