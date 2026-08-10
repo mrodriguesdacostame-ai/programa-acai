@@ -7616,8 +7616,15 @@ whatsapp.on('message', async message => {
 });
 
 // WA_DISABLE=1 pula o WhatsApp (útil para testes/manutenção sem acionar o Chrome). Padrão: liga normalmente.
-if (process.env.WA_DISABLE === '1') { console.log('⚠️  WhatsApp desativado (WA_DISABLE=1) — avisos automáticos não serão enviados.'); }
-else { whatsapp.initialize().catch(err => console.log('❌ Não foi possível iniciar o cliente WhatsApp:', err.message)); }
+// PERFORMANCE: o WhatsApp sobe o Chrome do Puppeteer (pesado, ~vários segundos). Pra o sistema ABRIR
+// RÁPIDO, NÃO iniciamos aqui — adiamos pra DEPOIS do servidor já estar no ar (ver app.listen), em 2º plano.
+let whatsappAgendado = false;
+function iniciarWhatsappEmBackground() {
+  if (whatsappAgendado) return; whatsappAgendado = true;
+  if (process.env.WA_DISABLE === '1') { console.log('⚠️  WhatsApp desativado (WA_DISABLE=1) — avisos automáticos não serão enviados.'); return; }
+  console.log('… iniciando WhatsApp em segundo plano (não trava a abertura)');
+  whatsapp.initialize().catch(err => console.log('❌ Não foi possível iniciar o cliente WhatsApp:', err.message));
+}
 
 app.get('/api/whatsapp/status', (req, res) => res.json({
   pronto: whatsappPronto,
@@ -7756,6 +7763,9 @@ const servidor = app.listen(PORTA, () => {
     console.log(`   Schema: ${SCHEMA_VERSAO} · saúde do ERP: ${c.status_geral === 'ok' ? '✅ consistente' : `⚠️ ${c.alertas} ponto(s) p/ conferir`}`);
     if (c.status_geral !== 'ok') c.checks.filter(x => x.status === 'alerta').forEach(x => console.log(`     ⚠️ ${x.titulo}: ${x.detalhe}`));
   } catch (e) { console.log('   (verificação de consistência falhou:', e.message, ')'); }
+  // WhatsApp em SEGUNDO PLANO, alguns segundos depois — o sistema já abriu e responde; o Chrome do
+  // WhatsApp sobe sem competir com a abertura. Avisos/atendimento ficam prontos logo em seguida.
+  setTimeout(iniciarWhatsappEmBackground, 4000);
 });
 
 // Fase 37 — graceful shutdown: faz checkpoint do WAL e fecha o banco limpo ao encerrar.
