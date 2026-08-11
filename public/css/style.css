@@ -515,14 +515,14 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
   justify-content: space-between;
 }
 .espelho-footer .rotulo {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 800;
   letter-spacing: 1px;
   color: rgba(15, 47, 77, 0.7);
 }
 .espelho-footer .valor {
-  font-size: 30px;
-  font-weight: 800;
+  font-size: 46px;
+  font-weight: 900;
   color: var(--verde);
   text-shadow: 0 0 16px rgba(0, 230, 118, 0.4);
   font-variant-numeric: tabular-nums;
@@ -1434,8 +1434,8 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 
 /* 📝 Anotações (pagar depois) — caixa no PDV */
 .anotacoes-box {
-  border: 1px solid rgba(200, 138, 0, 0.55); background: #ffffff; border-radius: 14px; padding: 12px 14px;
-  box-shadow: 0 6px 18px rgba(15, 47, 77, 0.10);
+  border: 1px solid rgba(200, 138, 0, 0.55); background: rgba(255, 255, 255, 0.14); border-radius: 14px; padding: 12px 14px;
+  box-shadow: 0 4px 12px rgba(15, 47, 77, 0.06);
   flex: 1 1 auto; min-height: 150px;          /* CRESCE pra ocupar o espaço vazio da esquerda */
   display: flex; flex-direction: column; overflow: hidden;
 }
@@ -1452,8 +1452,8 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 .anot-vazio { font-size: 12.5px; color: rgba(15, 47, 77, 0.45); padding: 6px 2px; }
 .anot-item { display: flex; align-items: center; gap: 7px; padding: 7px 4px; border-top: 1px solid rgba(15, 47, 77, 0.07); font-size: 13px; }
 .anot-hora { font-size: 11px; font-weight: 700; color: var(--acai-rosa); white-space: nowrap; flex: none; }
-.anot-quem { font-weight: 800; color: var(--branco); white-space: nowrap; }
-.anot-fiado .anot-quem { color: #ffd98a; }   /* fiado (📒) — tom distinto da anotação rápida */
+.anot-quem { font-weight: 900; color: #0a1420; font-size: 14px; white-space: nowrap; }
+.anot-fiado .anot-quem { color: #0a1420; }   /* fiado (📒) — nome também preto e forte */
 .anot-desc { color: rgba(15, 47, 77, 0.6); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .anot-vlr { color: var(--amarelo); font-weight: 800; font-variant-numeric: tabular-nums; flex: none; }
 .anot-ok { flex: none; border: none; background: rgba(0, 230, 118, 0.18); color: var(--verde); border-radius: 7px; padding: 4px 8px; cursor: pointer; font-weight: 800; font-size: 12px; }
