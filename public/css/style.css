@@ -4054,3 +4054,38 @@ input:focus, textarea:focus, select:focus { border-color: var(--acai) !important
   border: 1px solid rgba(190, 150, 0, 0.55) !important;
   box-shadow: 0 6px 18px rgba(15, 47, 77, 0.10);
 }
+
+/* ═══ FINALIZAR VENDA (Recebimento) no MESMO visual do PDV — pedido do Melque ═══
+   Fundo claro (branco), cabeçalho azul com texto branco (igual ao Espelho do Cupom),
+   cartões claros, texto preto. E compacto pra caber TUDO na tela sem rolar. */
+.modal-receb { background: #ffffff !important; width: min(500px, 96vw); }
+.modal-receb .receb-head { background: var(--acai) !important; }
+.modal-receb .receb-head, .modal-receb .receb-head * { color: #ffffff !important; }
+.modal-receb .receb-resumo { background: #f6fafd !important; }
+.modal-receb .receb-rodape { background: #ffffff !important; }
+.modal-receb .receb-depois { background: #f6fafd !important; }
+.modal-receb .rv-lbl, .modal-receb .rv-val { color: #0a1420 !important; }
+.modal-receb .rv-val.rv-total { color: #0a1420 !important; }
+.modal-receb .rv-cobrar .rv-val { color: #0a9b4b !important; }
+.modal-receb .forma-nome, .modal-receb .forma-valor { color: #0a1420 !important; }
+.modal-receb .forma-valor.preenchido { color: #0a9b4b !important; }
+.modal-receb .forma-fiado .forma-valor[readonly] { color: #b9820a !important; }
+.modal-receb .btn-confirmar-receb, .modal-receb .btn-confirmar-receb * { color: #ffffff !important; }
+.modal-receb .btn-cancelar-receb { color: #0a1420 !important; }
+/* rótulos/valores de estado (Troco/Falta) legíveis no fundo claro */
+#receb-restante-box .rv-lbl { color: #0a1420 !important; }
+#receb-restante-box.troco .rv-lbl { color: #8a5a00 !important; }
+#receb-restante-box.troco .rv-val { color: #b9700a !important; }
+#receb-restante-box.falta .rv-lbl { color: #c0304a !important; }
+#receb-restante-box.falta .rv-val { color: #c0304a !important; }
+/* compacto: tudo dentro do campo de visão */
+.modal-receb .receb-body { padding: 14px 18px; gap: 10px; }
+.modal-receb .receb-resumo { padding: 10px 14px; gap: 5px; }
+.modal-receb .rv-val.rv-total { font-size: 20px; }
+.modal-receb .rv-destaque { padding: 9px 13px; }
+.modal-receb .rv-destaque .rv-val { font-size: 22px; }
+.modal-receb .formas-multi { gap: 8px; }
+.modal-receb .forma-linha { padding: 9px 12px; gap: 6px; }
+.modal-receb .forma-linha .forma-valor { padding: 8px 11px; font-size: 18px; }
+.modal-receb .receb-depois { padding: 10px 12px; }
+.modal-receb .btn-cancelar-receb, .modal-receb .btn-confirmar-receb { padding: 13px; font-size: 15px; }
