@@ -1433,7 +1433,13 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 .ultima-venda.cancelada .uv-linha strong { text-decoration: line-through; }
 
 /* 📝 Anotações (pagar depois) — caixa no PDV */
-.anotacoes-box { border: 1px solid rgba(245, 185, 59, 0.4); background: rgba(245, 185, 59, 0.06); border-radius: 14px; padding: 12px 14px; }
+.anotacoes-box {
+  border: 1px solid rgba(200, 138, 0, 0.55); background: #ffffff; border-radius: 14px; padding: 12px 14px;
+  box-shadow: 0 6px 18px rgba(15, 47, 77, 0.10);
+  flex: 1 1 auto; min-height: 150px;          /* CRESCE pra ocupar o espaço vazio da esquerda */
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.anotacoes-box .anot-lista { flex: 1; overflow-y: auto; min-height: 0; }
 .anot-titulo { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; color: var(--amarelo); }
 .anot-titulo small { font-weight: 600; color: rgba(15, 47, 77, 0.6); text-transform: none; }
 .anot-total { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--amarelo); }
@@ -4014,3 +4020,5 @@ input:focus, textarea:focus, select:focus { border-color: var(--acai) !important
 .adm-tag.on { color: #06713a !important; }
 
 .fs-aviso { color: #7a4a00 !important; }
+
+.anot-vazio { padding: 28px 10px; text-align: center; }
