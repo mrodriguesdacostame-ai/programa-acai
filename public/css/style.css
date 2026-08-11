@@ -158,6 +158,12 @@ body {
   padding: 6px 12px;
   border-radius: 20px;
 }
+button.config-chip {
+  cursor: pointer; font-family: inherit;
+  background: var(--acai); color: #fff; border: 1px solid var(--acai-escuro);
+  font-weight: 800;
+}
+button.config-chip:hover { background: var(--acai-escuro); }
 .btn-sair {
   padding: 7px 14px;
   border: 1px solid rgba(255, 83, 112, 0.4);

@@ -37,7 +37,14 @@ if not defined ISCC (
 echo  [OK] Inno Setup: "%ISCC%"
 echo.
 echo  Compilando o instalador...
-"%ISCC%" "instalador\programa-acai.iss"
+REM --- pega a versao do package.json e injeta no instalador (fica sempre em dia) ---
+set "VER="
+for /f "usebackq delims=" %%v in (`node -p "require('./package.json').version" 2^>nul`) do set "VER=%%v"
+if not defined VER set "VER=1.0.5"
+echo  Versao do instalador: %VER%
+echo.
+echo  Compilando o instalador...
+"%ISCC%" /DAppVersao=%VER% "instalador\programa-acai.iss"
 if errorlevel 1 (
   echo.
   echo  [X] Falhou a compilacao. Veja o erro acima.

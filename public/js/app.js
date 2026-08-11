@@ -152,7 +152,7 @@ const NAV_MAIS = [
   { titulo: 'Central de Impressão', icone: '🖨️', rota: 'impressao', perm: 'todos', kw: 'impressao' },
   { titulo: 'Assistente IA', icone: '🤖', rota: 'assistente', perm: 'gestor', kw: 'ia assistente' },
   { titulo: 'Conectividade', icone: '🔌', rota: 'conectividade', perm: 'gestor', kw: 'whatsapp conexao numeros' },
-  { titulo: 'Administração', icone: '⚙️', rota: 'administracao', sub: 'usuarios', perm: 'admin', kw: 'usuarios backup logs' },
+  { titulo: 'Configuração do Programa', icone: '⚙️', rota: 'administracao', sub: 'usuarios', perm: 'admin', kw: 'configuracao usuarios funcionarios backup logs loja atualizacao' },
 ];
 function irParaItem(item) {
   if (!item) return;
@@ -3257,6 +3257,11 @@ function fazerLogin(nome) {
 function atualizarMenuAdmin() {
   // Fase 46B §10: home por perfil — cards gerenciais só aparecem para quem usa.
   document.querySelectorAll('.dash-card[data-perm]').forEach(c => { c.style.display = navPodeVer(c.dataset.perm) ? '' : 'none'; });
+  // Topo direito: admin vê "⚙️ Configuração do Programa" (abre as configs); operador vê o nome.
+  const ehAdmin = usuarioAtual && usuarioAtual.perfil === 'admin';
+  const bCfg = $('btn-config-programa'), chipNome = $('user-chip-nome');
+  if (bCfg) bCfg.style.display = ehAdmin ? '' : 'none';
+  if (chipNome) chipNome.style.display = ehAdmin ? 'none' : '';
   try { montarTopo(); } catch (e) { console.error('montarTopo', e); }
   if (usuarioAtual) { try { iniciarIndicadores(); } catch {} } else { try { pararIndicadores(); } catch {} }
 }
@@ -3308,6 +3313,7 @@ $('login-user').addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); $('login-senha').focus(); }
 });
 $('btn-sair').addEventListener('click', logout);
+{ const bc = $('btn-config-programa'); if (bc) bc.addEventListener('click', () => irPara('administracao')); }
 
 /* Atalho universal: Alt + letra sublinhada aciona o botão correspondente */
 document.addEventListener('keydown', e => {

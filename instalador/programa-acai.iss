@@ -14,7 +14,11 @@
 
 #define AppNome "Açaí do Centro"
 #define AppPasta "AcaiDoCentro"
-#define AppVersao "1.0.0"
+; a versão pode vir do GERAR_INSTALADOR.bat (/DAppVersao=x.y.z, lida do package.json);
+; se não vier, usa este padrão. Mantenha em dia com o package.json.
+#ifndef AppVersao
+  #define AppVersao "1.0.5"
+#endif
 #define AppPublisher "Açaí do Centro"
 
 [Setup]
@@ -47,7 +51,7 @@ Name: "desktopicon"; Description: "Criar atalho na Área de Trabalho"; GroupDesc
 [Files]
 ; copia o runtime, EXCLUINDO dados/segredos/pesados e os arquivos de desenvolvimento
 Source: "..\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion; \
-  Excludes: "node_modules\*,\.git\*,\.git,backups\*,logs\*,\.wwebjs_auth\*,\.wwebjs_cache\*,\.claude\*,instalador\*,dist-instalador\*,assets\*,acai.db,acai.db-wal,acai.db-shm,acai.db-journal,.env,*.log,GERAR_INSTALADOR.bat,GERAR_PACOTE.bat,SUBIR_GITHUB.bat,versionar.bat,PUBLICAR_VERSAO.bat,INSTALADOR_PROFISSIONAL.md,VERSIONAR_ONLINE.md"
+  Excludes: "node_modules\*,\.git\*,\.git,backups\*,logs\*,\.wwebjs_auth\*,\.wwebjs_cache\*,\.claude\*,instalador\*,dist-instalador\*,assets\*,acai.db,acai.db-wal,acai.db-shm,acai.db-journal,acai-*.db,*.bak,*.tmp,.env,.env.local,.env.*.local,*.log,GERAR_INSTALADOR.bat,GERAR_PACOTE.bat,SUBIR_GITHUB.bat,versionar.bat,PUBLICAR_VERSAO.bat,INSTALADOR_PROFISSIONAL.md,VERSIONAR_ONLINE.md"
 ; cria o .env a partir do modelo, so se ainda nao existir (nunca sobrescreve o real)
 Source: "..\.env.exemplo"; DestDir: "{app}"; DestName: ".env"; Flags: onlyifdoesntexist
 ; icone para os atalhos
