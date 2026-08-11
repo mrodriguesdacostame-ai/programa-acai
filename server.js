@@ -7487,6 +7487,20 @@ app.post('/api/atendimento-ia/webhook', async (req, res) => {
   res.status(resultado.erro ? (iaAtiva ? 500 : 503) : 200).json(resultado);
 });
 
+// CACHE-BUSTING DEFINITIVO: serve o index.html injetando ?v=<BOOT_ID> nos assets
+// (css/js) — o BOOT_ID muda a cada início do servidor (= a cada atualização), então o
+// navegador é OBRIGADO a baixar o app.js/style.css novos. Fim do "atualizei e ficou velho".
+const BOOT_ID = Date.now();
+function servirIndex(req, res) {
+  try {
+    let html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+    html = html.replace(/(href|src)="((?:css|js)\/[^"?]+\.(?:css|js))"/g, '$1="$2?v=' + BOOT_ID + '"');
+    res.set('Cache-Control', 'no-store').type('html').send(html);
+  } catch { res.sendFile(path.join(__dirname, 'public', 'index.html')); }
+}
+app.get('/', servirIndex);
+app.get('/index.html', servirIndex);
+
 // Sem cache — o navegador sempre carrega a versão mais recente dos arquivos
 app.use(express.static(path.join(__dirname, 'public'), {
   etag: false,

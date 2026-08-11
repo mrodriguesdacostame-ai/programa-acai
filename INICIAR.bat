@@ -19,7 +19,8 @@ powershell -NoProfile -Command "try{(New-Object Net.Sockets.TcpClient).Connect('
 if errorlevel 1 goto :esperar
 
 REM abre em MODO APLICATIVO (janela propria, sem barra/abas de navegador)
-set "URL=http://localhost:3001"
+REM ?nc=aleatorio a cada abertura → o Chrome busca a pagina NOVA (sem cache velho)
+set "URL=http://localhost:3001/?nc=%RANDOM%%RANDOM%"
 set "PFX86=%ProgramFiles(x86)%"
 set "NAV="
 if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set "NAV=%ProgramFiles%\Google\Chrome\Application\chrome.exe"
