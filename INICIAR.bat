@@ -29,7 +29,14 @@ if not defined NAV if exist "%PFX86%\Microsoft\Edge\Application\msedge.exe" set 
 if not defined NAV if exist "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" set "NAV=%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"
 
 if not defined NAV goto :semnav
-start "" "%NAV%" --app=%URL% --window-size=1300,860
+REM perfil ISOLADO do app (nao mistura com o Chrome normal) e apaga o cache dele
+REM a cada abertura -> impossivel servir app.js/style.css velhos ("atualizei e ficou velho")
+set "APPPROF=%LocalAppData%\AcaiDoCentro\navegador"
+rmdir /s /q "%APPPROF%\Default\Cache" >nul 2>&1
+rmdir /s /q "%APPPROF%\Default\Code Cache" >nul 2>&1
+rmdir /s /q "%APPPROF%\Default\GPUCache" >nul 2>&1
+rmdir /s /q "%APPPROF%\GrShaderCache" >nul 2>&1
+start "" "%NAV%" --app=%URL% --user-data-dir="%APPPROF%" --disk-cache-size=1 --window-size=1300,860
 goto :fim
 :semnav
 REM sem Chrome/Edge: abre no navegador padrao
