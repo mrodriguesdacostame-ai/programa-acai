@@ -4022,3 +4022,20 @@ input:focus, textarea:focus, select:focus { border-color: var(--acai) !important
 .fs-aviso { color: #7a4a00 !important; }
 
 .anot-vazio { padding: 28px 10px; text-align: center; }
+
+/* ═══ PDV: campo Código e Última Venda (mini espelho) em AMARELO — pedido do Melque ═══ */
+#tela-pdv .campo-codigo {
+  background: #fdf3b0 !important;
+  border: 1px solid rgba(190, 150, 0, 0.55) !important;
+}
+#tela-pdv #codigo {
+  background: #fffbe0 !important;
+  border: 2px solid rgba(190, 150, 0, 0.6) !important;
+  color: #0a1420 !important;
+}
+#tela-pdv #codigo::placeholder { color: #8f814f !important; }
+#tela-pdv .ultima-venda {
+  background: #fdf3b0 !important;
+  border: 1px solid rgba(190, 150, 0, 0.55) !important;
+  box-shadow: 0 6px 18px rgba(15, 47, 77, 0.10);
+}
