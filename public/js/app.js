@@ -5656,7 +5656,7 @@ function atzAguardarReinicio(r) {
       if (caiu) {
         clearInterval(atzPolling);
         const ur = s.ultimoResultado || {};
-        if (ur.status === 'OK') { box.innerHTML = '<div class="atz-msg ok">✅ Sistema atualizado com sucesso! Recarregando…</div>'; setTimeout(() => location.reload(), 1500); }
+        if (ur.status === 'OK') { box.innerHTML = '<div class="atz-msg ok">✅ Sistema atualizado com sucesso! Recarregando…</div>'; setTimeout(() => location.replace('/?nc=' + Date.now()), 1500); }
         else { box.innerHTML = `<div class="atz-msg erro">🔴 A atualização falhou e a versão anterior foi restaurada.${ur.detalhe ? `<br><small>${crmEsc(ur.detalhe)}</small>` : ''}</div>`; setTimeout(admCarregarAtualizacoes, 2500); }
       }
     } catch { caiu = true; }
