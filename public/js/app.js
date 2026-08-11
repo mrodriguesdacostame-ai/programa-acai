@@ -3434,7 +3434,7 @@ async function renderCustosProducao() {
           <td><span class="prod-badge">${escapar(p.tipo || 'produção')}</span></td>
           <td class="col-num"><strong>${fmt(p.custo_total)}</strong></td>
         </tr>`).join('')
-      : `<tr><td colspan="4" style="text-align:center;padding:24px;color:rgba(243,234,251,.4)">Nenhuma produção registrada ainda</td></tr>`;
+      : `<tr><td colspan="4" style="text-align:center;padding:24px;color:rgba(15,47,77,.4)">Nenhuma produção registrada ainda</td></tr>`;
     renderTabelaCustos();
   } catch { /* silencioso */ }
 }
@@ -3464,7 +3464,7 @@ function renderTabelaCustos() {
       <td class="col-num">${fmt(venda)}</td>
       <td class="col-num"><strong class="${cls}">${(m * 100).toFixed(1)}%</strong></td>
     </tr>`;
-  }).join('') : `<tr><td colspan="5" style="text-align:center;padding:24px;color:rgba(243,234,251,.4)">Nenhum produto</td></tr>`;
+  }).join('') : `<tr><td colspan="5" style="text-align:center;padding:24px;color:rgba(15,47,77,.4)">Nenhum produto</td></tr>`;
 }
 { const cf = $('custos-filtro'); if (cf) cf.addEventListener('input', renderTabelaCustos); }
 
@@ -4221,7 +4221,7 @@ function renderInsumos() {
       <td class="col-num">${unit != null ? `<strong>${fmt(unit)}</strong>` : '—'}</td>
       <td><button class="btn-mini-del" onclick="excluirInsumo(${idx})">🗑</button></td>
     </tr>`;
-  }).join('') || `<tr><td colspan="5" style="text-align:center;padding:30px;color:rgba(243,234,251,.4)">Nenhum insumo cadastrado</td></tr>`;
+  }).join('') || `<tr><td colspan="5" style="text-align:center;padding:30px;color:rgba(15,47,77,.4)">Nenhum insumo cadastrado</td></tr>`;
 }
 
 /* ── Histórico + Resumo financeiro com filtro de período ── */
@@ -4287,7 +4287,7 @@ function histRenderTabela() {
   $('hist-tbody').innerHTML = lista.length
     ? lista.map(p => `<tr tabindex="0"><td>${escapar(p.nome || p.codigo)}</td><td class="col-num">${p.qtd}</td><td class="col-num">${fmt(p.valor)}</td>
         <td class="col-num">${p.ultima ? new Date(p.ultima).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td></tr>`).join('')
-    : `<tr><td colspan="4" style="text-align:center;padding:30px;color:rgba(243,234,251,.4)">${bq ? 'Nada na busca' : 'Nenhuma venda no período'}</td></tr>`;
+    : `<tr><td colspan="4" style="text-align:center;padding:30px;color:rgba(15,47,77,.4)">${bq ? 'Nada na busca' : 'Nenhuma venda no período'}</td></tr>`;
 }
 function histInsight() {
   const box = $('hist-insight'); if (!box) return;
@@ -4392,7 +4392,7 @@ function renderNotas() {
         <td>${new Date(g.ultima).toLocaleDateString('pt-BR')}</td>
         <td class="nt-total">${fmt(g.total)}</td>
       </tr>`).join('')
-    : `<tr><td colspan="4" style="text-align:center;padding:30px;color:rgba(243,234,251,.4)">Nenhuma nota fiscal lançada ainda</td></tr>`;
+    : `<tr><td colspan="4" style="text-align:center;padding:30px;color:rgba(15,47,77,.4)">Nenhuma nota fiscal lançada ainda</td></tr>`;
   $('notas-tbody').querySelectorAll('tr[data-num]').forEach(tr =>
     tr.addEventListener('click', () => { mostrarDetalheNota(tr.dataset.num); tr.focus(); }));
   // mantém o detalhe aberto coerente com o que ainda existe
