@@ -1358,6 +1358,7 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
   flex-direction: column;
   gap: 14px;
   min-height: 0;
+  padding-bottom: 16px;   /* folga embaixo pra o mini espelho não colar/cortar na borda */
 }
 .espelho {
   width: 100%;            /* preenche a coluna direita, que agora é menor (430px) */

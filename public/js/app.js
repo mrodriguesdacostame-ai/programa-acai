@@ -4943,7 +4943,7 @@ $('form-cliente').addEventListener('submit', async e => {
   e.preventDefault();
   const nome = $('cl-nome').value.trim();
   const telefone = $('cl-telefone').value.trim();
-  if (!nome || !telefone) return;
+  if (!nome) return;   // telefone é OPCIONAL — dá pra criar conta só com o nome
   const dados = {
     nome, telefone,
     bairro: $('cl-bairro').value.trim(),
