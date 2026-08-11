@@ -35,14 +35,18 @@ taskkill /F /IM node.exe >nul 2>&1
 timeout /t 2 /nobreak >nul
 
 :pull
-REM descobre o ramo atual (main/master) e baixa via fetch + reset --hard
-REM (mais robusto que "pull --ff-only": alinha ao GitHub mesmo com arvore suja).
+REM Baixa SEMPRE do branch 'main' (o do GitHub) e alinha via fetch + reset --hard.
+REM NAO adivinha o ramo pelo HEAD: uma pasta criada com "git init" fica em 'master',
+REM e ai "git fetch origin master" falha porque o GitHub so tem 'main' -> era essa a
+REM causa do "falha ao baixar do GitHub - versao anterior restaurada".
 set "BR=main"
-for /f "delims=" %%b in ('git rev-parse --abbrev-ref HEAD 2^>nul') do set "BR=%%b"
 git fetch origin %BR% > "logs\atualizador-git.log" 2>&1
 if errorlevel 1 goto :err_pull
 git reset --hard origin/%BR% >> "logs\atualizador-git.log" 2>&1
 if errorlevel 1 goto :err_pull
+REM deixa o ramo local com o nome certo (main) pra nao dar problema em outras telas
+git branch -M main >nul 2>&1
+git branch --set-upstream-to=origin/main main >nul 2>&1
 
 for /f "delims=" %%p in ('git rev-parse HEAD:package.json 2^>nul') do set "PKG_DEPOIS=%%p"
 if "%PKG_ANTES%"=="%PKG_DEPOIS%" goto :ok
