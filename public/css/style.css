@@ -1349,12 +1349,25 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
    Mais largo pra leitura, linhas bem definidas, itens legíveis e
    total forte no rodapé. (só cor/tamanho — a estrutura é a de sempre)
    ══════════════════════════════════════════════════════════ */
+/* coluna direita: espelho do cupom (menor) EM CIMA + mini espelho embaixo */
+.painel-direito {
+  flex: 0 1 430px;
+  width: 430px;
+  min-width: 330px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+}
 .espelho {
-  width: 600px;
-  flex: 0 1 600px;       /* fica em 600px e só encolhe se faltar espaço */
-  min-width: 360px;      /* nunca menor que isso */
+  width: 100%;            /* preenche a coluna direita, que agora é menor (430px) */
+  flex: 1 1 auto;         /* ocupa o espaço e deixa o mini espelho embaixo */
+  min-width: 0;
+  min-height: 0;
   background: linear-gradient(180deg, rgba(43, 10, 61, 0.5), rgba(0, 0, 0, 0.34));
 }
+/* mini espelho quando fica embaixo do espelho do cupom */
+.painel-direito .ultima-venda { margin-top: 0; max-width: none; width: 100%; flex: 0 0 auto; }
 .espelho-header { background: rgba(30, 136, 200, 0.16); }
 .espelho-colunas { grid-template-columns: 66px 1fr 48px 104px; font-size: 11px; padding: 9px 20px; }
 .espelho-itens { padding: 6px 12px; }
@@ -1377,6 +1390,7 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 @media (max-width: 900px) {
   #tela-pdv { flex-direction: column; overflow-y: auto; }
   .painel-esquerdo { min-width: 0; width: 100%; }
+  .painel-direito { width: 100%; flex: 1 1 auto; min-width: 0; }
   .espelho { width: 100%; flex: 1 1 auto; min-height: 360px; }
 }
 

@@ -195,19 +195,6 @@
           <div class="campo-codigo-hint">Tecle <kbd>Enter</kbd> pra adicionar · <kbd>3*cód</kbd> pra quantidade</div>
         </div>
         <button type="button" class="btn-disp-pdv" id="btn-disponibilidade-pdv">🟢 Disponibilidade de hoje</button>
-        <div class="ultima-venda" id="ultima-venda" style="display:none">
-          <div class="uv-titulo-row">
-            <div class="uv-titulo">🧾 Última venda <span class="uv-badge-cancelada" id="uv-badge-cancelada" style="display:none">CANCELADA</span></div>
-            <button type="button" class="btn-cancelar-venda" id="btn-cancelar-venda" title="Cancelar esta venda (devolve ao estoque)">✕ <span class="atalho">C</span>ancelar</button>
-          </div>
-          <ul class="uv-itens" id="uv-itens"></ul>
-          <div class="uv-linha"><span>Total</span><strong id="uv-total">R$ 0,00</strong></div>
-          <div class="uv-linha"><span>Pagamento</span><strong id="uv-pgto">—</strong></div>
-          <div class="uv-linha uv-fiado" id="uv-fiado-linha" style="display:none"><span>📒 Fiado de</span><strong id="uv-fiado-cliente">—</strong></div>
-          <div class="uv-linha uv-fiado" id="uv-retirou-linha" style="display:none"><span>🖐 Retirado por</span><strong id="uv-retirou-nome">—</strong></div>
-          <div class="uv-linha"><span>Troco</span><strong id="uv-troco">R$ 0,00</strong></div>
-          <div class="uv-linha"><span>Hora</span><strong id="uv-hora">--:--</strong></div>
-        </div>
 
         <!-- 📝 Anotações (pagar depois): fica no PDV até dar baixa; conta como "a receber" -->
         <div class="anotacoes-box" id="anotacoes-box">
@@ -225,7 +212,8 @@
         </div>
       </div>
 
-      <!-- Direita: espelho do cupom -->
+      <!-- Direita: espelho do cupom (menor) + mini espelho da última venda embaixo -->
+      <div class="painel-direito">
       <aside class="espelho">
         <div class="espelho-header">
           <span>🧾 Espelho do Cupom</span>
@@ -254,6 +242,22 @@
           </button>
         </div>
       </aside>
+
+        <!-- 🧾 Mini espelho (última venda) — agora embaixo do espelho do cupom -->
+        <div class="ultima-venda" id="ultima-venda" style="display:none">
+          <div class="uv-titulo-row">
+            <div class="uv-titulo">🧾 Última venda <span class="uv-badge-cancelada" id="uv-badge-cancelada" style="display:none">CANCELADA</span></div>
+            <button type="button" class="btn-cancelar-venda" id="btn-cancelar-venda" title="Cancelar esta venda (devolve ao estoque)">✕ <span class="atalho">C</span>ancelar</button>
+          </div>
+          <ul class="uv-itens" id="uv-itens"></ul>
+          <div class="uv-linha"><span>Total</span><strong id="uv-total">R$ 0,00</strong></div>
+          <div class="uv-linha"><span>Pagamento</span><strong id="uv-pgto">—</strong></div>
+          <div class="uv-linha uv-fiado" id="uv-fiado-linha" style="display:none"><span>📒 Fiado de</span><strong id="uv-fiado-cliente">—</strong></div>
+          <div class="uv-linha uv-fiado" id="uv-retirou-linha" style="display:none"><span>🖐 Retirado por</span><strong id="uv-retirou-nome">—</strong></div>
+          <div class="uv-linha"><span>Troco</span><strong id="uv-troco">R$ 0,00</strong></div>
+          <div class="uv-linha"><span>Hora</span><strong id="uv-hora">--:--</strong></div>
+        </div>
+      </div>
 
     </section>
 
