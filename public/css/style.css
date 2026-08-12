@@ -83,6 +83,18 @@ body {
   color: var(--acai-rosa);
   margin-bottom: 28px;
 }
+/* Usuários cadastrados como opção na tela de login (clicar = escolhe e pula pra senha) */
+.login-usuarios { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 22px; }
+.login-usuarios:empty { display: none; }
+.login-user-chip {
+  display: flex; align-items: center; gap: 7px; padding: 8px 13px; border-radius: 999px;
+  border: 1px solid var(--vidro-borda); background: #eef4fa; color: #0a1420;
+  font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer; transition: 0.14s ease;
+}
+.login-user-chip .luc-ava { font-size: 15px; }
+.login-user-chip:hover { border-color: var(--acai-claro); background: rgba(30, 136, 200, 0.12); }
+.login-user-chip.sel { background: var(--acai); border-color: var(--acai); color: #fff; box-shadow: 0 4px 12px rgba(30, 136, 200, 0.35); }
+
 .login-campo { text-align: left; margin-bottom: 16px; }
 .login-campo label {
   display: block;
@@ -4058,11 +4070,11 @@ input:focus, textarea:focus, select:focus { border-color: var(--acai) !important
 /* ═══ FINALIZAR VENDA (Recebimento) no MESMO visual do PDV — pedido do Melque ═══
    Fundo claro (branco), cabeçalho azul com texto branco (igual ao Espelho do Cupom),
    cartões claros, texto preto. E compacto pra caber TUDO na tela sem rolar. */
-.modal-receb { background: #ffffff !important; width: min(500px, 96vw); }
+.modal-receb { background: linear-gradient(160deg, #2298da 0%, #1479bd 100%) !important; width: min(500px, 96vw); }
 .modal-receb .receb-head { background: var(--acai) !important; }
 .modal-receb .receb-head, .modal-receb .receb-head * { color: #ffffff !important; }
 .modal-receb .receb-resumo { background: #f6fafd !important; }
-.modal-receb .receb-rodape { background: #ffffff !important; }
+.modal-receb .receb-rodape { background: #1479bd !important; }
 .modal-receb .receb-depois { background: #f6fafd !important; }
 .modal-receb .rv-lbl, .modal-receb .rv-val { color: #0a1420 !important; }
 .modal-receb .rv-val.rv-total { color: #0a1420 !important; }

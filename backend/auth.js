@@ -97,7 +97,8 @@ module.exports = function createAuth({ db, logAcao }) {
 
   function middleware(req, res, next) {
     if (!req.path.startsWith('/api/')) return next();                 // estáticos passam (a tela de login precisa carregar)
-    if (req.path === '/api/auth/login') return next();                // única API pública
+    if (req.path === '/api/auth/login') return next();                // login: público
+    if (req.path === '/api/auth/usuarios') return next();             // lista de usuários pra tela de login (só nome/usuario)
     if (req.path === '/api/atendimento-ia/webhook') return next();    // protegida pelo WEBHOOK_SECRET próprio
     if (req.path.startsWith('/api/entregador/')) return next();       // Fase 23: painel do entregador tem sessão própria (PIN) — NÃO exime /api/entregadores (CRUD da equipe)
     const s = sessaoDoRequest(req);

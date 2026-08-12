@@ -139,6 +139,11 @@ process.on('uncaughtException', (err) => manut.logErro('uncaughtException', err)
 const auth = require('./backend/auth')({ db, logAcao: manut.logAcao });
 app.use(auth.middleware);
 app.post('/api/auth/login', auth.login);
+// Lista PÚBLICA (só usuario+nome, sem senha) pra tela de login mostrar os usuários
+// cadastrados como opção de clique. Liberada no middleware do auth.
+app.get('/api/auth/usuarios', (req, res) => {
+  res.json(db.prepare("SELECT usuario, nome, perfil FROM usuarios WHERE ativo=1 ORDER BY nome").all());
+});
 app.post('/api/auth/logout', auth.logout);
 app.get('/api/auth/me', auth.me);
 app.post('/api/auth/supervisor', auth.supervisor);
@@ -3312,10 +3317,15 @@ app.get('/api/movimentacoes/produtos', (req, res) => {
 });
 // Nomes de funcionários já usados + usuários ativos (autocomplete do "responsável").
 app.get('/api/movimentacoes/funcionarios', (req, res) => {
+  // Só quem está CADASTRADO como funcionário (Administração › Funcionários) + nomes já
+  // usados em consumos anteriores. NÃO inclui os usuários do sistema (admin/operadores):
+  // eles apareciam "indevidos" na lista do consumo interno. Também filtra da lista de
+  // "já usados" qualquer nome que seja de um usuário do sistema.
   const funcs = db.prepare("SELECT nome FROM funcionarios WHERE ativo=1 ORDER BY nome").all().map(r => r.nome);
-  const users = db.prepare("SELECT nome FROM usuarios WHERE ativo=1 ORDER BY nome").all().map(r => r.nome);
   const usados = db.prepare("SELECT DISTINCT funcionario FROM movimentacoes_nc WHERE funcionario IS NOT NULL AND funcionario<>'' ORDER BY funcionario").all().map(r => r.funcionario);
-  res.json({ funcionarios: [...new Set([...funcs, ...users, ...usados])] });   // cadastrados 1º, depois usuários, depois nomes já usados
+  const nomesUsuarios = new Set(db.prepare("SELECT lower(trim(nome)) n FROM usuarios").all().map(r => r.n).filter(Boolean));
+  const usadosLimpo = usados.filter(n => !nomesUsuarios.has(String(n).toLowerCase().trim()));
+  res.json({ funcionarios: [...new Set([...funcs, ...usadosLimpo])] });
 });
 // ── CADASTRO de FUNCIONÁRIOS (quem pega consumo interno) — não precisa ser usuário do sistema ──
 db.exec(`CREATE TABLE IF NOT EXISTS funcionarios (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT NOT NULL, ativo INTEGER DEFAULT 1, criado_em TEXT)`);
