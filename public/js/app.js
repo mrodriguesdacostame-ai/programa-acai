@@ -6440,7 +6440,7 @@ function cxdAbrirTroco() {
 /* ── CONFERÊNCIA DE CAIXA — compara o ESPERADO (vendas por forma) com o CONTADO (por
    maquininha + pix da conta + dinheiro da gaveta). SÓ confere: não fecha caixa nem move
    dinheiro. Período De→Até (fecha vários dias juntos). Maquininhas editáveis. ── */
-let confMaquininhas = [], confEsperado = {};
+let confMaquininhas = [], confEsperado = {}, confMovimentos = null;
 let confPeriodo = { de: '', ate: '' };
 let confValores = { maq: {}, pixConta: '', dinheiro: '', outros: '' };
 const confNum = v => { const n = parseFloat(String(v == null ? '' : v).replace(',', '.')); return isNaN(n) ? 0 : n; };
@@ -6495,7 +6495,26 @@ function confAtualizarComparacao() { const c = $('conf-comparacao'); if (c) c.in
 async function confBuscarEsperado() {
   const p = new URLSearchParams(); if (confPeriodo.de) p.set('de', confPeriodo.de); if (confPeriodo.ate) p.set('ate', confPeriodo.ate);
   const d = await (await fetch('/api/conferencia/esperado?' + p, { cache: 'no-store' })).json();
-  confEsperado = d.esperado || {}; return d;
+  confEsperado = d.esperado || {}; confMovimentos = d.movimentos || null; return d;
+}
+/* Movimentações do período (fora as vendas): entradas (suprimento/recebimentos) e
+   saídas (sangria/despesas) — pra fechar o caixa vendo tudo que entrou e saiu. */
+function confMovimentosHTML() {
+  const m = confMovimentos || { entradas: [], saidas: [], totalEntradas: 0, totalSaidas: 0 };
+  const linha = x => `<tr><td class="conf-mv-hora">${x.data ? fmtHora(x.data) : ''}</td><td class="conf-mv-desc">${crmEsc(x.descricao)}</td><td class="col-num">${fmt(x.valor)}</td></tr>`;
+  const bloco = (titulo, ico, lista, total, cls) => `
+    <div class="conf-mv-bloco conf-mv-${cls}">
+      <div class="conf-mv-tit">${ico} ${titulo}<span class="conf-mv-tot">${fmt(total)}</span></div>
+      ${lista.length ? `<table class="conf-mv-tab"><tbody>${lista.map(linha).join('')}</tbody></table>` : '<div class="conf-mv-vazio">Nenhuma no período</div>'}
+    </div>`;
+  const saldo = Math.round(((m.totalEntradas || 0) - (m.totalSaidas || 0)) * 100) / 100;
+  return `
+    <div class="fin-box-tit">📋 Movimentações do período <small>(fora as vendas — suprimento, sangria, recebimentos e despesas)</small></div>
+    <div class="conf-mv-grid">
+      ${bloco('Entradas', '⬆️', m.entradas, m.totalEntradas, 'ent')}
+      ${bloco('Saídas / Despesas', '⬇️', m.saidas, m.totalSaidas, 'sai')}
+    </div>
+    <div class="conf-mv-saldo">Saldo das movimentações: <strong class="${saldo >= 0 ? 'pos' : 'neg'}">${fmt(saldo)}</strong> <small>(entradas − saídas)</small></div>`;
 }
 async function renderFinConferencia() {
   const el = $('fin-conteudo'); el.innerHTML = biLoading();
@@ -6551,6 +6570,7 @@ async function renderFinConferencia() {
           <div id="conf-resultado"></div>
         </div>
       </div>
+      <div class="conf-movbox" id="conf-movimentos">${confMovimentosHTML()}</div>
       <div class="conf-histbox">
         <button class="conf-hist-toggle" id="conf-hist-toggle">📜 Histórico de fechamentos <span class="fin-av-seta">▾</span></button>
         <div id="conf-hist" style="display:none"></div>

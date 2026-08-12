@@ -1535,6 +1535,24 @@ function conferenciaEsperado(de, ate) {
   m.total = r2(m.credito + m.debito + m.pix + m.dinheiro + m.alimentacao + m.outros);
   return m;
 }
+// Movimentações do período que NÃO são vendas (as vendas já viram "esperado"): suprimento,
+// sangria, despesas, recebimentos de fiado/anotação. Separadas em entradas e saídas pro fechamento.
+function conferenciaMovimentos(de, ate) {
+  const pc = [], pa = [];
+  if (de) { pc.push("date(data,'localtime') >= ?"); pa.push(de); }
+  if (ate) { pc.push("date(data,'localtime') <= ?"); pa.push(ate); }
+  const per = pc.length ? ' AND ' + pc.join(' AND ') : '';
+  const rows = db.prepare(`SELECT id, data, tipo, valor, descricao, referencia_tipo
+    FROM financeiro_movimentos
+    WHERE situacao='confirmado' AND (referencia_tipo IS NULL OR referencia_tipo <> 'venda')${per}
+    ORDER BY data, id`).all(...pa);
+  const ROTULO = { caixa_suprimento: 'Suprimento (entrada de caixa)', caixa_sangria: 'Sangria (retirada de caixa)', anotacao: 'Recebimento anotado', extrato: 'Recebimento de fiado' };
+  const map = r => ({ data: r.data, valor: r2(r.valor), descricao: r.descricao || ROTULO[r.referencia_tipo] || (r.tipo === 'entrada' ? 'Entrada' : 'Saída'), ref: r.referencia_tipo || '' });
+  const entradas = rows.filter(r => r.tipo === 'entrada').map(map);
+  const saidas = rows.filter(r => r.tipo === 'saida').map(map);
+  const soma = a => r2(a.reduce((s, x) => s + (+x.valor || 0), 0));
+  return { entradas, saidas, totalEntradas: soma(entradas), totalSaidas: soma(saidas) };
+}
 app.get('/api/conferencia/maquininhas', (req, res) => res.json(db.prepare('SELECT id, nome, ordem FROM conf_maquininhas WHERE ativo=1 ORDER BY ordem, id').all()));
 app.post('/api/conferencia/maquininhas', (req, res) => {
   if (!gateFinLancar(req, res)) return;
@@ -1555,7 +1573,11 @@ app.delete('/api/conferencia/maquininhas/:id', (req, res) => {
   res.json({ ok: true });
 });
 app.get('/api/conferencia/esperado', (req, res) => {
-  res.json({ esperado: conferenciaEsperado(req.query.de, req.query.ate), ultima: db.prepare('SELECT de, ate, criado_em FROM conf_caixa ORDER BY id DESC LIMIT 1').get() || null });
+  res.json({
+    esperado: conferenciaEsperado(req.query.de, req.query.ate),
+    movimentos: conferenciaMovimentos(req.query.de, req.query.ate),
+    ultima: db.prepare('SELECT de, ate, criado_em FROM conf_caixa ORDER BY id DESC LIMIT 1').get() || null
+  });
 });
 app.post('/api/conferencia', (req, res) => {
   const d = req.body || {}, de = d.de || null, ate = d.ate || null;
