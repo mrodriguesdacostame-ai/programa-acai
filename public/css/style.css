@@ -83,8 +83,13 @@ body {
   color: var(--acai-rosa);
   margin-bottom: 28px;
 }
-/* Usuários cadastrados como opção na tela de login (clicar = escolhe e pula pra senha) */
-.login-usuarios { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 22px; }
+/* Usuários cadastrados dentro de um QUADRO na tela de login (clicar = escolhe e pula pra senha) */
+.login-quadro {
+  border: 1px solid var(--vidro-borda); background: rgba(30, 136, 200, 0.06);
+  border-radius: 14px; padding: 12px 12px 14px; margin-bottom: 22px;
+}
+.login-quadro-tit { font-size: 11px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase; color: var(--acai-rosa); text-align: center; margin-bottom: 10px; }
+.login-usuarios { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .login-usuarios:empty { display: none; }
 .login-user-chip {
   display: flex; align-items: center; gap: 7px; padding: 8px 13px; border-radius: 999px;

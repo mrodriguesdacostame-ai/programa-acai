@@ -3281,9 +3281,11 @@ function mostrarTelaLogin() {
    e pula pra senha (não precisa saber/digitar o nome de usuário). */
 async function carregarUsuariosLogin() {
   const box = $('login-usuarios'); if (!box) return;
+  const quadro = $('login-quadro');
   try {
     const us = await (await fetch('/api/auth/usuarios', { cache: 'no-store' })).json();
-    if (!Array.isArray(us) || !us.length) { box.innerHTML = ''; return; }
+    if (!Array.isArray(us) || !us.length) { box.innerHTML = ''; if (quadro) quadro.style.display = 'none'; return; }
+    if (quadro) quadro.style.display = '';
     box.innerHTML = us.map(u => `<button type="button" class="login-user-chip" data-u="${crmEsc(u.usuario)}"><span class="luc-ava">👤</span><span class="luc-nome">${crmEsc(u.nome || u.usuario)}</span></button>`).join('');
     box.querySelectorAll('.login-user-chip').forEach(b => b.addEventListener('click', () => {
       $('login-user').value = b.dataset.u;
@@ -3291,7 +3293,7 @@ async function carregarUsuariosLogin() {
       b.classList.add('sel');
       $('login-senha').focus();
     }));
-  } catch { box.innerHTML = ''; }
+  } catch { box.innerHTML = ''; if (quadro) quadro.style.display = 'none'; }
 }
 carregarUsuariosLogin();   // popula já no carregamento (a tela de login aparece por padrão)
 function logout() {
