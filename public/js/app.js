@@ -1885,6 +1885,7 @@ document.addEventListener('keydown', e => {
   if (bar) bar.addEventListener('click', e => {
     const b = e.target.closest('.pdv-atbtn'); if (!b) return;
     const acoes = {
+      vendas: () => irPara('pdv'),
       recebimento: () => finalizarVenda(),
       produtos: () => irPara('produtos'),
       clientes: () => irPara('clientes'),
