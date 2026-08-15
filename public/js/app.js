@@ -777,12 +777,23 @@ async function anotarVendaDepois() {
   if (!(totalReceber > 0) || !itensCupom.length) { toast('⚠ Cupom vazio — nada pra anotar'); return; }
   const nome = ($('receb-depois-nome') ? $('receb-depois-nome').value : '').trim();
   const desc = itensCupom.map(it => `${it.qtd}× ${it.desc}`).join(', ');
-  const total = totalReceber;
+  // Pagamento PARCIAL: o que o cliente pagou AGORA (PIX/Dinheiro/Cartão) entra no caixa;
+  // o que sobra (restante) fica anotado pra pagar depois. Ex.: paga 15 de 20 → anota 5.
+  const pagos = [];
+  for (const id of CAMPOS_PGTO_EDITAVEIS) {
+    const v = +$(id).value || 0; if (v <= 0) continue;
+    const base = CAMPOS_PGTO.find(c => c.id === id).forma;
+    pagos.push({ forma: (base === 'Cartão' && cartaoTipo) ? `Cartão ${cartaoTipo}` : base, valor: v });
+  }
+  const pagoAgora = Math.round(pagos.reduce((s, p) => s + p.valor, 0) * 100) / 100;
+  const anotar = Math.round((totalReceber - pagoAgora) * 100) / 100;
+  if (anotar <= 0) { toast('⚠ Já está tudo pago — use “Confirmar venda”'); return; }
+  const pagamentos = [...pagos, { forma: 'Anotado', valor: anotar }];
   fecharRecebimento();
-  await concluirVenda(total, 'Anotado', 0, null, [{ forma: 'Anotado', valor: total }]);
+  await concluirVenda(totalReceber, pagoAgora > 0 ? `Anotado · pagou ${fmt(pagoAgora)}` : 'Anotado', 0, null, pagamentos);
   const vid = (ultimaVenda && ultimaVenda.vendaId) || null;
-  await anotarNovo(nome, total, desc, vid);
-  toast(`📝 Anotado: ${nome || 'cliente'} deve ${fmt(total)} — fica no PDV até pagar`);
+  await anotarNovo(nome, anotar, desc, vid);
+  toast(`📝 Anotado: ${nome || 'cliente'} deve ${fmt(anotar)}${pagoAgora > 0 ? ` · pagou ${fmt(pagoAgora)} agora` : ''}`);
 }
 { const b = $('btn-receb-depois'); if (b) b.addEventListener('click', anotarVendaDepois);
   const n = $('receb-depois-nome'); if (n) n.addEventListener('keydown', e => { if (e.key === 'Enter' && ($('rdn-drop') || {}).hidden !== false) { e.preventDefault(); anotarVendaDepois(); } }); }
@@ -850,6 +861,9 @@ function atualizarResumo() {
     $('receb-fiado-cliente').value = '';
   }
   const fiadoOk = valFiado <= 0 || !!fiadoClienteSelecionado;
+
+  // "Anotar pra depois" agora anota só o RESTANTE (total − o que já foi pago em PIX/Dinheiro/Cartão)
+  if ($('receb-depois-valor')) $('receb-depois-valor').textContent = fmt(valFiado);
 
   $('btn-confirmar-receb').disabled = !(totalReceber > 0 && fiadoOk);
   renderFiadoInfo();

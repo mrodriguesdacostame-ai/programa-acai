@@ -4160,15 +4160,15 @@ input:focus, textarea:focus, select:focus { border-color: var(--acai) !important
 .modal-receb .forma-valor { background: #ffffff !important; color: #0a1420 !important; border: none !important; border-radius: 10px !important; padding: 11px 12px !important; font-size: 19px !important; }
 .modal-receb .forma-valor.preenchido { color: #0a9b4b !important; }
 .modal-receb .forma-fiado .forma-valor[readonly] { background: rgba(255, 255, 255, 0.85) !important; color: #b9760a !important; }
-/* cliente do fiado */
-.modal-receb .receb-fiado-cliente-box { border-left: 3px solid #ffd24a !important; padding: 12px 15px !important; }
-.modal-receb .receb-fiado-cliente-box label { color: #ffe08a !important; }
-.modal-receb .receb-fiado-cliente-box input { background: #ffffff !important; color: #0a1420 !important; border: none !important; }
+/* cliente do fiado — MAIOR (igual ao anotar), input grande */
+.modal-receb .receb-fiado-cliente-box { border-left: 4px solid #ffd24a !important; padding: 16px 18px !important; }
+.modal-receb .receb-fiado-cliente-box label { color: #ffe08a !important; font-size: 13px !important; }
+.modal-receb .receb-fiado-cliente-box input { background: #ffffff !important; color: #0a1420 !important; border: none !important; padding: 14px 15px !important; font-size: 16px !important; }
 .modal-receb .fiado-saldo .fs-linha { color: #dbe8fb !important; }
 .modal-receb .fiado-saldo .fs-linha strong { color: #ffffff !important; }
-/* anotar pra pagar depois: botão âmbar */
-.modal-receb .receb-depois { padding: 12px 15px !important; }
-.modal-receb .receb-depois-tit { color: #ffffff !important; }
+/* anotar pra pagar depois: EM DESTAQUE (borda âmbar forte + brilho) */
+.modal-receb .receb-depois { padding: 16px 18px !important; border: 2px solid #ffcb3d !important; background: rgba(255, 203, 61, 0.16) !important; box-shadow: 0 0 0 4px rgba(255, 203, 61, 0.12) !important; }
+.modal-receb .receb-depois-tit { color: #ffe9b0 !important; font-size: 15px !important; font-weight: 800; }
 .modal-receb #receb-depois-nome { background: #ffffff !important; color: #0a1420 !important; border: none !important; }
 .modal-receb .btn-receb-depois { background: linear-gradient(180deg, #e0951a, #b9760a) !important; color: #ffffff !important; border: none !important; font-weight: 800; border-radius: 10px !important; }
 .modal-receb .btn-receb-depois * { color: #ffffff !important; background: transparent !important; }
