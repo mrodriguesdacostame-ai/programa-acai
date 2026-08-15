@@ -26,6 +26,10 @@ rmdir /s /q "%LocalAppData%\Google\Chrome\User Data\Default\Cache"      >nul 2>&
 rmdir /s /q "%LocalAppData%\Google\Chrome\User Data\Default\Code Cache" >nul 2>&1
 rmdir /s /q "%LocalAppData%\Google\Chrome\User Data\Default\GPUCache"   >nul 2>&1
 
+echo  Apagando o Service Worker antigo (reload NAO limpa isso)...
+rmdir /s /q "%LocalAppData%\Google\Chrome\User Data\Default\Service Worker" >nul 2>&1
+rmdir /s /q "%LocalAppData%\AcaiDoCentro\navegador\Default\Service Worker"  >nul 2>&1
+
 echo  Reabrindo o Acai do Centro do zero...
 echo.
 call "%~dp0iniciar.bat"
