@@ -4071,6 +4071,28 @@ input:focus, textarea:focus, select:focus { border-color: var(--acai) !important
 .modal-erp.erp-mov-sup .fin-btn-salvar { background: #16a34a !important; }   /* suprimento = entrada (verde) */
 .modal-erp.erp-mov-san .fin-btn-salvar { background: #e23b4e !important; }   /* sangria = saída (vermelho) */
 
+/* ═══ RECEBER CONTA (fiado do cliente) no padrão azul do Recebimento ═══ */
+.modal-erp.erp-rcc { background: linear-gradient(168deg, #1668cc 0%, #0f4ea0 100%) !important; color: #ffffff !important; border: none !important; box-shadow: 0 30px 80px rgba(4, 30, 66, 0.6) !important; }
+.modal-erp.erp-rcc .erp-modal-tit, .modal-erp.erp-rcc .erp-modal-tit * { color: #ffffff !important; }
+.modal-erp.erp-rcc .rcc-saldo { background: rgba(255, 255, 255, 0.10) !important; border: 1px solid rgba(255, 255, 255, 0.18) !important; }
+.modal-erp.erp-rcc .rcc-saldo span { color: #cfe0f7 !important; }
+.modal-erp.erp-rcc .rcc-saldo.deve b { color: #ff8b98 !important; }
+.modal-erp.erp-rcc .rcc-saldo.quite b { color: #34d17f !important; }
+.modal-erp.erp-rcc .rcc-dica { color: #dbe8fb !important; font-size: 12.5px; margin: 4px 0 10px; }
+.modal-erp.erp-rcc .rcc-forma-lin { background: rgba(255, 255, 255, 0.10) !important; border: 1px solid rgba(255, 255, 255, 0.16) !important; padding: 11px 13px !important; }
+.modal-erp.erp-rcc .rcc-forma-nome { color: #ffffff !important; }
+.modal-erp.erp-rcc .rcc-forma-val { background: #ffffff !important; color: #0a1420 !important; border: none !important; }
+.modal-erp.erp-rcc .rcc-total-lin span { color: #cfe0f7 !important; }
+.modal-erp.erp-rcc .rcc-total-lin b { color: #34d17f !important; }
+.modal-erp.erp-rcc .rcc-tudo { background: rgba(255, 255, 255, 0.16) !important; color: #ffffff !important; border: 1px solid rgba(255, 255, 255, 0.3) !important; border-radius: 8px; padding: 5px 12px; margin-left: auto; cursor: pointer; font-weight: 700; }
+.modal-erp.erp-rcc .campo label { color: #dbe8fb !important; }
+.modal-erp.erp-rcc #rcc-desc { background: #ffffff !important; color: #0a1420 !important; border: none !important; }
+.modal-erp.erp-rcc .op-ci-op { color: #cfe0f7 !important; }
+.modal-erp.erp-rcc .fin-btn-salvar { background: #16a34a !important; color: #ffffff !important; border: none !important; }
+.modal-erp.erp-rcc .fin-btn-salvar:disabled { opacity: 0.5; }
+.modal-erp.erp-rcc .rcc-ok-val { color: #34d17f !important; }
+.modal-erp.erp-rcc .rcc-ok-saldo, .modal-erp.erp-rcc .rcc-ok-saldo b, .modal-erp.erp-rcc .rcc-ok-pergunta { color: #ffffff !important; }
+
 /* Botões/realces de COR FORTE precisam de texto BRANCO (o navy sumiria) */
 .btn-finalizar, .btn-confirmar-receb, .fin-btn-salvar, .btn-confirmar-rend,
 .adm-btn.destaque, .crm-btn.destaque, .alim-btn-ok, .anot-add button,

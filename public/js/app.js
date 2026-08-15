@@ -5049,11 +5049,12 @@ ativarNavLista($('cl-extrato'), '.cl-lanc-linha', {
 /* Formas em que o pagamento de fiado pode ser dividido (ex.: parte PIX + parte Cartão).
    Usadas pela TELA DE RECEBIMENTO (modal do botão "Receber Conta"). */
 const CAMPOS_PGTO_CLIENTE = [
-  { id: 'rcc-pix',      nome: 'PIX',                 ico: '📱' },
-  { id: 'rcc-dinheiro', nome: 'Dinheiro',            ico: '💵' },
-  { id: 'rcc-credito',  nome: 'Cartão Crédito',      ico: '💳' },
-  { id: 'rcc-debito',   nome: 'Cartão Débito',       ico: '💳' },
-  { id: 'rcc-alim',     nome: 'Cartão Alimentação',  ico: '🍽', alim: true },   // +20% (sobe o total a cobrar)
+  { id: 'rcc-pix',      nome: 'PIX',            ico: '📱' },
+  { id: 'rcc-dinheiro', nome: 'Dinheiro',       ico: '💵' },
+  { id: 'rcc-credito',  nome: 'Cartão Crédito', ico: '💳' },
+  { id: 'rcc-debito',   nome: 'Cartão Débito',  ico: '💳' },
+  // Cartão Alimentação foi removido daqui: não faz sentido quitar uma dívida de fiado
+  // com vale-alimentação (+20% em cima da dívida). Fica só nas formas que quitam de verdade.
 ];
 
 function limparFormCliente() {
@@ -5180,46 +5181,35 @@ function abrirReceberContaModal(clienteId) {
   abrirErpModal(`<h3 class="erp-modal-tit">💰 Receber conta <small class="op-ci-sub">${crmEsc(c.nome)}</small></h3>
     <div class="rcc">
       <div class="rcc-saldo ${saldo > 0 ? 'deve' : 'quite'}"><span>Saldo devedor</span><b>${fmt(saldo)}</b></div>
-      <p class="pf-hint" style="margin:2px 0 8px">💡 Pode dividir em mais de uma forma (parte PIX, parte Cartão…). "Quitar tudo" joga o saldo no PIX.</p>
+      <p class="rcc-dica">💡 Pode dividir em mais de uma forma (parte PIX, parte dinheiro…).</p>
       <div class="rcc-formas-v">
-        ${CAMPOS_PGTO_CLIENTE.map(f => `<label class="rcc-forma-lin"><span class="rcc-forma-nome">${f.ico} ${f.nome}${f.alim ? ' <small class="rcc-alim-tag">+20%</small>' : ''}</span><input id="${f.id}" class="rcc-forma-val" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal" autocomplete="off"></label>`).join('')}
+        ${CAMPOS_PGTO_CLIENTE.map(f => `<label class="rcc-forma-lin"><span class="rcc-forma-nome">${f.ico} ${f.nome}</span><input id="${f.id}" class="rcc-forma-val" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal" autocomplete="off"></label>`).join('')}
       </div>
-      <div class="rcc-acrescimo-lin" id="rcc-acrescimo-lin" style="display:none"><span>🍽 Acréscimo alimentação (20%)</span><b id="rcc-acrescimo">R$ 0,00</b></div>
-      <div class="rcc-total-lin"><span>Abate da conta</span><b id="rcc-total">R$ 0,00</b>${saldo > 0 ? `<button type="button" class="fin-mini" id="rcc-tudo">Quitar tudo</button>` : ''}</div>
-      <div class="rcc-cobrar-lin" id="rcc-cobrar-lin" style="display:none"><span>Total a cobrar</span><b id="rcc-cobrar">R$ 0,00</b></div>
-      <div class="campo" style="margin-top:8px"><label>Descrição (opcional)</label><input id="rcc-desc" placeholder="ex.: pagou parcial"></div>
+      <div class="rcc-total-lin"><span>Total recebido</span><b id="rcc-total">R$ 0,00</b>${saldo > 0 ? `<button type="button" class="rcc-tudo" id="rcc-tudo">Quitar tudo</button>` : ''}</div>
+      <div class="campo" style="margin-top:10px"><label>Observação (opcional)</label><input id="rcc-desc" placeholder="ex.: pagou parcial"></div>
       <div class="op-ci-rodape"><span class="op-ci-op">👤 ${crmEsc((usuarioAtual && usuarioAtual.nome) || '—')} · ${new Date().toLocaleDateString('pt-BR')}</span>
         <button class="fin-btn-salvar" id="rcc-confirmar" disabled>✅ Registrar recebimento</button></div>
     </div>`);
+  $('modal-erp-box').classList.add('erp-rcc');   // visual azul (igual ao Recebimento)
   // ao SAIR da tela de recebimento (ESC, X, clique fora ou confirmar) → limpa tudo do cliente
   erpOnClose = () => { if ($('tela-clientes').classList.contains('ativa')) limparFormCliente(); };
   const ok = $('rcc-confirmar');
   const valorDe = f => parseFloat(String(($(f.id) || {}).value).replace(',', '.')) || 0;
   const totalDigitado = () => CAMPOS_PGTO_CLIENTE.reduce((s, f) => s + valorDe(f), 0);   // base (abate a conta)
-  const acrescimoAlim = () => { const a = CAMPOS_PGTO_CLIENTE.find(f => f.alim); return a ? Math.round(valorDe(a) * 0.20 * 100) / 100 : 0; };
-  const recalc = () => {
-    const t = totalDigitado(), acr = acrescimoAlim();
-    $('rcc-total').textContent = fmt(t);
-    $('rcc-acrescimo-lin').style.display = acr > 0 ? '' : 'none';
-    $('rcc-cobrar-lin').style.display = acr > 0 ? '' : 'none';
-    if (acr > 0) { $('rcc-acrescimo').textContent = '+ ' + fmt(acr); $('rcc-cobrar').textContent = fmt(t + acr); }
-    ok.disabled = t <= 0;
-  };
+  const recalc = () => { const t = totalDigitado(); $('rcc-total').textContent = fmt(t); ok.disabled = t <= 0; };
   CAMPOS_PGTO_CLIENTE.forEach(f => $(f.id).addEventListener('input', recalc));
   const tudo = $('rcc-tudo'); if (tudo) tudo.addEventListener('click', () => { $('rcc-pix').value = saldo.toFixed(2); CAMPOS_PGTO_CLIENTE.slice(1).forEach(f => $(f.id).value = ''); recalc(); $('rcc-pix').focus(); });
   const confirmar = async () => {
-    const v = totalDigitado();   // base: é o que ABATE da conta
+    const v = totalDigitado();
     if (v <= 0) return;
     ok.disabled = true;
-    const acr = acrescimoAlim();
-    // formas: o cartão alimentação é cobrado base+20%; o abatimento da conta continua sendo o base
-    const formasPagas = CAMPOS_PGTO_CLIENTE.map(f => ({ nome: f.nome, valor: f.alim ? Math.round(valorDe(f) * 1.20 * 100) / 100 : valorDe(f) })).filter(x => x.valor > 0);
-    const desc = (($('rcc-desc').value || '').trim() || 'Recebimento de conta') + (acr > 0 ? ` · acréscimo alimentação ${fmt(acr)}` : '');
+    const formasPagas = CAMPOS_PGTO_CLIENTE.map(f => ({ nome: f.nome, valor: valorDe(f) })).filter(x => x.valor > 0);
+    const desc = ($('rcc-desc').value || '').trim() || 'Recebimento de conta';
     const r = await lancarNaContaCliente(clienteId, 'pagamento', v, desc, { formasPagas, referencia: 'recebimento' });
     if (!r) { toast('⚠ Falha ao registrar'); ok.disabled = false; return; }
-    toast(`✅ Recebido ${fmt(v + acr)} de ${c.nome} · saldo ${fmt(r.novoSaldo)}`);
+    toast(`✅ Recebido ${fmt(v)} de ${c.nome} · saldo ${fmt(r.novoSaldo)}`);
     // tela de conclusão: mostra o comprovante e SÓ imprime se o operador quiser (botão)
-    const compr = { loja: lojaConfigCache || {}, cliente: c.nome, valor: v + acr, formas: formasPagas, saldoAntes: saldo, saldoNovo: r.novoSaldo, data: new Date(), operador: (usuarioAtual && usuarioAtual.nome) || '', desc };
+    const compr = { loja: lojaConfigCache || {}, cliente: c.nome, valor: v, formas: formasPagas, saldoAntes: saldo, saldoNovo: r.novoSaldo, data: new Date(), operador: (usuarioAtual && usuarioAtual.nome) || '', desc };
     $('modal-erp-box').innerHTML = `<h3 class="erp-modal-tit">✅ Recebimento registrado <small class="op-ci-sub">${crmEsc(c.nome)}</small></h3>
       <div class="rcc-ok">
         <div class="rcc-ok-val">${fmt(v)} recebido</div>
