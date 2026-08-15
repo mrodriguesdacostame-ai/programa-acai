@@ -1628,12 +1628,31 @@ async function abrirLitros() {
       <div class="ltr-passo">
         <div class="ltr-passo-n">Passo 1 de 3</div>
         <label class="ltr-lbl">Quantos litros você produziu?</label>
-        <input type="number" step="0.01" min="0" id="ltr-litros" class="ltr-input ltr-input-grande" inputmode="decimal" autocomplete="off" placeholder="ex.: 12" value="${litros > 0 ? litros : ''}">
-        <div class="ltr-dica">digite e aperte <b>Enter ⏎</b></div>
+        <input type="text" id="ltr-litros" class="ltr-input ltr-input-grande" inputmode="text" autocomplete="off" placeholder="ex.: 12   ·   ou   3*10 (litros × código)" value="${litros > 0 ? litros : ''}">
+        <div class="ltr-dica">digite os litros e <b>Enter ⏎</b> · ou <b>litros*código</b> (ex.: <b>3*10</b>) pra ir direto pra confirmação</div>
         <button class="fin-btn-salvar" id="ltr-av1">Continuar ⏎</button>
       </div>`;
     const inp = $('ltr-litros'); setTimeout(() => { inp.focus(); inp.select(); }, 60);
-    const avancar = () => { const v = +inp.value || 0; if (!(v > 0)) { toast('⚠ Informe os litros'); inp.focus(); return; } litros = r2loc(v); passo = 2; render(); };
+    const avancar = () => {
+      const raw = (inp.value || '').trim();
+      // ATALHO "litros*código": resolve o produto pelo código e vai DIRETO pra confirmação (passo 3)
+      if (raw.includes('*')) {
+        const [q, c] = raw.split('*');
+        const qn = parseFloat(String(q || '').replace(',', '.'));
+        const cod = String(c || '').trim();
+        if (!(qn > 0)) { toast('⚠ Quantidade de litros inválida'); inp.focus(); return; }
+        if (!cod) { toast('⚠ Informe o código do produto (ex.: 3*10)'); inp.focus(); return; }
+        let obj = valores.find(v => v.codigo && String(v.codigo).toLowerCase() === cod.toLowerCase());
+        if (!obj) { const p = (typeof buscarPorCodigo === 'function') ? buscarPorCodigo(cod) : null; if (p) obj = { valor: r2loc(+p.precoVenda || +p.preco || 0), codigo: p.codigo, nome: p.nome }; }
+        if (!obj || !(obj.valor > 0)) { toast('❌ Código não encontrado ou sem preço: ' + cod); inp.focus(); return; }
+        litros = r2loc(qn); valorSel = obj.valor; codigoSel = obj.codigo || cod; nomeSel = obj.nome || ''; passo = 3; render();
+        return;
+      }
+      // só a quantidade → fluxo normal (escolhe o valor no passo 2)
+      const v = +String(raw).replace(',', '.') || 0;
+      if (!(v > 0)) { toast('⚠ Informe os litros'); inp.focus(); return; }
+      litros = r2loc(v); passo = 2; render();
+    };
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); avancar(); } });
     $('ltr-av1').addEventListener('click', avancar);
   }
@@ -1698,14 +1717,20 @@ async function abrirLitros() {
   }
 
   function renderPasso3() {
+    const litTxt = (litros === 1) ? '1 litro' : `${biNum(litros)} litros`;
     stepBox.innerHTML = `
       <div class="ltr-passo ltr-passo-conf">
         <div class="ltr-passo-n">Passo 3 de 3 · confirmação</div>
-        <div class="ltr-conf-grande">Você está dando entrada de<br><b class="ltr-conf-litros">${biNum(litros)} litros</b> de <b class="ltr-conf-valor">${nomeSel ? nomeSel + ' · ' : ''}${fmt(valorSel)}</b>.<br>Posso registrar?</div>
+        <div class="ltr-conf-grande">
+          <div class="ltr-conf-q">?</div>
+          <div class="ltr-conf-intro">Você está dando entrada de</div>
+          <div class="ltr-conf-frase"><b class="ltr-conf-litros">${litTxt}</b> de <b class="ltr-conf-prod">${nomeSel || 'produto'}</b> <span class="ltr-conf-bullet">•</span> <b class="ltr-conf-valor">${fmt(valorSel)}</b>.</div>
+          <div class="ltr-conf-pergunta">Posso registrar?</div>
+        </div>
         <div class="ltr-conf-acoes">
-          <button class="fin-btn-salvar" id="ltr-registrar">✅ Registrar (Enter)</button>
-          <button class="crm-btn" id="ltr-edit-litros">✏️ Editar litros</button>
-          <button class="crm-btn" id="ltr-edit-valor">✏️ Editar valor</button>
+          <button class="fin-btn-salvar ltr-btn-registrar" id="ltr-registrar">✅ Registrar (Enter)</button>
+          <button class="crm-btn ltr-btn-editar" id="ltr-edit-litros">✏️ Editar litros</button>
+          <button class="crm-btn ltr-btn-editar" id="ltr-edit-valor">✏️ Editar valor</button>
         </div>
       </div>`;
     setTimeout(() => $('ltr-registrar').focus(), 40);

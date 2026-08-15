@@ -3924,9 +3924,14 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .ltr-resumo-mini b { color: var(--branco); }
 .ltr-lbl-outro { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: rgba(15, 47, 77, 0.7); margin-top: 4px; }
 .ltr-passo-conf { align-items: stretch; text-align: center; }
-.ltr-conf-grande { font-size: 17px; line-height: 1.6; color: rgba(15, 47, 77, 0.9); background: rgba(0, 230, 118, 0.1); border: 1px solid rgba(0, 230, 118, 0.28); border-radius: 13px; padding: 18px 16px; }
-.ltr-conf-litros { color: var(--branco); font-size: 22px; }
-.ltr-conf-valor { color: var(--verde); font-size: 22px; }
+.ltr-conf-grande { background: #f4f7fb; border: 1px solid var(--vidro-borda); border-radius: 16px; padding: 26px 22px; color: rgba(15, 47, 77, 0.8); text-align: center; }
+.ltr-conf-q { width: 46px; height: 46px; margin: 0 auto 14px; border-radius: 50%; border: 3px solid var(--acai-escuro); color: var(--acai-escuro); font-size: 24px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.ltr-conf-intro { font-size: 17px; color: rgba(15, 47, 77, 0.7); }
+.ltr-conf-frase { font-size: 22px; line-height: 1.5; margin: 12px 0; color: rgba(15, 47, 77, 0.85); }
+.ltr-conf-litros { color: #0a1420; }
+.ltr-conf-prod, .ltr-conf-valor, .ltr-conf-bullet { color: #b3261e; }
+.ltr-conf-pergunta { font-size: 17px; color: rgba(15, 47, 77, 0.7); margin-top: 4px; }
+.ltr-btn-editar { background: #f6d365 !important; color: #3a2c00 !important; border: none !important; font-weight: 800; }
 .ltr-conf-acoes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 4px; }
 /* Passo 2 — preços enfileirados (grandes, em coluna) + editor (admin) */
 .ltr-val-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -3948,8 +3953,11 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .erp-conf-grande .ltr { grid-template-columns: 1fr; }
 .erp-conf-grande .ltr-dia { display: none; }
 .erp-conf-grande .ltr-passo-conf { min-height: 46vh; justify-content: center; gap: 22px; }
-.erp-conf-grande .ltr-conf-grande { font-size: 28px; line-height: 1.7; padding: 40px 34px; border-radius: 18px; }
-.erp-conf-grande .ltr-conf-litros, .erp-conf-grande .ltr-conf-valor { font-size: 40px; }
+.erp-conf-grande .ltr-conf-grande { padding: 38px 32px; border-radius: 20px; }
+.erp-conf-grande .ltr-conf-q { width: 62px; height: 62px; font-size: 32px; margin-bottom: 18px; border-width: 4px; }
+.erp-conf-grande .ltr-conf-intro, .erp-conf-grande .ltr-conf-pergunta { font-size: 24px; }
+.erp-conf-grande .ltr-conf-frase { font-size: 34px; line-height: 1.6; }
+.erp-conf-grande .ltr-conf-litros, .erp-conf-grande .ltr-conf-prod, .erp-conf-grande .ltr-conf-valor { font-size: 42px; }
 .erp-conf-grande .ltr-conf-acoes { gap: 12px; }
 .erp-conf-grande .ltr-conf-acoes button { font-size: 17px; padding: 16px 26px; }
 .erp-conf-grande .ltr-passo-n { font-size: 13px; }
