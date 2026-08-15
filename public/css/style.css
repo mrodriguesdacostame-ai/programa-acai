@@ -4049,6 +4049,16 @@ input:focus, textarea:focus, select:focus { border-color: var(--acai) !important
   color: #0f2f4d !important;
 }
 
+/* ═══ SANGRIA / SUPRIMENTO no padrão azul do Recebimento (não fica mais apagado) ═══ */
+.modal-erp.erp-mov { background: linear-gradient(168deg, #1668cc 0%, #0f4ea0 100%) !important; color: #ffffff !important; border: none !important; box-shadow: 0 30px 80px rgba(4, 30, 66, 0.6) !important; }
+.modal-erp.erp-mov .erp-modal-tit { color: #ffffff !important; font-size: 20px; }
+.modal-erp.erp-mov .fin-hint { color: #dbe8fb !important; background: rgba(255, 255, 255, 0.10) !important; border: 1px solid rgba(255, 255, 255, 0.16) !important; border-radius: 12px; padding: 12px 14px; }
+.modal-erp.erp-mov .fin-form label { color: #ffffff !important; font-weight: 700; }
+.modal-erp.erp-mov .fin-form input { background: #ffffff !important; color: #0a1420 !important; border: none !important; border-radius: 10px !important; padding: 14px 15px !important; font-size: 17px !important; }
+.modal-erp.erp-mov .fin-btn-salvar { border: none !important; color: #ffffff !important; padding: 15px !important; font-size: 16px !important; border-radius: 12px !important; }
+.modal-erp.erp-mov-sup .fin-btn-salvar { background: #16a34a !important; }   /* suprimento = entrada (verde) */
+.modal-erp.erp-mov-san .fin-btn-salvar { background: #e23b4e !important; }   /* sangria = saída (vermelho) */
+
 /* Botões/realces de COR FORTE precisam de texto BRANCO (o navy sumiria) */
 .btn-finalizar, .btn-confirmar-receb, .fin-btn-salvar, .btn-confirmar-rend,
 .adm-btn.destaque, .crm-btn.destaque, .alim-btn-ok, .anot-add button,

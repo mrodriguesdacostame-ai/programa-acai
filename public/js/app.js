@@ -1463,6 +1463,7 @@ async function abrirCaixaMov(tipo) {
       <label>Justificativa *<input id="op-mov-just" autocomplete="off" placeholder="${ehSup ? 'ex.: troco inicial, reforço de caixa' : 'ex.: pagamento fornecedor, retirada para banco'}"></label>
       <button type="submit" class="fin-btn-salvar">${ehSup ? '➕ Registrar suprimento' : '➖ Registrar sangria'}</button>
     </form>`);
+  $('modal-erp-box').classList.add('erp-mov', ehSup ? 'erp-mov-sup' : 'erp-mov-san');   // padrão azul (igual Recebimento)
   const valor = $('op-mov-valor'), just = $('op-mov-just');
   setTimeout(() => valor.focus(), 60);
   valor.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); just.focus(); } });
@@ -1667,7 +1668,7 @@ async function abrirLitros() {
       if (!(v > 0)) { toast('⚠ Informe os litros'); inp.focus(); return; }
       litros = r2loc(v); passo = 2; render();
     };
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); avancar(); } });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); avancar(); } });   // stopPropagation: não deixa o Enter cair no "registrar" do passo 3
     $('ltr-av1').addEventListener('click', avancar);
   }
 
