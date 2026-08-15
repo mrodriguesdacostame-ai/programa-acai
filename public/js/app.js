@@ -1123,7 +1123,7 @@ function renderAnotacoes(total) {
   const box = $('anot-lista'); if (!box) return;
   if (total == null) total = anotacoesCache.reduce((s, a) => s + (+a.valor || 0), 0) + fiadosCache.reduce((s, f) => s + (+f.saldo || 0), 0);
   const badge = $('anot-total-badge'); if (badge) badge.textContent = fmt(total);
-  if (!anotacoesCache.length && !fiadosCache.length) { box.innerHTML = '<div class="anot-vazio">Ninguém devendo por aqui 🙌</div>'; return; }
+  if (!anotacoesCache.length) { box.innerHTML = '<div class="anot-vazio">Nenhuma anotação por aqui 🙌</div>'; return; }
   // fiados em aberto (📒) — pagam na própria caixa, escolhendo a forma
   const htmlFiado = fiadosCache.map(f => `
     <div class="anot-item anot-fiado" data-cli="${f.cliente_id}">
@@ -1143,7 +1143,7 @@ function renderAnotacoes(total) {
       <button class="anot-ok" data-pagar="${a.id}" title="Recebeu — dar baixa">PAGAR</button>
       <button class="anot-del" data-del="${a.id}" title="Remover anotação">🗑</button>
     </div>`).join('');
-  box.innerHTML = htmlFiado + htmlAnot;
+  box.innerHTML = htmlAnot;   // no PDV mostra SÓ as anotações (pagar depois); fiado de cliente fica nas Contas do cliente
   box.querySelectorAll('[data-pagar]').forEach(b => b.addEventListener('click', () => pagarAnotacao(+b.dataset.pagar)));
   box.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', () => excluirAnotacao(+b.dataset.del)));
   box.querySelectorAll('[data-fiado]').forEach(b => b.addEventListener('click', () => pagarFiadoCaixa(+b.dataset.fiado)));
