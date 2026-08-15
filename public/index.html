@@ -654,10 +654,12 @@
 
     <!-- ══════════ TELA CLIENTES ══════════ -->
     <section class="tela" id="tela-clientes">
-      <div class="cl-tabs">
+      <div class="cl-tabs" style="display:none">
         <button class="cl-tab ativo" data-cltab="cadastro">👤 Cadastro &amp; Fiado</button>
+        <!-- Guardado pra usar no FUTURO em outras telas (código mantido, só oculto):
         <button class="cl-tab" data-cltab="crm">📊 CRM &amp; Fidelidade</button>
         <button class="cl-tab" data-cltab="clube">🎁 Clube do Cliente</button>
+        -->
       </div>
       <div class="prod-painel ativo" id="clientes-painel">
         <form class="prod-form" id="form-cliente" autocomplete="off">
@@ -715,8 +717,8 @@
                   <strong class="pd-estoque-num" id="cl-saldo-num">R$ 0,00</strong>
                 </div>
               </div>
-              <!-- CRM: métricas + status + fidelidade (Fase 24) -->
-              <div class="cl-crm" id="cl-crm-box"></div>
+              <!-- CRM: métricas + status + fidelidade (Fase 24) — OCULTO por ora (reusar no futuro). O código que preenche continua rodando. -->
+              <div class="cl-crm" id="cl-crm-box" style="display:none"></div>
               <div class="pd-grid" id="cl-d-infogrid">
                 <div class="pd-cardmini"><span>Endereço</span><strong id="cl-d-endereco">—</strong></div>
                 <div class="pd-cardmini"><span>Observações</span><strong id="cl-d-obsmini">—</strong></div>
