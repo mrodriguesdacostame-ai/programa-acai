@@ -7526,7 +7526,13 @@ const BOOT_ID = Date.now();
 function servirIndex(req, res) {
   try {
     let html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-    html = html.replace(/(href|src)="((?:css|js)\/[^"?]+\.(?:css|js))"/g, '$1="$2?v=' + BOOT_ID + '"');
+    // ?v = data de modificação do PRÓPRIO arquivo → toda edição/atualização muda o ?v e o
+    // navegador rebusca o app.js/style.css novos, MESMO sem reiniciar o servidor.
+    html = html.replace(/(href|src)="((?:css|js)\/[^"?]+\.(?:css|js))"/g, (m, attr, file) => {
+      let v = BOOT_ID;
+      try { v = Math.floor(fs.statSync(path.join(__dirname, 'public', file)).mtimeMs); } catch {}
+      return `${attr}="${file}?v=${v}"`;
+    });
     res.set('Cache-Control', 'no-store').type('html').send(html);
   } catch { res.sendFile(path.join(__dirname, 'public', 'index.html')); }
 }
