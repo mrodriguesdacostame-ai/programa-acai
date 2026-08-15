@@ -3302,26 +3302,36 @@ function mostrarTelaLogin() {
   $('app-principal').classList.add('oculto');
   $('tela-login').classList.remove('oculto');
   $('form-login').reset();
-  carregarUsuariosLogin();
-  setTimeout(() => $('login-user').focus(), 60);
+  carregarUsuariosLogin();   // popula os usuários e foca o 1º chip (setas navegam, Tab vai pra senha)
 }
 /* Tela de login: mostra os usuários cadastrados como botões — clicar preenche o usuário
    e pula pra senha (não precisa saber/digitar o nome de usuário). */
 async function carregarUsuariosLogin() {
   const box = $('login-usuarios'); if (!box) return;
-  const quadro = $('login-quadro');
+  const irSenha = () => { const s = $('login-senha'); if (s) s.focus(); };
   try {
     const us = await (await fetch('/api/auth/usuarios', { cache: 'no-store' })).json();
-    if (!Array.isArray(us) || !us.length) { box.innerHTML = ''; if (quadro) quadro.style.display = 'none'; return; }
-    if (quadro) quadro.style.display = '';
-    box.innerHTML = us.map(u => `<button type="button" class="login-user-chip" data-u="${crmEsc(u.usuario)}"><span class="luc-ava">👤</span><span class="luc-nome">${crmEsc(u.nome || u.usuario)}</span></button>`).join('');
-    box.querySelectorAll('.login-user-chip').forEach(b => b.addEventListener('click', () => {
+    if (!Array.isArray(us) || !us.length) { box.innerHTML = ''; box.style.display = 'none'; const u = $('login-user'); if (u) u.focus(); return; }
+    box.style.display = '';
+    box.innerHTML = us.map((u, i) => `<button type="button" class="login-user-chip" role="option" data-u="${crmEsc(u.usuario)}" tabindex="${i === 0 ? '0' : '-1'}"><span class="luc-ava">👤</span><span class="luc-nome">${crmEsc(u.nome || u.usuario)}</span></button>`).join('');
+    const chips = [...box.querySelectorAll('.login-user-chip')];
+    // seleciona um usuário: preenche o campo, marca visual e roving-tabindex (só o ativo é tabável)
+    const selecionar = (b, foca) => {
+      if (!b) return;
       $('login-user').value = b.dataset.u;
-      box.querySelectorAll('.login-user-chip').forEach(x => x.classList.remove('sel'));
-      b.classList.add('sel');
-      $('login-senha').focus();
-    }));
-  } catch { box.innerHTML = ''; if (quadro) quadro.style.display = 'none'; }
+      chips.forEach(x => { const on = x === b; x.classList.toggle('sel', on); x.tabIndex = on ? 0 : -1; });
+      if (foca) b.focus();
+    };
+    chips.forEach((b, i) => {
+      b.addEventListener('click', () => { selecionar(b, true); irSenha(); });
+      b.addEventListener('keydown', e => {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); selecionar(chips[(i + 1) % chips.length], true); }
+        else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); selecionar(chips[(i - 1 + chips.length) % chips.length], true); }
+        else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); selecionar(b, false); irSenha(); }   // Tab/Enter → senha
+      });
+    });
+    selecionar(chips[0], true);   // pré-seleciona e foca o 1º → setas já funcionam, sem mouse
+  } catch { box.innerHTML = ''; box.style.display = 'none'; const u = $('login-user'); if (u) u.focus(); }
 }
 carregarUsuariosLogin();   // popula já no carregamento (a tela de login aparece por padrão)
 function logout() {
