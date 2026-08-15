@@ -32,7 +32,7 @@ function irPara(tela) {
   navMarcarAtivo(tela);
   // Etapa 2: MODO OPERAÇÃO tela-cheia — PDV e Produção escondem sidebar/topo (sai por ESC ou botão)
   document.body.classList.toggle('modo-operacao', tela === 'pdv' || tela === 'producao');
-  if (tela === 'pdv') setTimeout(() => $('codigo').focus(), 50);
+  if (tela === 'pdv') focusCodigoMercadoria();
   if (tela === 'delivery') { renderDelivery(); iniciarPollPedidos(); carregarEstadoLoja(); }
   else { pararPollPedidos(); }
   if (tela === 'produtos') { esconderDetalheProduto(); renderProdutos(); atualizarMargemForm(); atualizarEstoqueCards(null); { const dt = $('pf-data-entrada'); if (dt && !dt.value) dt.value = new Date().toISOString().slice(0, 10); } setTimeout(() => $('pf-nota').focus(), 60); }
@@ -434,6 +434,7 @@ $('codigo').addEventListener('keydown', e => {
     for (const parte of partes) if (registrarCodigoPdv(parte)) ok++;
     if (partes.length > 1 && ok > 0) toast(`🛒 ${ok} produto${ok > 1 ? 's' : ''} adicionado${ok > 1 ? 's' : ''}`);
     $('codigo').value = '';
+    focusCodigoMercadoria();   // pronto pro próximo código, sem tirar a mão do teclado
     return;
   }
   // duplo-espaço (campo vazio) → busca por nome
@@ -459,13 +460,38 @@ $('btn-limpar-venda').addEventListener('click', () => {
   if (confirm('Limpar todos os itens desta venda?')) {
     itensCupom = [];
     renderCupom();
-    $('codigo').focus();
+    focusCodigoMercadoria();
   }
 });
 
+/* ══ FOCO CENTRALIZADO — o Código da Mercadoria é o ponto de repouso do teclado ══
+   Uma ÚNICA função devolve o foco ao código quando uma operação/modal do PDV termina,
+   sem roubar o foco enquanto um modal está aberto (o operador digita lá dentro). */
+const PDV_OVERLAYS = ['overlay-recebimento', 'overlay-item', 'overlay-busca', 'overlay-cartao-tipo', 'overlay-pedido', 'overlay-rendimento', 'overlay-clientes-delivery', 'overlay-disponibilidade', 'overlay-supervisor', 'overlay-erp'];
+function pdvModalAberto() { return PDV_OVERLAYS.some(id => { const el = $(id); return !!el && el.classList.contains('aberto'); }); }
+function focusCodigoMercadoria() {
+  const pdv = $('tela-pdv');
+  if (!pdv || !pdv.classList.contains('ativa')) return;   // só quando o PDV está na tela
+  if (pdvModalAberto()) return;                            // modal aberto → NÃO rouba o foco
+  requestAnimationFrame(() => {                            // espera o DOM assentar (fechar modal / re-render)
+    if (!$('tela-pdv').classList.contains('ativa') || pdvModalAberto()) return;
+    const el = $('codigo'); if (!el) return;
+    try { el.focus({ preventScroll: true }); el.select(); } catch {}
+  });
+}
+/* Um único observador: quando QUALQUER modal do PDV fecha (por ESC, botão ou confirmação)
+   e não resta nenhum aberto, o foco volta pro código. Centraliza TODOS os fechamentos. */
+(function observarModaisPDV() {
+  const liga = () => {
+    const obs = new MutationObserver(() => { if (!pdvModalAberto()) focusCodigoMercadoria(); });
+    PDV_OVERLAYS.forEach(id => { const el = $(id); if (el) obs.observe(el, { attributes: true, attributeFilter: ['class'] }); });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', liga); else liga();
+})();
+
 /* Clicar em área vazia do PDV devolve o foco ao código (operador sem mouse) */
 $('tela-pdv').addEventListener('click', e => {
-  if (!e.target.closest('input, button, select, a, label, .item-linha')) $('codigo').focus();
+  if (!e.target.closest('input, button, select, a, label, .item-linha')) focusCodigoMercadoria();
 });
 
 function renderCupom() {
@@ -504,7 +530,7 @@ $('espelho-itens').addEventListener('keydown', e => {
   if (e.key === 'Enter')          { e.preventDefault(); abrirEditarItem(+linha.dataset.idx); }
   else if (e.key === 'ArrowDown') { e.preventDefault(); if (linha.nextElementSibling) linha.nextElementSibling.focus(); }
   else if (e.key === 'ArrowUp')   { e.preventDefault(); linha.previousElementSibling ? linha.previousElementSibling.focus() : $('codigo').focus(); }
-  else if (e.key === 'Delete')    { e.preventDefault(); itensCupom.splice(+linha.dataset.idx, 1); renderCupom(); $('codigo').focus(); }
+  else if (e.key === 'Delete')    { e.preventDefault(); itensCupom.splice(+linha.dataset.idx, 1); renderCupom(); focusCodigoMercadoria(); }
 });
 
 function abrirEditarItem(idx) {
@@ -521,7 +547,7 @@ function abrirEditarItem(idx) {
 function fecharEditarItem() {
   $('overlay-item').classList.remove('aberto');
   itemEditIndex = -1;
-  setTimeout(() => $('codigo').focus(), 50);
+  focusCodigoMercadoria();   // volta o foco pro código (também coberto pelo observador de modais)
 }
 function atualizarSubtotalItem() {
   const q = +$('item-qtd').value || 0;
@@ -576,7 +602,7 @@ function abrirBuscaProduto(contexto = 'pdv') {
 }
 function fecharBusca() {
   $('overlay-busca').classList.remove('aberto');
-  if (buscaContexto === 'pdv') $('codigo').focus();
+  if (buscaContexto === 'pdv') focusCodigoMercadoria();
   else if (buscaContexto === 'rendimento' && rendLinhaAtual) rendLinhaAtual.querySelector('.rl-desc').focus();
   else if (buscaContexto === 'materia') $('rend-materia').focus();
   else if (buscaContexto === 'clientes') $('cl-nome').focus();
@@ -785,7 +811,7 @@ $('btn-finalizar').addEventListener('click', finalizarVenda);
 
 function fecharRecebimento() {
   $('overlay-recebimento').classList.remove('aberto');
-  $('codigo').focus();
+  focusCodigoMercadoria();
 }
 $('btn-fechar-receb').addEventListener('click', fecharRecebimento);
 $('btn-cancelar-receb').addEventListener('click', fecharRecebimento);
@@ -1007,6 +1033,7 @@ async function concluirVenda(total, descricaoPgto, troco = 0, fiado = null, paga
     pagamentos: pags.map(p => ({ forma: p.forma, valor: p.valor, cliente_id: (p.forma === 'Fiado' && fiado) ? fiado.clienteId : null })),
   });
   if (ultimaVenda && v && v.id) { ultimaVenda.vendaId = v.id; ultimaVenda.numero = v.numero; }
+  focusCodigoMercadoria();   // fim da venda → teclado volta pro código (guarda evita roubar se houver modal aberto)
 }
 function renderUltimaVenda() {
   const el = $('ultima-venda');
@@ -1070,6 +1097,7 @@ async function cancelarUltimaVenda() {
   ultimaVenda.cancelada = true;
   renderUltimaVenda();
   toast(`↩️ Venda cancelada · ${fmt(ultimaVenda.total)} devolvido ao estoque`);
+  focusCodigoMercadoria();
 }
 $('btn-cancelar-venda').addEventListener('click', cancelarUltimaVenda);
 
@@ -1411,7 +1439,7 @@ async function abrirConsumoInterno() {
   const naPdv = $('tela-pdv').classList.contains('ativa');
   if (!naPdv || itensCupom.length === 0) {
     toast('🧑‍🍳 Registre os itens no cupom e aperte C pra lançar como consumo');
-    if (naPdv) $('codigo').focus();
+    if (naPdv) focusCodigoMercadoria();
     return;
   }
   // itens já registrados na tela de vendas viram o consumo (pacote conta em unidades)
@@ -1753,7 +1781,7 @@ document.addEventListener('keydown', e => {
   if ($('app-principal').classList.contains('oculto')) return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   // F9 → abrir a tela de VENDAS de qualquer lugar (não fica preso em modal aberto)
-  if (e.key === 'F9') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); irPara('pdv'); setTimeout(() => $('codigo').focus(), 60); return; }
+  if (e.key === 'F9') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); irPara('pdv'); focusCodigoMercadoria(); return; }
   // F3 → abrir a tela de PRODUTOS (entrada de mercadoria/estoque) de qualquer lugar
   if (e.key === 'F3') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); irPara('produtos'); return; }
   if (algumOverlayAberto && algumOverlayAberto()) return;
@@ -3418,7 +3446,7 @@ function finalizarAutomatico() {
   toast(`⏱ Venda finalizada automaticamente · ${fmt(total)}`, 'sucesso');
   falar('Venda finalizada automaticamente');
   concluirVenda(total, 'Automático');
-  $('codigo').focus();
+  focusCodigoMercadoria();
 }
 
 /* ═══════════════════════════════════════════════════════════

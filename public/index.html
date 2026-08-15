@@ -18,14 +18,10 @@
       <h1 class="login-titulo">AÇAÍ DO CENTRO</h1>
       <p class="login-sub">Sistema de Vendas</p>
 
-      <div class="login-quadro" id="login-quadro">
-        <div class="login-quadro-tit">👥 Escolha o usuário</div>
-        <div class="login-usuarios" id="login-usuarios" aria-label="Usuários cadastrados"></div>
-      </div>
-
-      <div class="login-campo">
-        <label for="login-user">Usuário</label>
-        <input type="text" id="login-user" placeholder="Digite seu usuário" autocomplete="username" autofocus>
+      <div class="login-campo login-campo-user">
+        <label for="login-user">Usuário <span class="login-user-dica">— use as setas e Tab pra senha</span></label>
+        <div class="login-usuarios" id="login-usuarios" role="listbox" aria-label="Usuários cadastrados"></div>
+        <input type="text" id="login-user" class="login-user-input" placeholder="ou digite o usuário" autocomplete="username">
       </div>
       <div class="login-campo">
         <label for="login-senha">Senha</label>
