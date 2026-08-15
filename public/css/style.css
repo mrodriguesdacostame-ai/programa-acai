@@ -1550,7 +1550,8 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 .rfc-wrap { position: relative; }
 .rfc-drop { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 40; max-height: 220px; overflow-y: auto; background: #ffffff; border: 1px solid var(--vidro-borda); border-radius: 10px; box-shadow: 0 16px 44px rgba(4, 30, 66, 0.45); padding: 4px; }
 .rfc-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; text-align: left; padding: 9px 11px; border: none; background: transparent; color: #0a1420; font-family: inherit; font-size: 14px; cursor: pointer; border-radius: 8px; }
-.rfc-item:hover { background: rgba(30, 136, 200, 0.14); }
+.rfc-item:hover, .rfc-item.ativo { background: rgba(30, 136, 200, 0.18); }
+.rfc-item.ativo { box-shadow: inset 3px 0 0 var(--acai); }
 .rfc-nome { font-weight: 800; }
 .rfc-cod { font-size: 11px; font-weight: 700; color: var(--acai-rosa); background: #eef4fa; padding: 2px 8px; border-radius: 10px; }
 .rfc-vazio { padding: 10px 11px; font-size: 12.5px; color: rgba(15, 47, 77, 0.5); }

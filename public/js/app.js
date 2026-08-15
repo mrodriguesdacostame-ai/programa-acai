@@ -909,47 +909,57 @@ function resolverClienteFiado(termo) {
 }
 /* Duplo-espaço (campo vazio) abre a busca; código/nome + Enter seleciona o cliente. */
 let ultimoEspacoFiado = 0;
-$('receb-fiado-cliente').addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    // cliente já selecionado → Enter FINALIZA a venda direto
-    if (fiadoClienteSelecionado && !$('btn-confirmar-receb').disabled) { confirmarRecebimento(); return; }
-    // nada selecionado → tenta achar pelo que foi digitado (código ou nome)
-    const termo = $('receb-fiado-cliente').value.trim();
-    if (termo) { const c = resolverClienteFiado(termo) || CLIENTES.find(cl => (cl.nome || '').toLowerCase().includes(termo.toLowerCase())); if (c) selecionarClienteFiado(c); else toast('⚠ Cliente não encontrado'); }
-    return;
-  }
-  if (e.key !== ' ' || $('receb-fiado-cliente').value.trim() !== '') return;
-  e.preventDefault();
-  const agora = Date.now();
-  if (agora - ultimoEspacoFiado < 450) { ultimoEspacoFiado = 0; abrirBuscaProduto('recebimento-fiado'); }
-  else ultimoEspacoFiado = agora;
-});
-/* Autocomplete do cliente do fiado: mostra os clientes conforme digita (mouse ou clique),
-   além do duplo-espaço. Acelera achar o cliente sem abrir a busca. */
+/* Cliente do fiado: autocomplete que mostra os clientes conforme digita e deixa escolher
+   com o MOUSE ou com as SETAS do teclado (↓↑ navega, Enter escolhe o destacado). O
+   duplo-espaço (busca em tela cheia) e o Enter-finaliza continuam funcionando. */
 {
   const inp = $('receb-fiado-cliente'), drop = $('rfc-drop');
   if (inp && drop) {
-    const esconder = () => { drop.hidden = true; };
+    let itens = [], ativo = -1;
+    const esconder = () => { drop.hidden = true; itens = []; ativo = -1; };
+    const marcar = (i) => {
+      const btns = drop.querySelectorAll('.rfc-item'); if (!btns.length) return;
+      ativo = (i + btns.length) % btns.length;
+      btns.forEach((b, k) => b.classList.toggle('ativo', k === ativo));
+      btns[ativo].scrollIntoView({ block: 'nearest' });
+    };
     const render = () => {
       const f = (inp.value || '').trim().toLowerCase();
       if (!f) { esconder(); return; }
-      const lista = CLIENTES.filter(c => (c.nome || '').toLowerCase().includes(f) || clienteCodigo(c).toLowerCase().includes(f) || String(c.id) === f).slice(0, 8);
-      drop.innerHTML = lista.length
-        ? lista.map(c => `<button type="button" class="rfc-item" data-id="${c.id}"><span class="rfc-nome">${crmEsc(c.nome || 'sem nome')}</span><span class="rfc-cod">${crmEsc(clienteCodigo(c))}</span></button>`).join('')
+      itens = CLIENTES.filter(c => (c.nome || '').toLowerCase().includes(f) || clienteCodigo(c).toLowerCase().includes(f) || String(c.id) === f).slice(0, 8);
+      drop.innerHTML = itens.length
+        ? itens.map((c, i) => `<button type="button" class="rfc-item${i === 0 ? ' ativo' : ''}" data-id="${c.id}"><span class="rfc-nome">${crmEsc(c.nome || 'sem nome')}</span><span class="rfc-cod">${crmEsc(clienteCodigo(c))}</span></button>`).join('')
         : '<div class="rfc-vazio">Nenhum cliente com esse nome</div>';
-      drop.querySelectorAll('.rfc-item').forEach(b => b.addEventListener('mousedown', ev => {
-        ev.preventDefault();
-        const c = buscarClientePorId(+b.dataset.id);
-        if (c) selecionarClienteFiado(c);
-        esconder();
-      }));
+      ativo = itens.length ? 0 : -1;   // já deixa o 1º destacado (Enter escolhe ele)
+      drop.querySelectorAll('.rfc-item').forEach((b, i) => {
+        b.addEventListener('mousedown', ev => { ev.preventDefault(); const c = buscarClientePorId(+b.dataset.id); if (c) selecionarClienteFiado(c); esconder(); });
+        b.addEventListener('mousemove', () => marcar(i));
+      });
       drop.hidden = false;
     };
     inp.addEventListener('input', render);
     inp.addEventListener('focus', () => { if ((inp.value || '').trim()) render(); });
-    inp.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !drop.hidden) { ev.stopPropagation(); esconder(); } });
     document.addEventListener('click', ev => { const w = inp.closest('.rfc-wrap'); if (w && !w.contains(ev.target)) esconder(); });
+    inp.addEventListener('keydown', e => {
+      const aberto = !drop.hidden && itens.length > 0;
+      if (e.key === 'ArrowDown') { if (aberto) { e.preventDefault(); marcar(ativo + 1); } else if ((inp.value || '').trim()) render(); return; }
+      if (e.key === 'ArrowUp')   { if (aberto) { e.preventDefault(); marcar(ativo - 1); } return; }
+      if (e.key === 'Escape')    { if (!drop.hidden) { e.stopPropagation(); esconder(); } return; }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (aberto && ativo >= 0 && itens[ativo]) { selecionarClienteFiado(itens[ativo]); esconder(); return; }   // Enter escolhe o destacado
+        if (fiadoClienteSelecionado && !$('btn-confirmar-receb').disabled) { confirmarRecebimento(); return; }     // já selecionado → finaliza
+        const termo = inp.value.trim();
+        if (termo) { const c = resolverClienteFiado(termo) || CLIENTES.find(cl => (cl.nome || '').toLowerCase().includes(termo.toLowerCase())); if (c) selecionarClienteFiado(c); else toast('⚠ Cliente não encontrado'); }
+        return;
+      }
+      if (e.key === ' ' && inp.value.trim() === '') {   // duplo-espaço → busca em tela cheia
+        e.preventDefault();
+        const agora = Date.now();
+        if (agora - ultimoEspacoFiado < 450) { ultimoEspacoFiado = 0; abrirBuscaProduto('recebimento-fiado'); }
+        else ultimoEspacoFiado = agora;
+      }
+    });
   }
 }
 
