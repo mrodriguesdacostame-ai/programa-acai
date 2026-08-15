@@ -23,10 +23,11 @@ REM ?nc=aleatorio a cada abertura → o Chrome busca a pagina NOVA (sem cache ve
 set "URL=http://localhost:3001/?nc=%RANDOM%%RANDOM%"
 set "PFX86=%ProgramFiles(x86)%"
 set "NAV="
-if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set "NAV=%ProgramFiles%\Google\Chrome\Application\chrome.exe"
-if not defined NAV if exist "%PFX86%\Google\Chrome\Application\chrome.exe" set "NAV=%PFX86%\Google\Chrome\Application\chrome.exe"
-if not defined NAV if exist "%PFX86%\Microsoft\Edge\Application\msedge.exe" set "NAV=%PFX86%\Microsoft\Edge\Application\msedge.exe"
+REM prioriza o EDGE (o Chrome desta maquina estava travando o app) — cai pro Chrome se nao tiver Edge
+if exist "%PFX86%\Microsoft\Edge\Application\msedge.exe" set "NAV=%PFX86%\Microsoft\Edge\Application\msedge.exe"
 if not defined NAV if exist "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" set "NAV=%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"
+if not defined NAV if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set "NAV=%ProgramFiles%\Google\Chrome\Application\chrome.exe"
+if not defined NAV if exist "%PFX86%\Google\Chrome\Application\chrome.exe" set "NAV=%PFX86%\Google\Chrome\Application\chrome.exe"
 
 if not defined NAV goto :semnav
 REM abre no perfil PADRAO do Chrome (mantem voce logado). O cache velho ja e resolvido
