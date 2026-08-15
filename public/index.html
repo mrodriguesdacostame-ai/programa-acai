@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
   <title>Açaí do Centro</title>
+  <script>
+    /* Mata qualquer service worker antigo do Chrome que possa estar servindo o app VELHO
+       (causa de "abre mas não pega comando"). Roda antes de tudo, sem quebrar se falhar. */
+    try { if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(function(rs){ rs.forEach(function(r){ r.unregister(); }); }).catch(function(){}); } catch (e) {}
+  </script>
   <link rel="icon" type="image/png" href="icone-acai.png">
   <link rel="stylesheet" href="css/style.css">
   <!-- Etapa 1 do redesenho: Design System oficial (tokens + componentes + shell da sidebar) -->
