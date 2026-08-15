@@ -1452,8 +1452,11 @@
 
         <!-- BLOCO 4 — Fiado (aparece só quando há valor em fiado) -->
         <div class="receb-fiado-cliente-box" id="receb-fiado-cliente-box" style="display:none">
-          <label>📒 Cliente do fiado — <span class="fiado-dica">espaço-espaço pra buscar</span> *</label>
-          <input type="text" id="receb-fiado-cliente" placeholder="Nome do cliente cadastrado" autocomplete="off">
+          <label>📒 Cliente do fiado — <span class="fiado-dica">digite o nome pra buscar</span> *</label>
+          <div class="rfc-wrap">
+            <input type="text" id="receb-fiado-cliente" placeholder="Nome do cliente cadastrado" autocomplete="off">
+            <div class="rfc-drop" id="rfc-drop" hidden></div>
+          </div>
           <div class="fiado-saldo" id="fiado-saldo"></div>
         </div>
 

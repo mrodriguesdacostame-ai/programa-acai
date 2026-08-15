@@ -916,7 +916,7 @@ $('receb-fiado-cliente').addEventListener('keydown', e => {
     if (fiadoClienteSelecionado && !$('btn-confirmar-receb').disabled) { confirmarRecebimento(); return; }
     // nada selecionado → tenta achar pelo que foi digitado (código ou nome)
     const termo = $('receb-fiado-cliente').value.trim();
-    if (termo) { const c = resolverClienteFiado(termo); if (c) selecionarClienteFiado(c); else toast('⚠ Cliente não encontrado — dê duplo-espaço para buscar'); }
+    if (termo) { const c = resolverClienteFiado(termo) || CLIENTES.find(cl => (cl.nome || '').toLowerCase().includes(termo.toLowerCase())); if (c) selecionarClienteFiado(c); else toast('⚠ Cliente não encontrado'); }
     return;
   }
   if (e.key !== ' ' || $('receb-fiado-cliente').value.trim() !== '') return;
@@ -925,6 +925,33 @@ $('receb-fiado-cliente').addEventListener('keydown', e => {
   if (agora - ultimoEspacoFiado < 450) { ultimoEspacoFiado = 0; abrirBuscaProduto('recebimento-fiado'); }
   else ultimoEspacoFiado = agora;
 });
+/* Autocomplete do cliente do fiado: mostra os clientes conforme digita (mouse ou clique),
+   além do duplo-espaço. Acelera achar o cliente sem abrir a busca. */
+{
+  const inp = $('receb-fiado-cliente'), drop = $('rfc-drop');
+  if (inp && drop) {
+    const esconder = () => { drop.hidden = true; };
+    const render = () => {
+      const f = (inp.value || '').trim().toLowerCase();
+      if (!f) { esconder(); return; }
+      const lista = CLIENTES.filter(c => (c.nome || '').toLowerCase().includes(f) || clienteCodigo(c).toLowerCase().includes(f) || String(c.id) === f).slice(0, 8);
+      drop.innerHTML = lista.length
+        ? lista.map(c => `<button type="button" class="rfc-item" data-id="${c.id}"><span class="rfc-nome">${crmEsc(c.nome || 'sem nome')}</span><span class="rfc-cod">${crmEsc(clienteCodigo(c))}</span></button>`).join('')
+        : '<div class="rfc-vazio">Nenhum cliente com esse nome</div>';
+      drop.querySelectorAll('.rfc-item').forEach(b => b.addEventListener('mousedown', ev => {
+        ev.preventDefault();
+        const c = buscarClientePorId(+b.dataset.id);
+        if (c) selecionarClienteFiado(c);
+        esconder();
+      }));
+      drop.hidden = false;
+    };
+    inp.addEventListener('input', render);
+    inp.addEventListener('focus', () => { if ((inp.value || '').trim()) render(); });
+    inp.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !drop.hidden) { ev.stopPropagation(); esconder(); } });
+    document.addEventListener('click', ev => { const w = inp.closest('.rfc-wrap'); if (w && !w.contains(ev.target)) esconder(); });
+  }
+}
 
 let confirmarDepoisDoCartao = false;
 
