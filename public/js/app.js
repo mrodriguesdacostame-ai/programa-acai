@@ -1861,6 +1861,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'F9') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); irPara('pdv'); focusCodigoMercadoria(); return; }
   // F3 → abrir a tela de PRODUTOS (entrada de mercadoria/estoque) de qualquer lugar
   if (e.key === 'F3') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); irPara('produtos'); return; }
+  if (e.key === 'F4') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); irPara('clientes'); return; }
   if (algumOverlayAberto && algumOverlayAberto()) return;
   if ($('overlay-erp') && $('overlay-erp').classList.contains('aberto')) return;
   const naOperacao = $('tela-pdv').classList.contains('ativa');
@@ -1878,6 +1879,24 @@ document.addEventListener('keydown', e => {
     else abrirAcoesFinanceiras();
   }
 });
+// Barra de atalhos do PDV como BOTÕES clicáveis (mesmos atalhos de teclado, agora visíveis).
+{
+  const bar = $('pdv-atalhos');
+  if (bar) bar.addEventListener('click', e => {
+    const b = e.target.closest('.pdv-atbtn'); if (!b) return;
+    const acoes = {
+      recebimento: () => finalizarVenda(),
+      produtos: () => irPara('produtos'),
+      clientes: () => irPara('clientes'),
+      litros: () => abrirLitros(),
+      sangria: () => abrirSangria(),
+      suprimento: () => abrirSuprimento(),
+      consumo: () => abrirConsumoInterno(),
+      fechardia: () => abrirFechamentoLitros(),
+    };
+    const fn = acoes[b.dataset.act]; if (fn) { try { fn(); } catch (err) { console.error('atalho', b.dataset.act, err); } }
+  });
+}
 // Etapa 2 (regra 5/6): atalho S abre o menu de ações financeiras — Sangria e Suprimento
 // só aparecem quando solicitados (PDV limpo). Teclas 1/2 escolhem; ESC fecha.
 function abrirAcoesFinanceiras() {

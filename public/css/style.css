@@ -2648,6 +2648,18 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
   font-weight: 700;
   color: var(--branco);
 }
+/* Barra de atalhos do PDV como BOTÕES clicáveis (mesmos atalhos, agora visíveis) */
+.pdv-atalhos { margin-top: auto; max-width: 480px; background: #eef4fa; border: 1px solid var(--vidro-borda); border-radius: 12px; padding: 12px 14px; }
+.pdv-atalhos-tit { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--acai-rosa); margin-bottom: 8px; }
+.pdv-atalhos-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+.pdv-atbtn { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 4px; border: 1px solid var(--vidro-borda); background: #ffffff; border-radius: 10px; cursor: pointer; transition: 0.13s ease; }
+.pdv-atbtn:hover { border-color: var(--acai-claro); background: rgba(30, 136, 200, 0.10); transform: translateY(-1px); }
+.pdv-atbtn-k { font-size: 11px; font-weight: 800; color: #ffffff; background: var(--acai); border-radius: 6px; padding: 1px 7px; min-width: 22px; text-align: center; }
+.pdv-atbtn-l { font-size: 11.5px; font-weight: 700; color: #0a1420; }
+.pdv-atalhos-hint { margin-top: 9px; font-size: 11px; color: rgba(15, 47, 77, 0.55); }
+.pdv-atalhos-hint kbd { background: rgba(15, 47, 77, 0.08); border: 1px solid var(--vidro-borda); border-radius: 5px; padding: 1px 5px; font-family: inherit; font-size: 10.5px; font-weight: 700; color: #0a1420; }
+/* exceção: o badge da tecla precisa ficar BRANCO no PDV (a regra "tudo preto" apagaria) */
+#tela-pdv .pdv-atbtn-k { color: #ffffff !important; }
 
 /* Cabeçalho do espelho: contador + limpar */
 .esp-head-dir { display: flex; align-items: center; gap: 10px; }
