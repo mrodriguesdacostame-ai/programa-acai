@@ -1128,10 +1128,10 @@ function renderAnotacoes(total) {
   const htmlFiado = fiadosCache.map(f => `
     <div class="anot-item anot-fiado" data-cli="${f.cliente_id}">
       <span class="anot-hora">🕒 ${f.hora || ''}</span>
-      <span class="anot-quem">📒 ${crmEsc(f.nome || 'cliente')}</span>
+      <span class="anot-quem">${crmEsc(f.nome || 'cliente')}</span>
       <span class="anot-desc">— fiado em aberto</span>
       <span class="anot-vlr">${fmt(f.saldo)}</span>
-      <button class="anot-ok" data-fiado="${f.cliente_id}" title="Receber o fiado deste cliente">✓ pagou</button>
+      <button class="anot-ok" data-fiado="${f.cliente_id}" title="Receber o fiado deste cliente">PAGAR</button>
     </div>`).join('');
   const htmlAnot = anotacoesCache.map(a => `
     <div class="anot-item" data-id="${a.id}">
@@ -1140,7 +1140,7 @@ function renderAnotacoes(total) {
       <span class="anot-desc">${(a.nCompras > 1) ? `— ${a.nCompras} compras` : (a.descricao ? '— ' + crmEsc(a.descricao) : '')}</span>
       <span class="anot-vlr">${fmt(a.valor)}</span>
       <button class="anot-rel" data-rel="${a.id}" title="Ver o relatório desta pessoa">📄</button>
-      <button class="anot-ok" data-pagar="${a.id}" title="Recebeu — dar baixa">✓ pagou</button>
+      <button class="anot-ok" data-pagar="${a.id}" title="Recebeu — dar baixa">PAGAR</button>
       <button class="anot-del" data-del="${a.id}" title="Remover anotação">🗑</button>
     </div>`).join('');
   box.innerHTML = htmlFiado + htmlAnot;
