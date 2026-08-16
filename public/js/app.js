@@ -1456,16 +1456,30 @@ function opInfoCaixaHtml(s) {
 // Vão pro razão como movimento de dinheiro e entram na conferência do dia automático.
 async function abrirCaixaMov(tipo) {
   const ehSup = tipo === 'suprimento';
+  const cedulas = [10, 20, 50, 100, 200];   // botões rápidos (SOMAM, tipo contar cédulas)
+  const motivos = ehSup
+    ? ['Troco inicial', 'Reforço de caixa', 'Abertura']
+    : ['Pagamento fornecedor', 'Retirada p/ banco', 'Despesa', 'Troco'];
+  const agora = new Date();
+  const op = (usuarioAtual && (usuarioAtual.nome || usuarioAtual.usuario)) || '—';
   abrirErpModal(`<h3 class="erp-modal-tit">${ehSup ? '➕ Suprimento (entrada no caixa)' : '➖ Sangria (retirada do caixa)'}</h3>
-    <form id="op-mov-form" class="fin-form">
+    <form id="op-mov-form" class="fin-form op-mov-form">
+      <div class="op-mov-meta"><span>👤 ${crmEsc(op)}</span><span>🕒 ${agora.toLocaleDateString('pt-BR')} ${agora.toLocaleTimeString('pt-BR').slice(0, 5)}</span></div>
       <p class="fin-hint">${ehSup ? 'Dinheiro que ENTRA na gaveta (reforço/troco).' : 'Dinheiro que SAI da gaveta (pagamento, retirada, banco).'} Não precisa de caixa aberto.</p>
-      <label>Valor (R$)<input type="number" step="0.01" min="0.01" id="op-mov-valor" inputmode="decimal" autocomplete="off"></label>
+      <label class="op-mov-vlabel">Valor (R$)<input type="number" step="0.01" min="0.01" id="op-mov-valor" class="op-mov-vinput" inputmode="decimal" autocomplete="off" placeholder="0,00"></label>
+      <div class="op-mov-chips">${cedulas.map(v => `<button type="button" class="op-mov-chip" data-v="${v}">+${v}</button>`).join('')}<button type="button" class="op-mov-chip zerar" data-zerar="1">limpar</button></div>
       <label>Justificativa *<input id="op-mov-just" autocomplete="off" placeholder="${ehSup ? 'ex.: troco inicial, reforço de caixa' : 'ex.: pagamento fornecedor, retirada para banco'}"></label>
+      <div class="op-mov-chips motivos">${motivos.map(m => `<button type="button" class="op-mov-chip mot" data-m="${crmEsc(m)}">${crmEsc(m)}</button>`).join('')}</div>
       <button type="submit" class="fin-btn-salvar">${ehSup ? '➕ Registrar suprimento' : '➖ Registrar sangria'}</button>
     </form>`);
   $('modal-erp-box').classList.add('erp-mov', ehSup ? 'erp-mov-sup' : 'erp-mov-san');   // padrão azul (igual Recebimento)
   const valor = $('op-mov-valor'), just = $('op-mov-just');
   setTimeout(() => valor.focus(), 60);
+  $('op-mov-form').querySelectorAll('.op-mov-chip[data-v]').forEach(b => b.addEventListener('click', () => {
+    valor.value = ((parseFloat(valor.value) || 0) + (+b.dataset.v || 0)).toFixed(2); valor.focus();   // soma (monta o valor rápido)
+  }));
+  { const z = $('op-mov-form').querySelector('[data-zerar]'); if (z) z.addEventListener('click', () => { valor.value = ''; valor.focus(); }); }
+  $('op-mov-form').querySelectorAll('.op-mov-chip[data-m]').forEach(b => b.addEventListener('click', () => { just.value = b.dataset.m; just.focus(); }));
   valor.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); just.focus(); } });
   $('op-mov-form').addEventListener('submit', async e => {
     e.preventDefault();

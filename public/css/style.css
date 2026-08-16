@@ -4176,6 +4176,14 @@ input:focus, textarea:focus, select:focus { border-color: var(--acai) !important
 .modal-erp.erp-mov .fin-btn-salvar { border: none !important; color: #ffffff !important; padding: 15px !important; font-size: 16px !important; border-radius: 12px !important; }
 .modal-erp.erp-mov-sup .fin-btn-salvar { background: #16a34a !important; }   /* suprimento = entrada (verde) */
 .modal-erp.erp-mov-san .fin-btn-salvar { background: #e23b4e !important; }   /* sangria = saída (vermelho) */
+/* Melhoria da Sangria/Suprimento: meta do operador, valor grande e botões rápidos */
+.modal-erp.erp-mov .op-mov-meta { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 12.5px; color: #eaf2fe !important; font-weight: 700; padding: 8px 12px; background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.16); border-radius: 10px; }
+.modal-erp.erp-mov .op-mov-vinput { font-size: 26px !important; font-weight: 800 !important; text-align: right; padding: 14px 16px !important; }
+.op-mov-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: -2px; }
+.modal-erp.erp-mov .op-mov-chip { border: 1px solid rgba(255,255,255,0.42); background: rgba(255,255,255,0.15); color: #ffffff; font-family: inherit; font-weight: 800; font-size: 14px; padding: 9px 14px; border-radius: 999px; cursor: pointer; transition: .12s; }
+.modal-erp.erp-mov .op-mov-chip:hover { background: rgba(255,255,255,0.30); transform: translateY(-1px); }
+.modal-erp.erp-mov .op-mov-chip.zerar { background: transparent; border-style: dashed; font-weight: 700; opacity: .85; }
+.modal-erp.erp-mov .op-mov-chips.motivos .op-mov-chip { font-size: 12.5px; font-weight: 700; }
 
 /* ═══ RECEBER CONTA (fiado do cliente) no padrão azul do Recebimento ═══ */
 .modal-erp.erp-rcc { background: linear-gradient(168deg, #1668cc 0%, #0f4ea0 100%) !important; color: #ffffff !important; border: none !important; box-shadow: 0 30px 80px rgba(4, 30, 66, 0.6) !important; }
