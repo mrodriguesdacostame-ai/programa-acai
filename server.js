@@ -1796,7 +1796,9 @@ app.post('/api/litros/valores', (req, res) => {
 app.post('/api/litros/fechar', (req, res) => {
   const rows = db.prepare('SELECT * FROM litros_producao WHERE consumido=0').all();
   const resumo = litrosResumo(rows);
-  db.prepare('UPDATE litros_producao SET consumido=1 WHERE consumido=0').run();
+  // fecha só a PRODUÇÃO (vira rendimento). O açaí GELADO (sobra) NÃO é consumido: fica pro
+  // próximo dia porque se mistura com a produção seguinte (é só controle, some no 🗑 manual).
+  db.prepare('UPDATE litros_producao SET consumido=1 WHERE consumido=0 AND COALESCE(gelado,0)=0').run();
   res.json({ ok: true, resumo });
 });
 
