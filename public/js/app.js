@@ -6629,7 +6629,22 @@ function confComparacaoHTML() {
     <div class="conf-sit conf-cmp-${clsT}">${sit}</div>
     ${btnEstoque}`;
 }
-function confAtualizarComparacao() { const c = $('conf-comparacao'); if (c) c.innerHTML = confComparacaoHTML(); }
+// Passo 3 — "quanto deu tudo": total geral contado + quebra por forma (ao vivo)
+function confTotalContadoHTML() {
+  const c = confContado();
+  return `<div class="conf-total-big"><span>🧮 Total contado <small>(tudo que entrou: dinheiro + máquinas + PIX)</small></span><strong>${fmt(c.total)}</strong></div>
+    <div class="conf-total-mini">
+      <span>💵 Dinheiro <b>${fmt(c.dinheiro)}</b></span>
+      <span>💳 Crédito <b>${fmt(c.credito)}</b></span>
+      <span>💳 Débito <b>${fmt(c.debito)}</b></span>
+      <span>📱 PIX <b>${fmt(c.pix)}</b></span>
+      <span>🍽️ Alim. <b>${fmt(c.alimentacao)}</b></span>
+    </div>`;
+}
+function confAtualizarComparacao() {
+  const c = $('conf-comparacao'); if (c) c.innerHTML = confComparacaoHTML();
+  const t = $('conf-total'); if (t) t.innerHTML = confTotalContadoHTML();
+}
 async function confBuscarEsperado() {
   const p = new URLSearchParams(); if (confPeriodo.de) p.set('de', confPeriodo.de); if (confPeriodo.ate) p.set('ate', confPeriodo.ate);
   const d = await (await fetch('/api/conferencia/esperado?' + p, { cache: 'no-store' })).json();
@@ -6679,7 +6694,7 @@ async function renderFinConferencia() {
   el.innerHTML = `
     <div class="conf">
       <div class="conf-head"><h2 class="cxd-tit">🧮 Fechamento / Conferência de caixa</h2>
-        <span class="conf-sub">O fechamento do caixa: conte por maquininha + PIX da conta + dinheiro, e o sistema compara com o esperado das vendas. Salvar registra o fechamento do período.</span></div>
+        <span class="conf-sub">Siga a ordem: conte o <b>dinheiro da gaveta</b> (com as entradas e saídas), confira as <b>máquinas</b>, veja o <b>total</b> e <b>compare com as vendas</b>.</span></div>
       <div class="conf-periodo">
         <label>De<input type="date" id="conf-de" value="${confPeriodo.de}"></label>
         <label>Até<input type="date" id="conf-ate" value="${confPeriodo.ate}"></label>
@@ -6688,7 +6703,15 @@ async function renderFinConferencia() {
       </div>
       <div class="conf-grid">
         <div class="conf-lado">
-          <div class="fin-box-tit">💳 Contado por maquininha</div>
+          <div class="conf-passo"><span class="conf-passo-n">1</span> 💵 Dinheiro da gaveta</div>
+          <div class="conf-extra">
+            <label class="conf-xrow conf-xrow-forte"><span>💵 Dinheiro contado na gaveta</span><input type="number" step="0.01" id="conf-dinheiro" value="${confValores.dinheiro}" placeholder="0,00"></label>
+            <label class="conf-xrow" id="conf-outros-row" style="${(+confEsperado.outros || 0) > 0 ? '' : 'display:none'}"><span>❓ Outros (vendas sem forma)</span><input type="number" step="0.01" id="conf-outros" value="${confValores.outros}" placeholder="0,00"></label>
+          </div>
+          <div class="conf-movbox" id="conf-movimentos">${confMovimentosHTML()}</div>
+        </div>
+        <div class="conf-lado">
+          <div class="conf-passo"><span class="conf-passo-n">2</span> 💳 Máquinas <small>(crédito · débito · PIX)</small></div>
           <div class="prod-tabela-wrap"><table class="prod-tabela conf-maq">
             <thead><tr><th>Maquininha</th><th>Crédito</th><th>Débito</th><th>PIX</th><th>Alimentação</th><th></th></tr></thead>
             <tbody id="conf-maq-body">${maqRows}</tbody>
@@ -6696,19 +6719,18 @@ async function renderFinConferencia() {
           <button class="crm-btn conf-add" id="conf-add-maq">➕ Adicionar maquininha</button>
           <div class="conf-extra">
             <label class="conf-xrow"><span>📱 PIX da conta (banco)</span><input type="number" step="0.01" id="conf-pixconta" value="${confValores.pixConta}" placeholder="0,00"></label>
-            <label class="conf-xrow"><span>💵 Dinheiro na gaveta</span><input type="number" step="0.01" id="conf-dinheiro" value="${confValores.dinheiro}" placeholder="0,00"></label>
-            <label class="conf-xrow" id="conf-outros-row" style="${(+confEsperado.outros || 0) > 0 ? '' : 'display:none'}"><span>❓ Outros (vendas sem forma)</span><input type="number" step="0.01" id="conf-outros" value="${confValores.outros}" placeholder="0,00"></label>
           </div>
         </div>
-        <div class="conf-lado">
-          <div class="fin-box-tit">⚖️ Conferência</div>
-          <div id="conf-comparacao">${confComparacaoHTML()}</div>
-          <label class="conf-obs-l">Observação<input id="conf-obs" placeholder="opcional"></label>
-          <button class="fin-btn-salvar" id="conf-salvar">💾 Salvar conferência</button>
-          <div id="conf-resultado"></div>
-        </div>
       </div>
-      <div class="conf-movbox" id="conf-movimentos">${confMovimentosHTML()}</div>
+      <div class="conf-passo conf-passo-solo"><span class="conf-passo-n">3</span> 🧮 Quanto deu tudo</div>
+      <div id="conf-total">${confTotalContadoHTML()}</div>
+      <div class="conf-passo conf-passo-solo"><span class="conf-passo-n">4</span> ⚖️ Comparar com as vendas</div>
+      <div class="conf-lado conf-final">
+        <div id="conf-comparacao">${confComparacaoHTML()}</div>
+        <label class="conf-obs-l">Observação<input id="conf-obs" placeholder="opcional"></label>
+        <button class="fin-btn-salvar" id="conf-salvar">💾 Salvar fechamento</button>
+        <div id="conf-resultado"></div>
+      </div>
       <div class="conf-histbox">
         <button class="conf-hist-toggle" id="conf-hist-toggle">📜 Histórico de fechamentos <span class="fin-av-seta">▾</span></button>
         <div id="conf-hist" style="display:none"></div>
@@ -6720,6 +6742,7 @@ async function renderFinConferencia() {
     confPeriodo = { de: $('conf-de').value, ate: $('conf-ate').value };
     try { await confBuscarEsperado(); } catch {}
     const orow = $('conf-outros-row'); if (orow) orow.style.display = (+confEsperado.outros || 0) > 0 ? '' : 'none';
+    const mv = $('conf-movimentos'); if (mv) mv.innerHTML = confMovimentosHTML();  // entradas/saídas do novo período
     confAtualizarComparacao();
   };
   ['conf-de', 'conf-ate'].forEach(id => $(id).addEventListener('change', aplicarPeriodo));

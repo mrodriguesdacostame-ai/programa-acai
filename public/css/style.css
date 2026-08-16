@@ -2387,6 +2387,24 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .conf-extra { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid rgba(15, 47, 77, 0.07); padding-top: 10px; }
 .conf-xrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13.5px; color: rgba(15, 47, 77, 0.85); }
 .conf-xrow input { width: 120px; padding: 8px 10px; border-radius: 9px; border: 1px solid var(--vidro-borda); background: #eef4fa; color: var(--branco); font-family: inherit; font-size: 13.5px; text-align: right; }
+/* Passo a passo do fechamento (segue a ordem que o operador conta) */
+.conf-passo { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 800; color: #0a1420; }
+.conf-passo small { font-weight: 500; opacity: .6; font-size: 12px; }
+.conf-passo-n { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(168deg, #1668cc, #0f4ea0); color: #fff; font-size: 13px; font-weight: 800; flex: none; }
+.conf-passo-solo { margin: 14px 2px 2px; }
+/* Passo 1: dinheiro da gaveta em destaque */
+.conf-xrow-forte { font-size: 15px; font-weight: 700; }
+.conf-xrow-forte input { width: 150px; font-size: 16px; font-weight: 700; border-color: var(--acai-claro); }
+/* Passo 3: total contado */
+#conf-total { background: var(--vidro); border: 1px solid var(--vidro-borda); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.conf-total-big { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.conf-total-big > span { font-size: 14px; font-weight: 700; color: rgba(15, 47, 77, 0.8); }
+.conf-total-big > span small { font-weight: 500; opacity: .65; }
+.conf-total-big strong { font-size: 30px; font-variant-numeric: tabular-nums; color: #0a1420; }
+.conf-total-mini { display: flex; flex-wrap: wrap; gap: 8px 16px; border-top: 1px solid rgba(15, 47, 77, 0.08); padding-top: 8px; }
+.conf-total-mini span { font-size: 12.5px; color: rgba(15, 47, 77, 0.65); font-variant-numeric: tabular-nums; }
+.conf-total-mini b { color: #0a1420; }
+.conf-final { margin-top: 2px; }
 .conf-cmp { width: 100%; }
 .conf-cmp th, .conf-cmp td { padding: 8px 10px; }
 .conf-cmp .conf-dif { font-weight: 800; white-space: nowrap; }
