@@ -1467,10 +1467,15 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 
 /* 📝 Anotações (pagar depois) — caixa no PDV */
 .anotacoes-box {
-  border: 2px solid #1668cc; background: #ffffff; border-radius: 14px; padding: 0;   /* DESTAQUE: moldura azul */
-  box-shadow: 0 0 0 3px rgba(22, 104, 204, 0.16), 0 6px 18px rgba(22, 104, 204, 0.22);  /* + glow azul em volta */
+  border: 3px solid #1668cc; background: #eaf3ff; border-radius: 14px; padding: 0;   /* DESTAQUE: moldura azul grossa + fundo azul-claro */
+  box-shadow: 0 0 0 4px rgba(22, 104, 204, 0.22), 0 8px 22px rgba(22, 104, 204, 0.30);  /* glow azul forte em volta */
+  animation: anotPulse 2.2s ease-in-out infinite;   /* brilho pulsante pra chamar o olho */
   flex: 1 1 auto; min-height: 150px;          /* CRESCE pra ocupar o espaço vazio da esquerda */
   display: flex; flex-direction: column; overflow: hidden;
+}
+@keyframes anotPulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(22, 104, 204, 0.20), 0 8px 22px rgba(22, 104, 204, 0.26); }
+  50%      { box-shadow: 0 0 0 6px rgba(22, 104, 204, 0.34), 0 10px 26px rgba(22, 104, 204, 0.40); }
 }
 .anotacoes-box .anot-lista { flex: 1; overflow-y: auto; min-height: 0; padding: 4px 12px 8px; }
 .anot-titulo { display: flex; align-items: center; gap: 7px; font-size: 14.5px; font-weight: 800; color: #ffffff; background: linear-gradient(168deg, #1668cc, #0f4ea0); padding: 11px 14px; letter-spacing: 0.3px; text-shadow: 0 1px 2px rgba(0,0,0,.18); }
