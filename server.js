@@ -7861,7 +7861,7 @@ app.post('/api/whatsapp/enviar', async (req, res) => {
 const PORTA = process.env.PORT ? +process.env.PORT : 3001;
 const servidor = app.listen(PORTA, () => {
   console.log('✅ PROGRAMA AÇAÍ rodando em http://localhost:' + PORTA);
-  manut.iniciarAgendador(); // Fase 11 — backup diário (03:00; ou na 1ª inicialização do dia)
+  manut.iniciarAgendador(); // Fase 11 — backup automático DE HORA EM HORA (e um logo ao abrir se o último tem +1h)
   // Fase 37 — verificação de consistência no boot (só loga; não bloqueia nem altera nada)
   try {
     const c = consistenciaERP();

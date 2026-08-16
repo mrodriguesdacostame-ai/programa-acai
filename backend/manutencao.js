@@ -69,11 +69,15 @@ module.exports = function createManutencao({ db, rootDir }) {
     const sem = Math.ceil(((quinta - jan1) / 86400000 + 1) / 7);
     return `${quinta.getFullYear()}-S${sem}`;
   }
-  // Retenção: 14 diários + 8 semanais. NUNCA apaga o mais recente. Loga quantos saíram.
+  // Retenção: TODOS das últimas 48h (os de hora em hora) + 14 diários + 8 semanais.
+  // NUNCA apaga o mais recente. Loga quantos saíram.
   function aplicarRetencao() {
     const bks = listarBackups();
     if (bks.length <= 1) return;
     const manter = new Set([bks[0].arquivo]); // o mais recente sempre fica
+    const agoraMs = Date.now();
+    // 1) guarda TODOS os backups das últimas 48h (é onde ficam os de hora em hora)
+    for (const b of bks) { if (agoraMs - new Date(b.criado).getTime() <= 48 * 3600 * 1000) manter.add(b.arquivo); }
     const porDia = new Map();
     for (const b of bks) { const dia = b.criado.slice(0, 10); if (!porDia.has(dia)) porDia.set(dia, b.arquivo); }
     [...porDia.values()].slice(0, 14).forEach(a => manter.add(a));
@@ -93,25 +97,33 @@ module.exports = function createManutencao({ db, rootDir }) {
     const hoje = new Date().toISOString().slice(0, 10);
     return listarBackups().some(b => b.criado.slice(0, 10) === hoje);
   }
+  // minutos desde o backup mais recente (Infinity se não houver nenhum) — base do agendamento horário
+  function minutosUltimoBackup() {
+    const bks = listarBackups();
+    if (!bks.length) return Infinity;
+    return (Date.now() - new Date(bks[0].criado).getTime()) / 60000;
+  }
   function statusBackup() {
     const bks = listarBackups();
+    const min = minutosUltimoBackup();
     return {
       total: bks.length, ultimo: bks[0] || null,
-      proximaExecucao: proximo0300().toISOString(),
+      proximaExecucao: new Date(Date.now() + Math.max(0, (60 - min)) * 60000).toISOString(),
       pastaBackups: dirBackups,
-      politica: '14 diários + 8 semanais (o mais recente nunca é apagado)',
+      politica: 'automático DE HORA EM HORA · guarda 48h de horários + 14 diários + 8 semanais (o mais recente nunca é apagado)',
     };
   }
-  // Agendador: diário às 03:00; se o sistema não estava ligado, faz na 1ª inicialização do dia.
+  // Agendador: backup DE HORA EM HORA. Confere a cada 10 min e faz um novo se já passou ~1h
+  // do último (base = os próprios arquivos, então sobrevive a reinícios — se caiu no meio do dia,
+  // reabrindo ele já garante um backup recente). Roda enquanto o programa estiver aberto.
   function iniciarAgendador() {
-    if (!temBackupHoje()) {
-      console.log('💾 Ainda não há backup hoje — vou criar em 5s (não trava o boot).');
-      setTimeout(() => criarBackup('inicialização do dia'), 5000);
+    if (minutosUltimoBackup() >= 60) {
+      console.log('💾 Backup automático em 5s (não trava o boot).');
+      setTimeout(() => criarBackup('inicialização'), 5000);
     }
     const t = setInterval(() => {
-      const agora = new Date();
-      if (agora.getHours() === 3 && !temBackupHoje()) criarBackup('agendado 03:00');
-    }, 30 * 60 * 1000); // confere a cada 30 min
+      if (minutosUltimoBackup() >= 60) criarBackup('automático (de hora em hora)');
+    }, 10 * 60 * 1000); // confere a cada 10 min
     if (t.unref) t.unref();
   }
 
