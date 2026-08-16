@@ -37,14 +37,15 @@ module.exports = function createManutencao({ db, rootDir }) {
   function nomeBackup(d = new Date()) {
     return `acai-${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}-${p2(d.getHours())}-${p2(d.getMinutes())}.db`;
   }
-  function listarBackups() {
+  function listarEm(dir) {
     try {
-      return fs.readdirSync(dirBackups).filter(f => /^acai-.*\.db$/.test(f)).map(f => {
-        const st = fs.statSync(path.join(dirBackups, f));
+      return fs.readdirSync(dir).filter(f => /^acai-.*\.db$/.test(f)).map(f => {
+        const st = fs.statSync(path.join(dir, f));
         return { arquivo: f, tamanho: st.size, criado: st.mtime.toISOString() };
       }).sort((a, b) => b.criado.localeCompare(a.criado)); // mais recente primeiro
     } catch { return []; }
   }
+  function listarBackups() { return listarEm(dirBackups); }
   function criarBackup(motivo) {
     const arq = path.join(dirBackups, nomeBackup());
     try {
@@ -55,7 +56,8 @@ module.exports = function createManutencao({ db, rootDir }) {
       console.log(`💾 Backup criado: ${nomeBackup()} (${(tamanho / 1048576).toFixed(1)} MB)${motivo ? ' · ' + motivo : ''}`);
       logAcao('backup criado', 'backup', { arquivo: path.basename(arq), tamanho, motivo: motivo || '' }, 'sistema');
       aplicarRetencao();
-      return { ok: true, arquivo: path.basename(arq), tamanho };
+      const nu = copiarParaNuvem(arq);   // ☁️ manda a cópia pra nuvem (OneDrive/pasta escolhida), se ligado
+      return { ok: true, arquivo: path.basename(arq), tamanho, nuvem: nu ? path.basename(nu) : null };
     } catch (e) {
       logErro('backup', e);
       logAcao('falha de backup', 'backup', { erro: e.message }, 'sistema');
@@ -69,14 +71,13 @@ module.exports = function createManutencao({ db, rootDir }) {
     const sem = Math.ceil(((quinta - jan1) / 86400000 + 1) / 7);
     return `${quinta.getFullYear()}-S${sem}`;
   }
-  // Retenção: TODOS das últimas 48h (os de hora em hora) + 14 diários + 8 semanais.
-  // NUNCA apaga o mais recente. Loga quantos saíram.
-  function aplicarRetencao() {
-    const bks = listarBackups();
-    if (bks.length <= 1) return;
+  // Retenção genérica numa PASTA (local ou nuvem): TODOS das últimas 48h (os de hora em hora)
+  // + 14 diários + 8 semanais. NUNCA apaga o mais recente.
+  function retencaoEm(dir) {
+    const bks = listarEm(dir);
+    if (bks.length <= 1) return { removidos: 0, mantidos: bks.length };
     const manter = new Set([bks[0].arquivo]); // o mais recente sempre fica
     const agoraMs = Date.now();
-    // 1) guarda TODOS os backups das últimas 48h (é onde ficam os de hora em hora)
     for (const b of bks) { if (agoraMs - new Date(b.criado).getTime() <= 48 * 3600 * 1000) manter.add(b.arquivo); }
     const porDia = new Map();
     for (const b of bks) { const dia = b.criado.slice(0, 10); if (!porDia.has(dia)) porDia.set(dia, b.arquivo); }
@@ -85,8 +86,50 @@ module.exports = function createManutencao({ db, rootDir }) {
     for (const b of bks) { const s = isoSemana(b.criado); if (!porSemana.has(s)) porSemana.set(s, b.arquivo); }
     [...porSemana.values()].slice(0, 8).forEach(a => manter.add(a));
     let removidos = 0;
-    for (const b of bks) if (!manter.has(b.arquivo)) { try { fs.unlinkSync(path.join(dirBackups, b.arquivo)); removidos++; } catch {} }
-    if (removidos) console.log(`🧹 Retenção de backups: ${removidos} antigo(s) removido(s), ${manter.size} mantido(s).`);
+    for (const b of bks) if (!manter.has(b.arquivo)) { try { fs.unlinkSync(path.join(dir, b.arquivo)); removidos++; } catch {} }
+    return { removidos, mantidos: manter.size };
+  }
+  function aplicarRetencao() {
+    const r = retencaoEm(dirBackups);
+    if (r.removidos) console.log(`🧹 Retenção de backups: ${r.removidos} antigo(s) removido(s), ${r.mantidos} mantido(s).`);
+  }
+  // ── BACKUP NA NUVEM: copia cada backup pra uma pasta SINCRONIZADA (OneDrive/Google Drive),
+  // que o próprio app de nuvem sobe sozinho. Sem chaves/API — usa a sincronização já instalada.
+  // Origem da pasta: env BACKUP_NUVEM_DIR → arquivo backups/nuvem.txt → auto-detecta o OneDrive. ──
+  const arqNuvemCfg = path.join(dirBackups, 'nuvem.txt');
+  function pastaNuvem() {
+    let dir = (process.env.BACKUP_NUVEM_DIR || '').trim();
+    if (!dir) { try { dir = fs.readFileSync(arqNuvemCfg, 'utf8').trim(); } catch {} }
+    if (dir === 'OFF') return null;                         // desligado de propósito
+    if (!dir) {                                             // auto: OneDrive da máquina
+      const od = process.env.OneDrive || process.env.OneDriveConsumer || process.env.OneDriveCommercial || '';
+      if (od) dir = path.join(od, 'AcaiDoCentro-Backups');
+    }
+    if (!dir) return null;
+    try { fs.mkdirSync(dir, { recursive: true }); return dir; } catch { return null; }
+  }
+  function copiarParaNuvem(arqLocal) {
+    const dir = pastaNuvem(); if (!dir) return null;
+    try {
+      const destino = path.join(dir, path.basename(arqLocal));
+      fs.copyFileSync(arqLocal, destino);
+      retencaoEm(dir);                                      // mesma política de retenção na nuvem
+      console.log(`☁️  Backup também na nuvem: ${destino}`);
+      logAcao('backup na nuvem', 'backup', { destino }, 'sistema');
+      return destino;
+    } catch (e) { logErro('backup-nuvem', e); return null; }
+  }
+  // liga/aponta/desliga a nuvem (grava backups/nuvem.txt). '' = auto (OneDrive) · 'OFF' = desliga.
+  function configurarNuvem(pasta) {
+    const p = (pasta == null ? '' : String(pasta)).trim();
+    try {
+      if (p) fs.writeFileSync(arqNuvemCfg, p);
+      else { try { fs.unlinkSync(arqNuvemCfg); } catch {} }
+    } catch (e) { return { ok: false, erro: e.message }; }
+    const alvo = pastaNuvem();
+    // já manda o backup mais recente pra nuvem na hora de configurar (não espera a próxima hora)
+    if (alvo) { const ult = listarBackups()[0]; if (ult) copiarParaNuvem(path.join(dirBackups, ult.arquivo)); }
+    return { ok: true, pastaNuvem: alvo };
   }
   function proximo0300() {
     const p = new Date(); p.setHours(3, 0, 0, 0);
@@ -111,6 +154,7 @@ module.exports = function createManutencao({ db, rootDir }) {
       proximaExecucao: new Date(Date.now() + Math.max(0, (60 - min)) * 60000).toISOString(),
       pastaBackups: dirBackups,
       politica: 'automático DE HORA EM HORA · guarda 48h de horários + 14 diários + 8 semanais (o mais recente nunca é apagado)',
+      nuvem: pastaNuvem(),   // pasta sincronizada (OneDrive/Google Drive) ou null se desligada
     };
   }
   // Agendador: backup DE HORA EM HORA. Confere a cada 10 min e faz um novo se já passou ~1h
@@ -149,5 +193,5 @@ module.exports = function createManutencao({ db, rootDir }) {
     return { limpas: alvo, dias: d, anteriores_a: limite };
   }
 
-  return { logErro, logAcao, criarBackup, listarBackups, statusBackup, iniciarAgendador, statusMidia, limparMidia };
+  return { logErro, logAcao, criarBackup, listarBackups, statusBackup, iniciarAgendador, statusMidia, limparMidia, configurarNuvem, pastaNuvem };
 };

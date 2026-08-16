@@ -170,6 +170,8 @@ app.get('/api/logs-acoes', (req, res) => {
 app.get('/api/backup/status', (req, res) => res.json(manut.statusBackup()));
 app.get('/api/backup/listar', (req, res) => res.json(manut.listarBackups()));
 app.post('/api/backup/criar', (req, res) => res.json(manut.criarBackup('manual')));
+// backup na NUVEM: aponta a pasta sincronizada (OneDrive/Google Drive). {pasta:''}=auto OneDrive · {pasta:'OFF'}=desliga
+app.post('/api/backup/nuvem', (req, res) => res.json(manut.configurarNuvem(req.body && req.body.pasta)));
 app.get('/api/manutencao/midia/status', (req, res) => res.json(manut.statusMidia()));
 app.post('/api/manutencao/midia/limpar', (req, res) => res.json(manut.limparMidia(req.body && req.body.dias)));
 
