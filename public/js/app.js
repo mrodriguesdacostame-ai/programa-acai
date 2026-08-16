@@ -1861,9 +1861,8 @@ document.addEventListener('keydown', e => {
   if (e.key === 'F9') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); irPara('pdv'); focusCodigoMercadoria(); return; }
   // F3 → abrir a tela de PRODUTOS (entrada de mercadoria/estoque) de qualquer lugar
   if (e.key === 'F3') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); irPara('produtos'); return; }
-  if (e.key === 'F4') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); irPara('clientes'); return; }
-  // F2 → RECEBIMENTO DE CONTAS de qualquer lugar (cliente aberto vai direto; senão abre a busca que autocompleta)
-  if (e.key === 'F2') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); if (typeof abrirReceberConta === 'function') abrirReceberConta(); return; }
+  // F2 → abrir a tela de CLIENTES de qualquer lugar (era F4; unificado no F2 a pedido)
+  if (e.key === 'F2') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); irPara('clientes'); return; }
   if (algumOverlayAberto && algumOverlayAberto()) return;
   if ($('overlay-erp') && $('overlay-erp').classList.contains('aberto')) return;
   const naOperacao = $('tela-pdv').classList.contains('ativa');
