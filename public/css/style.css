@@ -1613,6 +1613,10 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 .pf-grupo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .pf-grupo-full { grid-column: 1 / -1; }   /* "Dar entrada" ocupa a largura toda */
 @media (max-width: 1024px) { .prod-painel.ativo { grid-template-columns: 1fr; } .pf-grid { grid-template-columns: 1fr; } }
+/* CLIENTES: o form está compacto (2 colunas) → dá pra estreitá-lo e ENTREGAR o resto pro detalhe/extrato.
+   Assim o operador tem uma área ampla pra ver saldo, extrato e compras. */
+#clientes-painel.ativo { grid-template-columns: 440px minmax(0, 1fr); }
+@media (max-width: 1024px) { #clientes-painel.ativo { grid-template-columns: 1fr; } }
 .prod-nota { font-size: 12px; color: rgba(15, 47, 77, 0.55); line-height: 1.5; }
 .prod-nota strong { color: var(--acai-rosa); }
 .pf-hint { font-size: 11px; color: var(--acai-rosa); margin: -4px 0 0; min-height: 14px; }
@@ -2046,7 +2050,7 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
   color: rgba(15, 47, 77, 0.5); border-bottom: 1px solid rgba(30, 136, 200, 0.18);
 }
 .cl-lanc-cab span:nth-child(3), .cl-lanc-cab span:nth-child(4) { text-align: right; }
-.cl-ext-lista { display: flex; flex-direction: column; gap: 2px; max-height: 240px; overflow-y: auto; }
+.cl-ext-lista { display: flex; flex-direction: column; gap: 2px; max-height: 46vh; overflow-y: auto; }
 .cl-lanc-linha {
   display: grid; grid-template-columns: 90px 1fr 90px 100px; gap: 10px; align-items: center;
   padding: 8px 10px; border-radius: 8px; font-size: 13px; color: var(--branco); cursor: pointer; outline: none;
