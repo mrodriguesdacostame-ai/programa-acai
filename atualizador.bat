@@ -81,6 +81,9 @@ goto :fim
 
 :restart
 if defined ATUALIZADOR_TESTE goto :fim
+REM fecha a janela VELHA do app (senao fica a velha + a nova) e reabre SO a nova versao
+taskkill /F /IM msedge.exe >nul 2>&1
+taskkill /F /IM chrome.exe >nul 2>&1
 start "" "%~dp0iniciar.bat"
 goto :fim
 

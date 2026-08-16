@@ -11,12 +11,18 @@ if not exist node_modules call npm install
 REM inicia o servidor em segundo plano, minimizado (deixe essa janelinha aberta)
 start "Acai do Centro - servidor (nao feche esta janela)" /min cmd /c node server.js
 
-REM espera o servidor subir (porta 3001)
+REM espera o servidor subir (porta 3001) — usa CURL (rapido) e checa NA HORA, sem spawnar
+REM PowerShell a cada volta (PowerShell "frio" logo apos ligar o PC custa segundos).
 echo  Abrindo o Acai do Centro...
+set "TENT=0"
 :esperar
+curl -s -o nul --max-time 1 http://localhost:3001/ >nul 2>&1
+if not errorlevel 1 goto :subiu
+set /a TENT+=1
+if %TENT% geq 90 goto :subiu
 timeout /t 1 /nobreak >nul
-powershell -NoProfile -Command "try{(New-Object Net.Sockets.TcpClient).Connect('localhost',3001);exit 0}catch{exit 1}" >nul 2>&1
-if errorlevel 1 goto :esperar
+goto :esperar
+:subiu
 
 REM abre em MODO APLICATIVO (janela propria, sem barra/abas de navegador)
 REM ?nc=aleatorio a cada abertura → o Chrome busca a pagina NOVA (sem cache velho)
