@@ -32,7 +32,8 @@ if not defined NAV if exist "%PFX86%\Google\Chrome\Application\chrome.exe" set "
 if not defined NAV goto :semnav
 REM abre no perfil PADRAO do Chrome (mantem voce logado). O cache velho ja e resolvido
 REM pelo ?v=<mtime> de cada arquivo (servido pelo server) + ?nc na URL + Cache-Control no-store.
-start "" "%NAV%" --app=%URL% --window-size=1300,860
+REM abre MAXIMIZADO (tela toda). --window-position=0,0 garante que encoste no canto.
+start "" "%NAV%" --app=%URL% --start-maximized --window-position=0,0
 goto :fim
 :semnav
 REM sem Chrome/Edge: abre no navegador padrao

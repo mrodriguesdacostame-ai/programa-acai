@@ -3421,7 +3421,8 @@ function fazerLogin(nome) {
   atualizarMenuAdmin(); // botão ⚙️ Administração só aparece pro perfil admin (Fase 13)
   conectarEventos();    // Fase 16: abre o canal em tempo real (só logado)
   carregarLojaConfig(); // Fase 20: aplica o nome da loja no título da aba
-  irPara('home');
+  irPara('pdv');                                   // abre DIRETO na tela de Vendas (PDV)
+  if (typeof focusCodigoMercadoria === 'function') setTimeout(focusCodigoMercadoria, 80);
 }
 /* A navegação (barra superior) é gerada por permissão a partir da fonte central (montarTopo).
    Os cartões da home também são filtrados pelo perfil. A proteção REAL continua no backend. */
