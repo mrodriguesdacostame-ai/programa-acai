@@ -1528,10 +1528,12 @@ function conferenciaEsperado(de, ate) {
   if (ate) { pc.push("date(data,'localtime') <= ?"); pa.push(ate); }
   const per = pc.length ? ' AND ' + pc.join(' AND ') : '';
   const sup = db.prepare(`SELECT COALESCE(SUM(valor),0) t FROM financeiro_movimentos WHERE referencia_tipo='caixa_suprimento' AND situacao='confirmado'${per}`).get(...pa).t;
+  // o troco/fundo deixado com antecedência é gravado como suprimento com descrição "Troco na gaveta..." → separa pra exibir à parte
+  const fundo = db.prepare(`SELECT COALESCE(SUM(valor),0) t FROM financeiro_movimentos WHERE referencia_tipo='caixa_suprimento' AND situacao='confirmado' AND descricao LIKE 'Troco na gaveta%'${per}`).get(...pa).t;
   const san = db.prepare(`SELECT COALESCE(SUM(valor),0) t FROM financeiro_movimentos WHERE referencia_tipo='caixa_sangria' AND situacao='confirmado'${per}`).get(...pa).t;
   for (const k of ['credito', 'debito', 'pix', 'alimentacao', 'outros']) m[k] = r2(m[k]);
-  m.dinheiro = r2(vendasDinheiro + (+sup || 0) - (+san || 0));
-  m.dinheiroDetalhe = { vendas: r2(vendasDinheiro), suprimentos: r2(sup), sangrias: r2(san) };
+  m.dinheiro = r2(vendasDinheiro + (+sup || 0) - (+san || 0));   // sup JÁ inclui o fundo/troco
+  m.dinheiroDetalhe = { vendas: r2(vendasDinheiro), fundo: r2(fundo), suprimentos: r2((+sup || 0) - (+fundo || 0)), sangrias: r2(san) };
   m.total = r2(m.credito + m.debito + m.pix + m.dinheiro + m.alimentacao + m.outros);
   return m;
 }

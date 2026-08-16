@@ -6554,7 +6554,7 @@ async function renderFinCaixaDia() {
   el.querySelectorAll('[data-cxd-goto]').forEach(b => b.addEventListener('click', () => finIr(b.dataset.cxdGoto)));
 }
 // Troco/fundo que fica na gaveta para o próximo dia (entra no caixa esperado daquele dia).
-function cxdAbrirTroco() {
+function cxdAbrirTroco(onSaved) {
   const amanha = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
   abrirErpModal(`<h3 class="erp-modal-tit">💵 Troco na gaveta</h3>
     <div class="op-ci">
@@ -6572,7 +6572,7 @@ function cxdAbrirTroco() {
     if (valor <= 0) { toast('⚠ Informe um valor maior que zero'); $('cxd-troco-valor').focus(); return; }
     const r = await (await fetch('/api/caixa/troco', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor, data: $('cxd-troco-data').value, obs: $('cxd-troco-obs').value.trim() }) })).json();
     if (r && r.erro) { toast('⚠ ' + r.erro); return; }
-    toast(`💵 Troco de ${fmt(valor)} guardado para ${acaiDataBR(r.data)}`); fecharErpModal(); renderFinCaixaDia();
+    toast(`💵 Troco de ${fmt(valor)} guardado para ${acaiDataBR(r.data)}`); fecharErpModal(); (typeof onSaved === 'function' ? onSaved : renderFinCaixaDia)();
   });
 }
 /* ── CONFERÊNCIA DE CAIXA — compara o ESPERADO (vendas por forma) com o CONTADO (por
@@ -6614,13 +6614,16 @@ function confComparacaoHTML() {
   const sit = nadaContado ? '📝 Conte o dinheiro e as maquininhas e preencha o contado para conferir'
     : (difT === 0 ? '✅ Bateu certinho!' : (difT > 0 ? `🔵 Saldo (sobra) de ${fmt(difT)}` : `🔴 Prejuízo do caixa de ${fmt(Math.abs(difT))}`));
   const det = e.dinheiroDetalhe || {};
-  const temMov = (+det.suprimentos || 0) > 0 || (+det.sangrias || 0) > 0;
+  const temMov = (+det.fundo || 0) > 0 || (+det.suprimentos || 0) > 0 || (+det.sangrias || 0) > 0;
   const notaDinheiro = temMov
-    ? `<div class="conf-det">💵 Dinheiro esperado = vendas ${fmt(det.vendas || 0)}${(+det.suprimentos || 0) > 0 ? ` + suprimento ${fmt(det.suprimentos)}` : ''}${(+det.sangrias || 0) > 0 ? ` − sangria ${fmt(det.sangrias)}` : ''} <small>(sangria/suprimento do caixa entram automático)</small></div>`
+    ? `<div class="conf-det">💵 Dinheiro esperado = ${(+det.fundo || 0) > 0 ? `troco/fundo ${fmt(det.fundo)} + ` : ''}vendas ${fmt(det.vendas || 0)}${(+det.suprimentos || 0) > 0 ? ` + suprimento ${fmt(det.suprimentos)}` : ''}${(+det.sangrias || 0) > 0 ? ` − sangria ${fmt(det.sangrias)}` : ''} <small>(troco/fundo, suprimento e sangria entram automático)</small></div>`
     : '';
   // se JÁ contou algo e mesmo assim deu diferença, oferece conferir o estoque (achar o que sumiu)
   const btnEstoque = (difT !== 0 && conT > 0) ? '<button class="crm-btn conf-estoque-btn" data-ir-balanco="1">🔍 Deu diferença? Conferir o estoque</button>' : '';
-  return `<table class="prod-tabela conf-cmp">
+  // 🛒 total das vendas do período (o que gerou o esperado): formas + vendas em dinheiro (SEM o troco/fundo e suprimento)
+  const vendasTotal = Math.round(((+e.credito || 0) + (+e.debito || 0) + (+e.pix || 0) + (+e.alimentacao || 0) + (+e.outros || 0) + (+det.vendas || 0)) * 100) / 100;
+  const notaVendas = `<div class="conf-vendas-tot"><span>🛒 Total das vendas do período <small>(o que o sistema registrou)</small></span><strong>${fmt(vendasTotal)}</strong></div>`;
+  return `${notaVendas}<table class="prod-tabela conf-cmp">
       <thead><tr><th>Forma</th><th class="col-num">Esperado</th><th class="col-num">Contado</th><th class="col-num">Diferença</th></tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr class="conf-cmp-total conf-cmp-${clsT}"><td>TOTAL</td><td class="col-num">${fmt(espT)}</td><td class="col-num">${fmt(conT)}</td><td class="col-num conf-dif">${nadaContado ? '—' : (difT === 0 ? '✅' : fmt(difT))}</td></tr></tfoot>
@@ -6704,6 +6707,10 @@ async function renderFinConferencia() {
       <div class="conf-grid">
         <div class="conf-lado">
           <div class="conf-passo"><span class="conf-passo-n">1</span> 💵 Dinheiro da gaveta</div>
+          <div class="conf-fundo">
+            <div class="conf-fundo-info"><span>🪙 Troco/fundo da gaveta <small>(deixado com antecedência)</small></span><b id="conf-fundo-val">${fmt((confEsperado.dinheiroDetalhe || {}).fundo || 0)}</b></div>
+            <button class="crm-btn" id="conf-troco-btn">➕ Deixar / ajustar troco (adiantar p/ outro dia)</button>
+          </div>
           <div class="conf-extra">
             <label class="conf-xrow conf-xrow-forte"><span>💵 Dinheiro contado na gaveta</span><input type="number" step="0.01" id="conf-dinheiro" value="${confValores.dinheiro}" placeholder="0,00"></label>
             <label class="conf-xrow" id="conf-outros-row" style="${(+confEsperado.outros || 0) > 0 ? '' : 'display:none'}"><span>❓ Outros (vendas sem forma)</span><input type="number" step="0.01" id="conf-outros" value="${confValores.outros}" placeholder="0,00"></label>
@@ -6743,10 +6750,12 @@ async function renderFinConferencia() {
     try { await confBuscarEsperado(); } catch {}
     const orow = $('conf-outros-row'); if (orow) orow.style.display = (+confEsperado.outros || 0) > 0 ? '' : 'none';
     const mv = $('conf-movimentos'); if (mv) mv.innerHTML = confMovimentosHTML();  // entradas/saídas do novo período
+    const fv = $('conf-fundo-val'); if (fv) fv.textContent = fmt((confEsperado.dinheiroDetalhe || {}).fundo || 0);
     confAtualizarComparacao();
   };
   ['conf-de', 'conf-ate'].forEach(id => $(id).addEventListener('change', aplicarPeriodo));
   { const b = $('conf-desde'); if (b) b.addEventListener('click', () => { $('conf-de').value = (ultima && ultima.de) || hoje; $('conf-ate').value = hoje; aplicarPeriodo(); }); }
+  { const b = $('conf-troco-btn'); if (b) b.addEventListener('click', () => cxdAbrirTroco(renderFinConferencia)); }
   { const cc = $('conf-comparacao'); if (cc) cc.addEventListener('click', e => { if (e.target.closest('[data-ir-balanco]')) { balancoVoltarConferencia = true; finIr('balanco'); } }); }
   { const ht = $('conf-hist-toggle'); if (ht) ht.addEventListener('click', () => { const box = $('conf-hist'), fechado = box.style.display === 'none'; box.style.display = fechado ? '' : 'none'; ht.querySelector('.fin-av-seta').textContent = fechado ? '▴' : '▾'; if (fechado) confCarregarHistorico(); }); }
 
