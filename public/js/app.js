@@ -1862,6 +1862,8 @@ document.addEventListener('keydown', e => {
   // F3 → abrir a tela de PRODUTOS (entrada de mercadoria/estoque) de qualquer lugar
   if (e.key === 'F3') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); irPara('produtos'); return; }
   if (e.key === 'F4') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); irPara('clientes'); return; }
+  // F2 → RECEBIMENTO DE CONTAS de qualquer lugar (cliente aberto vai direto; senão abre a busca que autocompleta)
+  if (e.key === 'F2') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); if (typeof abrirReceberConta === 'function') abrirReceberConta(); return; }
   if (algumOverlayAberto && algumOverlayAberto()) return;
   if ($('overlay-erp') && $('overlay-erp').classList.contains('aberto')) return;
   const naOperacao = $('tela-pdv').classList.contains('ativa');
@@ -5140,11 +5142,12 @@ ativarEnterProximo($('form-cliente'));
 
 /* ── RECEBER CONTA (fiado) — botão que abre a busca de cliente e um modal de
    recebimento independente do detalhe. Reusa lancarNaContaCliente('pagamento'). ── */
-{ const b = $('btn-receber-conta'); if (b) b.addEventListener('click', () => {
-  // cliente já aberto na conta → vai DIRETO pra tela de recebimento; senão pede pra escolher
+// Abre o Recebimento de Contas: cliente já aberto → vai direto; senão abre a busca (autocompleta ao digitar).
+function abrirReceberConta() {
   if (clienteDetalheAtual) abrirReceberContaModal(clienteDetalheAtual);
   else abrirBuscaProduto('receber-conta');
-}); }
+}
+{ const b = $('btn-receber-conta'); if (b) b.addEventListener('click', abrirReceberConta); }
 /* Comprovante de PAGAMENTO (recibo térmico 80mm) — reusa o iframe do motor de impressão.
    Só é chamado quando o operador clica em "Imprimir comprovante". */
 function comprovantePagamentoHTML(d) {
