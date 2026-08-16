@@ -3516,6 +3516,18 @@ $('login-user').addEventListener('keydown', e => {
 });
 $('btn-sair').addEventListener('click', logout);
 { const bc = $('btn-config-programa'); if (bc) bc.addEventListener('click', () => irPara('administracao')); }
+// Botão DISCRETO de FECHAR o programa (canto, quase invisível — pra não clicar sem querer).
+// Como abre em tela cheia sem barra, quem usa só o mouse/touch fecha por aqui (com confirmação).
+(function botaoFecharApp() {
+  const b = document.createElement('button');
+  b.id = 'btn-fechar-app'; b.type = 'button'; b.title = 'Fechar o programa'; b.textContent = '⏻';
+  b.addEventListener('click', () => {
+    if (!confirm('Fechar o programa?')) return;
+    try { window.close(); } catch {}
+    setTimeout(() => { try { window.open('', '_self'); window.close(); } catch {} }, 60);
+  });
+  document.body.appendChild(b);
+})();
 
 /* Atalho universal: Alt + letra sublinhada aciona o botão correspondente */
 document.addEventListener('keydown', e => {
