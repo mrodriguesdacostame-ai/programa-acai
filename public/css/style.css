@@ -1562,6 +1562,16 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 .rfc-nome { font-weight: 800; }
 .rfc-cod { font-size: 11px; font-weight: 700; color: var(--acai-rosa); background: #eef4fa; padding: 2px 8px; border-radius: 10px; }
 .rfc-vazio { padding: 10px 11px; font-size: 12.5px; color: rgba(15, 47, 77, 0.5); }
+/* Autocomplete do NOME do cliente (mesmo padrão do fiado) */
+.cln-wrap { position: relative; width: 100%; }
+.cln-wrap > input { width: 100%; }
+.cln-drop { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 45; max-height: 300px; overflow-y: auto; background: #ffffff; border: 1px solid var(--vidro-borda); border-radius: 10px; box-shadow: 0 16px 44px rgba(4, 30, 66, 0.45); padding: 4px; }
+.cln-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; text-align: left; padding: 10px 12px; border: none; background: transparent; color: #0a1420; font-family: inherit; font-size: 14.5px; cursor: pointer; border-radius: 8px; }
+.cln-item:hover, .cln-item.ativo { background: rgba(30, 136, 200, 0.18); }
+.cln-item.ativo { box-shadow: inset 3px 0 0 var(--acai); }
+.cln-nome { font-weight: 800; }
+.cln-cod { font-size: 12px; font-weight: 700; color: rgba(15, 47, 77, 0.6); white-space: nowrap; }
+.cln-vazio { padding: 10px 12px; font-size: 13px; color: rgba(15, 47, 77, 0.5); }
 .uv-itens {
   list-style: none;
   padding: 0 0 6px;
@@ -2479,6 +2489,33 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .conf-mv-saldo strong.pos { color: var(--verde); }
 .conf-mv-saldo strong.neg { color: var(--vermelho); }
 @media (max-width: 700px) { .conf-mv-grid { grid-template-columns: 1fr; } }
+
+/* ── FONTE MAIOR na conferência (estava pequena demais pra ler) ── */
+.conf-sub { font-size: 14px; }
+.conf-periodo label { font-size: 13.5px; }
+.conf-periodo input[type=date] { font-size: 15px; }
+.conf-ultima { font-size: 13px; }
+.conf-maq th, .conf-maq td { font-size: 14.5px; }
+.conf-maq th { font-size: 13px; }
+.conf-in { font-size: 15px; width: 94px; }
+.conf-xrow, .conf-xrow input { font-size: 15px; }
+.conf-cmp th { font-size: 13.5px; }
+.conf-cmp td { font-size: 15.5px; }
+.conf-cmp-total td { font-size: 17px; }
+.conf-det { font-size: 13.5px; }
+.conf-sit { font-size: 16.5px; }
+.conf-sit.conf-cmp-neutro { font-size: 14.5px; }
+.conf-saved { font-size: 15.5px; }
+.conf-mv-tit { font-size: 15px; }
+.conf-mv-tab td { font-size: 14px; }
+.conf-mv-hora { font-size: 12.5px !important; }
+.conf-mv-desc { font-size: 14px; }
+.conf-mv-vazio { font-size: 13.5px; }
+.conf-mv-saldo { font-size: 15px; }
+.conf-fiado-tit { font-size: 14px; }
+.conf-fiado-linhas span { font-size: 14.5px; }
+.conf-lanc-cab { font-size: 11.5px; }
+.conf-lanc-linha { font-size: 14px; }
 
 /* histórico inteligente de fechamentos */
 .conf-histbox { margin-top: 4px; }

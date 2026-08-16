@@ -756,7 +756,7 @@ app.delete('/api/copia-pedido/destinatarios/:id', (req, res) => {
 
 // monta o texto do pedido pra mandar no WhatsApp
 function formatarPedidoTexto(p) {
-  const brl = v => 'R$ ' + (+v || 0).toFixed(2).replace('.', ',');
+  const brl = v => 'R$ ' + (+v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });  // 1.200,00
   return [
     `🌴 *PEDIDO #${p.numero}* (${p.origem === 'ia' ? 'IA/WhatsApp' : 'balcão'})`,
     `👤 ${p.cliente || '—'}${p.telefone ? ' · ' + p.telefone : ''}`,
@@ -3684,7 +3684,7 @@ function enviarCSV(req, res, arquivo, cabecalho, linhas, tipoExport) {
   res.setHeader('Content-Disposition', `attachment; filename="${arquivo}"`);
   res.send('﻿' + csv);
 }
-const brl = (v) => (Number(v || 0)).toFixed(2).replace('.', ',');
+const brl = (v) => (Number(v || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });  // 1.200,00
 app.get('/api/bi/export/produtos.csv', (req, res) => {
   if (!gateBI(req, res)) return;
   const fx = faixaPeriodo(req.query), d = biProdutos(fx);

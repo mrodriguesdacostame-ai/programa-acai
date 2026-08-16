@@ -3,7 +3,7 @@
    ═══════════════════════════════════════════════════════════ */
 
 const $ = id => document.getElementById(id);
-const fmt = v => 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',');
+const fmt = v => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });  // ponto de milhar: 1.200,00
 
 /* ── Toast ───────────────────────────────────────────────── */
 let toastTimer;
@@ -5251,6 +5251,46 @@ function abrirReceberContaModal(clienteId) {
 
 /* Duplo-espaço (campo Nome vazio) abre a busca de cliente já cadastrado */
 let ultimoEspacoCliente = 0;
+/* Autocomplete do NOME: vai mostrando os clientes conforme digita; escolhe com ↑↓ + Enter ou
+   clique. Não atrapalha o código+Enter (números) nem o espaço-espaço (busca em tela cheia). */
+{
+  const inp = $('cl-nome'), drop = $('cln-drop');
+  if (inp && drop) {
+    let itens = [], ativo = -1;
+    const esconder = () => { drop.hidden = true; itens = []; ativo = -1; };
+    const marcar = i => {
+      const btns = drop.querySelectorAll('.cln-item'); if (!btns.length) return;
+      ativo = (i + btns.length) % btns.length;
+      btns.forEach((b, k) => b.classList.toggle('ativo', k === ativo));
+      btns[ativo].scrollIntoView({ block: 'nearest' });
+    };
+    const escolher = c => { esconder(); editarClienteForm(c.id); toast(`👤 #${clienteCodigo(c)} — ${c.nome}`); };
+    const render = () => {
+      const f = (inp.value || '').trim().toLowerCase();
+      if (f.length < 1 || /^\d+$/.test(f)) { esconder(); return; }   // só número → deixa o Enter buscar por código
+      itens = CLIENTES.filter(c => (c.nome || '').toLowerCase().includes(f) || (c.telefone || '').includes(f) || clienteCodigo(c).toLowerCase().includes(f)).slice(0, 8);
+      drop.innerHTML = itens.length
+        ? itens.map((c, i) => `<button type="button" class="cln-item${i === 0 ? ' ativo' : ''}" data-id="${c.id}"><span class="cln-nome">${crmEsc(c.nome || 'sem nome')}</span><span class="cln-cod">#${crmEsc(clienteCodigo(c))}${(+saldoCliente(c) > 0) ? ' · deve ' + fmt(saldoCliente(c)) : ''}</span></button>`).join('')
+        : '<div class="cln-vazio">Nenhum cliente com esse nome — Enter cadastra novo</div>';
+      ativo = itens.length ? 0 : -1;
+      drop.querySelectorAll('.cln-item').forEach((b, i) => {
+        b.addEventListener('mousedown', ev => { ev.preventDefault(); const c = buscarClientePorId(+b.dataset.id); if (c) escolher(c); });
+        b.addEventListener('mousemove', () => marcar(i));
+      });
+      drop.hidden = false;
+    };
+    inp.addEventListener('input', render);
+    inp.addEventListener('focus', () => { if ((inp.value || '').trim()) render(); });
+    document.addEventListener('click', ev => { const w = inp.closest('.cln-wrap'); if (w && !w.contains(ev.target)) esconder(); });
+    inp.addEventListener('keydown', e => {
+      const aberto = !drop.hidden && itens.length > 0;
+      if (e.key === 'ArrowDown') { if (aberto) { e.preventDefault(); marcar(ativo + 1); } else if ((inp.value || '').trim()) render(); return; }
+      if (e.key === 'ArrowUp')   { if (aberto) { e.preventDefault(); marcar(ativo - 1); } return; }
+      if (e.key === 'Escape')    { if (!drop.hidden) { e.stopPropagation(); esconder(); } return; }
+      if (e.key === 'Enter' && aberto && ativo >= 0 && itens[ativo]) { e.preventDefault(); e.stopImmediatePropagation(); escolher(itens[ativo]); }   // Enter escolhe o destacado
+    });
+  }
+}
 $('cl-nome').addEventListener('keydown', e => {
   if (e.key !== ' ' || $('cl-nome').value.trim() !== '') return;
   e.preventDefault();
@@ -6172,7 +6212,7 @@ $('am-limpar').addEventListener('click', async () => {
    loga a exportação). Visível pra admin/supervisor; o backend é a trava real.
    ══════════════════════════════════════════════════════════════════════════ */
 let biPeriodo = '30d', biAbaAtual = 'geral', biDe = '', biAte = '';
-const biFmt = v => 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',');
+const biFmt = v => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });  // 1.200,00
 const biPct = v => (Number(v || 0) * 100).toFixed(1).replace('.', ',') + '%';
 const biNum = v => Number(v || 0).toLocaleString('pt-BR');
 const biDiaCurto = iso => { const p = (iso || '').split('-'); return p.length === 3 ? p[2] + '/' + p[1] : iso; };
@@ -6669,7 +6709,8 @@ async function confBuscarEsperado() {
    saídas (sangria/despesas) — pra fechar o caixa vendo tudo que entrou e saiu. */
 function confMovimentosHTML() {
   const m = confMovimentos || { entradas: [], saidas: [], totalEntradas: 0, totalSaidas: 0 };
-  const linha = x => `<tr><td class="conf-mv-hora">${x.data ? fmtHora(x.data) : ''}</td><td class="conf-mv-desc">${crmEsc(x.descricao)}</td><td class="col-num">${fmt(x.valor)}</td></tr>`;
+  const porData = a => (a || []).slice().sort((x, y) => new Date(x.data) - new Date(y.data));   // sempre em ORDEM DE DATA
+  const linha = x => `<tr><td class="conf-mv-hora">${x.data ? fmtDataHora(x.data) : ''}</td><td class="conf-mv-desc">${crmEsc(x.descricao)}</td><td class="col-num">${fmt(x.valor)}</td></tr>`;
   const bloco = (titulo, ico, lista, total, cls) => `
     <div class="conf-mv-bloco conf-mv-${cls}">
       <div class="conf-mv-tit">${ico} ${titulo}<span class="conf-mv-tot">${fmt(total)}</span></div>
@@ -6679,8 +6720,8 @@ function confMovimentosHTML() {
   return `
     <div class="fin-box-tit">📋 Movimentações do período <small>(fora as vendas — suprimento, sangria, recebimentos e despesas)</small></div>
     <div class="conf-mv-grid">
-      ${bloco('Entradas', '⬆️', m.entradas, m.totalEntradas, 'ent')}
-      ${bloco('Saídas / Despesas', '⬇️', m.saidas, m.totalSaidas, 'sai')}
+      ${bloco('Entradas', '⬆️', porData(m.entradas), m.totalEntradas, 'ent')}
+      ${bloco('Saídas / Despesas', '⬇️', porData(m.saidas), m.totalSaidas, 'sai')}
     </div>
     <div class="conf-mv-saldo">Saldo das movimentações: <strong class="${saldo >= 0 ? 'pos' : 'neg'}">${fmt(saldo)}</strong> <small>(entradas − saídas)</small></div>`;
 }
