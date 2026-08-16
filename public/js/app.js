@@ -6804,7 +6804,10 @@ async function renderFinConferencia() {
     const r = await (await fetch('/api/conferencia', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ de: confPeriodo.de, ate: confPeriodo.ate, informado, obs: ($('conf-obs') || {}).value || '' }) })).json();
     if (r && r.erro) { toast('⚠ ' + r.erro); return; }
     const clsT = r.totalDiferenca === 0 ? 'ok' : (r.totalDiferenca > 0 ? 'sobra' : 'falta');
-    $('conf-resultado').innerHTML = `<div class="conf-saved conf-cmp-${clsT}">${r.totalDiferenca === 0 ? '✅ Bateu certinho e ficou salvo!' : (r.totalDiferenca > 0 ? `🔵 Salvo — sobra de ${fmt(r.totalDiferenca)}` : `🔴 Salvo — prejuízo do caixa de ${fmt(Math.abs(r.totalDiferenca))}`)}</div>`;
+    // deu diferença ao salvar → CONTINUA a verificação que já existe (conferir o estoque no balanço, e volta pra cá)
+    const btnVerif = r.totalDiferenca !== 0 ? '<button class="crm-btn conf-estoque-btn" id="conf-resultado-estoque">🔍 Deu diferença? Conferir o estoque</button>' : '';
+    $('conf-resultado').innerHTML = `<div class="conf-saved conf-cmp-${clsT}">${r.totalDiferenca === 0 ? '✅ Bateu certinho e ficou salvo!' : (r.totalDiferenca > 0 ? `🔵 Salvo — sobra de ${fmt(r.totalDiferenca)}` : `🔴 Salvo — prejuízo do caixa de ${fmt(Math.abs(r.totalDiferenca))}`)}</div>${btnVerif}`;
+    { const be = $('conf-resultado-estoque'); if (be) be.addEventListener('click', () => { balancoVoltarConferencia = true; finIr('balanco'); }); }
     toast('💾 Conferência salva');
     if ($('conf-hist') && $('conf-hist').style.display !== 'none') confCarregarHistorico();
   });
