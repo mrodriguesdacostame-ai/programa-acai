@@ -5024,13 +5024,24 @@ function renderExtratoCliente(c) {
   if (asc.length === 0) { el.innerHTML = '<div class="cl-extrato-vazio">Nenhum lançamento ainda</div>'; return; }
   let corrido = 0;
   const comSaldo = asc.map(l => { corrido += (l.tipo === 'compra' ? l.valor : -l.valor); return { ...l, saldoApos: corrido }; });
-  el.innerHTML = comSaldo.slice().reverse().map(l => `
+  const totCompra = asc.filter(l => l.tipo === 'compra').reduce((s, l) => s + l.valor, 0);
+  const totPago = asc.filter(l => l.tipo !== 'compra').reduce((s, l) => s + l.valor, 0);
+  const saldoAtual = corrido;
+  const resumo = `
+    <div class="cl-ext-resumo">
+      <div class="cl-ext-stat compra"><span>🛒 Comprou (fiado)</span><strong>${fmt(totCompra)}</strong></div>
+      <div class="cl-ext-stat pago"><span>💰 Pagou</span><strong>${fmt(totPago)}</strong></div>
+      <div class="cl-ext-stat saldo ${saldoAtual > 0.001 ? 'devendo' : ''}"><span>${saldoAtual > 0.001 ? '⚠️ Deve' : '✅ Em dia'}</span><strong>${fmt(saldoAtual)}</strong></div>
+    </div>`;
+  const cab = `<div class="cl-lanc-cab"><span>Data</span><span>Lançamento</span><span>Valor</span><span>Saldo</span></div>`;
+  const linhas = comSaldo.slice().reverse().map(l => `
     <div class="cl-lanc-linha ${l.tipo}" tabindex="0" data-i="${l.i}" title="Delete para remover este lançamento">
       <span class="cll-data">${new Date(l.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} ${new Date(l.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
       <span class="cll-tipo">${l.tipo === 'compra' ? '🛒 Compra fiado' : '💰 Pagamento' + ((l.formasPagas && l.formasPagas.length) ? ` (${l.formasPagas.map(f => f.nome).join(' + ')})` : '')}${l.desc ? ' · ' + l.desc : ''}</span>
       <span class="cll-valor">${l.tipo === 'compra' ? '+' : '−'}${fmt(l.valor)}</span>
       <span class="cll-saldo">${fmt(l.saldoApos)}</span>
     </div>`).join('');
+  el.innerHTML = resumo + cab + `<div class="cl-ext-lista">${linhas}</div>`;
 }
 ativarNavLista($('cl-extrato'), '.cl-lanc-linha', {
   onDelete: linha => {

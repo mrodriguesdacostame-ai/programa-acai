@@ -669,16 +669,18 @@
           </div>
           <!-- Fase 46A §3: a conexão do WhatsApp saiu daqui — agora fica no módulo Atendimento › Conexão. -->
           <div class="campo"><label>Nome * <span class="cl-nome-dica">— digite o código + Enter, ou espaço-espaço pra buscar</span></label><input id="cl-nome" required placeholder="Nome, ou código do cliente + Enter"></div>
-          <div class="campo"><label>Telefone (WhatsApp)</label><input id="cl-telefone" placeholder="opcional — (91) 9 9999-9999"></div>
+          <div class="pf-row">
+            <div class="campo"><label>Telefone (WhatsApp)</label><input id="cl-telefone" placeholder="opcional — (91) 9 9999-9999"></div>
+            <div class="campo"><label>Aniversário</label><input type="date" id="cl-nascimento"></div>
+          </div>
           <div class="pf-row">
             <div class="campo"><label>Bairro</label><input id="cl-bairro" placeholder="opcional"></div>
             <div class="campo"><label>Endereço</label><input id="cl-endereco" placeholder="opcional"></div>
           </div>
           <div class="pf-row">
-            <div class="campo"><label>Aniversário</label><input type="date" id="cl-nascimento"></div>
-            <div class="campo"><label>Tags (separadas por vírgula)</label><input id="cl-tags" placeholder="ex.: vip, açaí grande"></div>
+            <div class="campo"><label>Tags (vírgula)</label><input id="cl-tags" placeholder="ex.: vip, açaí grande"></div>
+            <div class="campo"><label>👥 Autorizados (quem pode pegar)</label><input id="cl-autorizados" placeholder="ex.: esposa Maria, filho João"></div>
           </div>
-          <div class="campo"><label>👥 Autorizados a pegar na conta (separados por vírgula)</label><input id="cl-autorizados" placeholder="ex.: esposa Maria, filho João"></div>
           <div class="campo"><label>Observações</label><input id="cl-obs" placeholder="preferências, alergias..."></div>
           <div class="pf-acoes">
             <button type="button" class="btn-prod-limpar" id="btn-cliente-limpar"><span class="atalho">L</span>impar</button>
