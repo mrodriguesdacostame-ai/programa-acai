@@ -769,7 +769,7 @@ function finalizarVenda() {
   if ($('receb-depois-valor')) $('receb-depois-valor').textContent = fmt(totalReceber);
   atualizarResumo();
   $('overlay-recebimento').classList.add('aberto');
-  setTimeout(() => $('val-pix').focus(), 100);
+  setTimeout(() => $('val-dinheiro').focus(), 100);   // Dinheiro é a 1ª forma agora
 }
 /* Anotar a venda pra pagar depois: finaliza como "Anotado" (baixa estoque + faturamento,
    mas NÃO entra no caixa) e cria a anotação ligada. Vira caixa quando marcar "✓ pagou". */

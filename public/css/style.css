@@ -4323,7 +4323,12 @@ input:focus, textarea:focus, select:focus { border-color: var(--acai) !important
 .modal-receb .forma-fiado .forma-texto { border-bottom-color: #ffb020; }
 .modal-receb .forma-valor { background: #ffffff !important; color: #0a1420 !important; border: none !important; border-radius: 10px !important; padding: 11px 12px !important; font-size: 19px !important; }
 .modal-receb .forma-valor.preenchido { color: #0a9b4b !important; }
-.modal-receb .forma-fiado .forma-valor[readonly] { background: rgba(255, 255, 255, 0.85) !important; color: #b9760a !important; }
+.modal-receb .forma-fiado .forma-valor[readonly] { background: rgba(255, 255, 255, 0.85) !important; color: #b9760a !important; font-weight: 800 !important; }
+/* Fiado MAIS destacado (âmbar — salta das outras formas) */
+.modal-receb .forma-fiado { background: rgba(255, 193, 7, 0.20) !important; border: 2px solid #ffc84a !important; box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.16); border-radius: 14px !important; border-style: solid !important; }
+.modal-receb .forma-fiado .forma-nome { color: #ffe6a0 !important; font-weight: 800 !important; }
+.modal-receb .forma-fiado .ico { font-size: 21px !important; }
+.modal-receb .forma-fiado .forma-texto { border-bottom-color: #ffca4a !important; }
 /* cliente do fiado — MAIOR (igual ao anotar), input grande */
 .modal-receb .receb-fiado-cliente-box { border-left: 4px solid #ffd24a !important; padding: 16px 18px !important; }
 .modal-receb .receb-fiado-cliente-box label { color: #ffe08a !important; font-size: 13px !important; }
