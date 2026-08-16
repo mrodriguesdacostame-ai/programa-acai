@@ -957,6 +957,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS compras_acai (
   fornecedor TEXT, data_compra TEXT, quantidade REAL, preco_unitario REAL, total REAL,
   pago INTEGER DEFAULT 0, data_pagamento TEXT, forma_pagamento TEXT, obs TEXT, criado_em TEXT
 )`);
+try { db.exec('ALTER TABLE compras_acai ADD COLUMN financeiro_movimento_id INTEGER'); } catch {}  // pagamento vira saída no fluxo de caixa
 db.exec(`CREATE TABLE IF NOT EXISTS receitas_rendimento (
   id INTEGER PRIMARY KEY AUTOINCREMENT, materia TEXT, composicao TEXT, atualizado_em TEXT
 )`);
@@ -1169,7 +1170,7 @@ app.post('/api/vendas/:id/cancelar', (req, res) => {
 app.get('/api/financeiro/resumo', (req, res) => {
   const f = faixaData(req.query.de, req.query.ate);
   const fat = db.prepare(`SELECT COALESCE(SUM(total),0) tot, COUNT(*) n FROM vendas WHERE status='concluida'${f.where}`).get(...f.args);
-  const gCompras = db.prepare(`SELECT COALESCE(SUM(total),0) tot FROM compras WHERE 1=1${f.where}`).get(...f.args).tot;
+  const gCompras = db.prepare(`SELECT COALESCE(SUM(total),0) tot FROM compras WHERE 1=1${f.where} AND COALESCE(origem,'') <> 'producao'`).get(...f.args).tot;  // produção (sacas F10) NÃO é gasto de caixa
   const gInsumos = db.prepare('SELECT COALESCE(SUM(custo_total),0) tot FROM insumos').get().tot;
   const gastos = gCompras + gInsumos;
   res.json({ faturamento: fat.tot, qtdVendas: fat.n, gastos, gastoCompras: gCompras, gastoInsumos: gInsumos, saldo: fat.tot - gastos });
@@ -1194,7 +1195,7 @@ app.get('/api/historico/resumo', (req, res) => {
   const fv = f.where.replace(/data/g, 'v.data');
   const v = db.prepare(`SELECT COALESCE(SUM(total),0) fat, COUNT(*) n FROM vendas WHERE status='concluida'${f.where}`).get(...f.args);
   const itens = db.prepare(`SELECT COALESCE(SUM(i.qtd),0) q FROM vendas_itens i JOIN vendas v ON v.id=i.venda_id WHERE v.status='concluida'${fv}`).get(...f.args).q;
-  const gCompras = db.prepare(`SELECT COALESCE(SUM(total),0) t FROM compras WHERE 1=1${f.where}`).get(...f.args).t;
+  const gCompras = db.prepare(`SELECT COALESCE(SUM(total),0) t FROM compras WHERE 1=1${f.where} AND COALESCE(origem,'') <> 'producao'`).get(...f.args).t;  // produção (sacas F10) NÃO é gasto de caixa
   const gInsumos = db.prepare('SELECT COALESCE(SUM(custo_total),0) t FROM insumos').get().t;
   const canc = db.prepare(`SELECT COUNT(*) n FROM vendas WHERE status='cancelada'${f.where}`).get(...f.args).n;
   const pico = db.prepare(`SELECT strftime('%H', v.data, 'localtime') h, SUM(i.qtd) q FROM vendas_itens i JOIN vendas v ON v.id=i.venda_id WHERE v.status='concluida'${fv} GROUP BY h ORDER BY q DESC LIMIT 1`).get(...f.args);
@@ -1286,7 +1287,7 @@ app.get('/api/dashboard/estoque-alertas', (req, res) => {
 // BLOCO E — financeiro rápido (gastos do dia, saldo bruto, fiado)
 app.get('/api/dashboard/financeiro', (req, res) => {
   const fatHoje = db.prepare(`SELECT COALESCE(SUM(total),0) t FROM vendas v WHERE status='concluida' AND ${HOJE_VENDA}`).get().t;
-  const comprasHoje = db.prepare(`SELECT COALESCE(SUM(total),0) t FROM compras WHERE ${HOJE('data')}`).get().t;
+  const comprasHoje = db.prepare(`SELECT COALESCE(SUM(total),0) t FROM compras WHERE ${HOJE('data')} AND COALESCE(origem,'') <> 'producao'`).get().t;  // produção (sacas F10) NÃO é gasto de caixa
   const insumosHoje = db.prepare(`SELECT COALESCE(SUM(custo_total),0) t FROM insumos WHERE ${HOJE('criado_em')}`).get().t;
   const gastosHoje = comprasHoje + insumosHoje;
   const fiadoRecebidoHoje = db.prepare(`SELECT COALESCE(SUM(valor),0) t FROM clientes_extrato WHERE tipo='pagamento' AND ${HOJE('criado_em')}`).get().t;
@@ -1466,13 +1467,25 @@ app.post('/api/compras-acai/:id/pagar', (req, res) => {
   const id = +req.params.id, d = req.body || {};
   const c = db.prepare('SELECT * FROM compras_acai WHERE id = ?').get(id);
   if (!c) return res.status(404).json({ erro: 'Compra não encontrada.' });
+  if (c.pago && c.financeiro_movimento_id) return res.json(c);   // já pago e já lançado → não duplica
   const dataPg = (d.data_pagamento || new Date().toISOString().slice(0, 10));
-  db.prepare('UPDATE compras_acai SET pago = 1, data_pagamento = ?, forma_pagamento = ? WHERE id = ?').run(dataPg, (d.forma_pagamento || '').trim(), id);
+  const forma = (d.forma_pagamento || 'Dinheiro').trim();
+  db.prepare('UPDATE compras_acai SET pago = 1, data_pagamento = ?, forma_pagamento = ? WHERE id = ?').run(dataPg, forma, id);
+  // ao dar baixa (pago), vai DIRETO pro fluxo de caixa como SAÍDA "Pagamento de açaí"
+  const movId = inserirMovimento({ data: dataPg + 'T12:00:00', tipo: 'saida', conta_id: contaParaForma(forma), categoria_id: catFinId('Compra'),
+    valor: r2(+c.total || 0), descricao: `Pagamento de açaí${c.fornecedor ? ' · ' + c.fornecedor : ''}${(+c.quantidade || 0) > 0 ? ' (' + c.quantidade + ' sc)' : ''}`,
+    origem: 'compra_acai', situacao: 'confirmado', referencia_tipo: 'compra_acai', referencia_id: id,
+    responsavel: (req.usuario || {}).nome || '', criado_por: (req.usuario || {}).usuario || '' });
+  db.prepare('UPDATE compras_acai SET financeiro_movimento_id = ? WHERE id = ?').run(movId, id);
+  manut.logAcao('pagamento de compra de açaí', 'financeiro', { id, valor: c.total, forma, por: (req.usuario || {}).usuario }, 'operacao');
   res.json(db.prepare('SELECT * FROM compras_acai WHERE id = ?').get(id));
 });
 app.post('/api/compras-acai/:id/estornar-pagamento', (req, res) => {
   const id = +req.params.id;
-  db.prepare('UPDATE compras_acai SET pago = 0, data_pagamento = NULL, forma_pagamento = NULL WHERE id = ?').run(id);
+  const c = db.prepare('SELECT * FROM compras_acai WHERE id = ?').get(id);
+  // desfaz a saída lançada no fluxo de caixa
+  if (c && c.financeiro_movimento_id) { try { estornarMovimento(c.financeiro_movimento_id, 'estorno de pagamento de açaí', (req.usuario || {}).usuario || 'sistema'); } catch {} }
+  db.prepare('UPDATE compras_acai SET pago = 0, data_pagamento = NULL, forma_pagamento = NULL, financeiro_movimento_id = NULL WHERE id = ?').run(id);
   res.json(db.prepare('SELECT * FROM compras_acai WHERE id = ?').get(id) || { ok: true });
 });
 app.put('/api/compras-acai/:id', (req, res) => {
