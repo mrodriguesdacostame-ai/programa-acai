@@ -1508,6 +1508,7 @@ function conferenciaEsperado(de, ate) {
   if (ate) { cond.push("date(v.data,'localtime') <= ?"); args.push(ate); }
   const rows = db.prepare(`SELECT p.forma, COALESCE(SUM(p.valor),0) total FROM pagamentos p JOIN vendas v ON v.id=p.venda_id WHERE ${cond.join(' AND ')} GROUP BY p.forma`).all(...args);
   const m = { credito: 0, debito: 0, pix: 0, dinheiro: 0, alimentacao: 0, outros: 0 };
+  let fiadoCliente = 0, fiadoRapido = 0;   // vendas a prazo — NÃO entram no caixa; só quando forem pagas
   for (const r of rows) {
     const t = +r.total || 0;
     switch (r.forma) {
@@ -1516,10 +1517,12 @@ function conferenciaEsperado(de, ate) {
       case 'PIX': m.pix += t; break;
       case 'Dinheiro': m.dinheiro += t; break;
       case 'Cartão Alimentação': m.alimentacao += t; break;
-      case 'Fiado': break;               // não é caixa (dinheiro não entrou)
+      case 'Fiado': fiadoCliente += t; break;    // fiado de cliente — não é caixa (só quando pago)
+      case 'Anotado': fiadoRapido += t; break;   // fiado rápido (pagar depois) — não é caixa (só quando pago)
       default: m.outros += t;            // Importado / Automático / sem forma
     }
   }
+  m.fiado = { cliente: r2(fiadoCliente), rapido: r2(fiadoRapido), total: r2(fiadoCliente + fiadoRapido) };
   // linka a sangria/suprimento QUE JÁ EXISTEM (financeiro_movimentos do caixa) no esperado do dinheiro:
   // gaveta = vendas em dinheiro + suprimentos (inclui troco/fundo) − sangrias, no mesmo período.
   const vendasDinheiro = m.dinheiro;

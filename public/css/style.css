@@ -2417,6 +2417,15 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .conf-vendas-tot span { font-size: 13.5px; font-weight: 700; color: #0a1420; }
 .conf-vendas-tot span small { font-weight: 500; opacity: .6; }
 .conf-vendas-tot strong { font-size: 22px; font-variant-numeric: tabular-nums; color: #0f4ea0; }
+/* 📝 Fiado do dia (informativo — só entra na conta quando pago) */
+.conf-fiado-info { background: rgba(234, 179, 8, 0.08); border: 1px dashed rgba(234, 179, 8, 0.5); border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; }
+.conf-fiado-tit { font-size: 13px; font-weight: 800; color: #92600a; margin-bottom: 6px; }
+.conf-fiado-tit small { font-weight: 600; opacity: .8; }
+.conf-fiado-linhas { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.conf-fiado-linhas span { font-size: 13px; color: rgba(15, 47, 77, 0.8); font-variant-numeric: tabular-nums; }
+.conf-fiado-linhas b { color: #0a1420; }
+.conf-fiado-tot { margin-left: auto; font-weight: 700; }
+.conf-fiado-tot b { color: #92600a; }
 .conf-cmp { width: 100%; }
 .conf-cmp th, .conf-cmp td { padding: 8px 10px; }
 .conf-cmp .conf-dif { font-weight: 800; white-space: nowrap; }

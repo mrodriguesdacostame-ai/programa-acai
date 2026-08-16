@@ -6622,8 +6622,18 @@ function confComparacaoHTML() {
   const btnEstoque = (difT !== 0 && conT > 0) ? '<button class="crm-btn conf-estoque-btn" data-ir-balanco="1">🔍 Deu diferença? Conferir o estoque</button>' : '';
   // 🛒 total das vendas do período (o que gerou o esperado): formas + vendas em dinheiro (SEM o troco/fundo e suprimento)
   const vendasTotal = Math.round(((+e.credito || 0) + (+e.debito || 0) + (+e.pix || 0) + (+e.alimentacao || 0) + (+e.outros || 0) + (+det.vendas || 0)) * 100) / 100;
-  const notaVendas = `<div class="conf-vendas-tot"><span>🛒 Total das vendas do período <small>(o que o sistema registrou)</small></span><strong>${fmt(vendasTotal)}</strong></div>`;
-  return `${notaVendas}<table class="prod-tabela conf-cmp">
+  const notaVendas = `<div class="conf-vendas-tot"><span>🛒 Total das vendas do período <small>(o que virou dinheiro/cartão)</small></span><strong>${fmt(vendasTotal)}</strong></div>`;
+  // 📝 fiado do dia (cliente + fiado rápido) — NÃO entra na conta do caixa; só quando for pago
+  const fi = e.fiado || {};
+  const notaFiado = (+fi.total > 0) ? `<div class="conf-fiado-info">
+      <div class="conf-fiado-tit">📝 Fiado do dia <small>— NÃO entra na conta, só quando for pago</small></div>
+      <div class="conf-fiado-linhas">
+        ${(+fi.cliente > 0) ? `<span>👤 Fiado de cliente <b>${fmt(fi.cliente)}</b></span>` : ''}
+        ${(+fi.rapido > 0) ? `<span>⚡ Fiado rápido (anotado) <b>${fmt(fi.rapido)}</b></span>` : ''}
+        <span class="conf-fiado-tot">A receber depois <b>${fmt(fi.total)}</b></span>
+      </div>
+    </div>` : '';
+  return `${notaVendas}${notaFiado}<table class="prod-tabela conf-cmp">
       <thead><tr><th>Forma</th><th class="col-num">Esperado</th><th class="col-num">Contado</th><th class="col-num">Diferença</th></tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr class="conf-cmp-total conf-cmp-${clsT}"><td>TOTAL</td><td class="col-num">${fmt(espT)}</td><td class="col-num">${fmt(conT)}</td><td class="col-num conf-dif">${nadaContado ? '—' : (difT === 0 ? '✅' : fmt(difT))}</td></tr></tfoot>
