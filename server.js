@@ -1724,12 +1724,16 @@ app.get('/api/balanco/:id', (req, res) => {
    e joga no rendimento). Os lançamentos ficam PENDENTES até o fechamento (consumido=1). ══════ */
 db.exec(`CREATE TABLE IF NOT EXISTS litros_producao (id INTEGER PRIMARY KEY AUTOINCREMENT, litros REAL, valor_unit REAL, data TEXT, consumido INTEGER DEFAULT 0, criado_em TEXT, criado_por TEXT)`);
 try { db.exec('ALTER TABLE litros_producao ADD COLUMN produto_codigo TEXT'); } catch {} // liga a produção ao PRODUTO (não só ao valor) — o F10 usa o produto exato
+try { db.exec('ALTER TABLE litros_producao ADD COLUMN gelado INTEGER DEFAULT 0'); } catch {} // açaí que sobrou GELADO — DESCONSIDERADO da contagem (só controle)
 function litrosResumo(rows) {
   // Agrupa por PRODUTO quando houver código; senão pelo valor (retrocompat com lançamentos antigos).
   // Assim dois produtos de mesmo preço NÃO se misturam, e o F10 preenche o produto certo.
-  const grupos = {}; let total = 0;
+  // O açaí GELADO (sobra) NÃO entra na contagem nem nos grupos — vai num total à parte.
+  const grupos = {}; let total = 0, gelado = 0;
   for (const r of rows) {
-    const v = r2(+r.valor_unit || 0), l = r2(+r.litros || 0), cod = r.produto_codigo || '';
+    const l = r2(+r.litros || 0);
+    if (r.gelado) { gelado = r2(gelado + l); continue; }   // sobra gelada: desconsiderada da contagem
+    const v = r2(+r.valor_unit || 0), cod = r.produto_codigo || '';
     const key = cod ? ('c:' + cod) : ('v:' + v);
     total += l;
     if (!grupos[key]) {
@@ -1739,15 +1743,16 @@ function litrosResumo(rows) {
     }
     grupos[key].litros = r2(grupos[key].litros + l); grupos[key].n++;
   }
-  return { totalLitros: r2(total), porValor: Object.values(grupos).sort((a, b) => a.valor - b.valor), n: rows.length };
+  return { totalLitros: r2(total), geladoLitros: gelado, porValor: Object.values(grupos).sort((a, b) => a.valor - b.valor), n: rows.length };
 }
 app.post('/api/litros', (req, res) => {
   const d = req.body || {}, litros = r2(+d.litros || 0), valor = r2(+d.valor || +d.valor_unit || 0);
   const codigo = (d.produto_codigo || d.codigo || '').toString().trim();
+  const gelado = d.gelado ? 1 : 0;
   if (litros <= 0) return res.status(400).json({ erro: 'Informe os litros (maior que zero).' });
-  if (valor <= 0) return res.status(400).json({ erro: 'Informe o valor.' });
-  const info = db.prepare('INSERT INTO litros_producao (litros,valor_unit,produto_codigo,data,consumido,criado_em,criado_por) VALUES (?,?,?,?,0,?,?)')
-    .run(litros, valor, codigo || null, ymdLocal(new Date()), new Date().toISOString(), (req.usuario || {}).usuario || '');
+  if (valor <= 0 && !gelado) return res.status(400).json({ erro: 'Informe o valor.' });   // gelado (sobra) não exige valor
+  const info = db.prepare('INSERT INTO litros_producao (litros,valor_unit,produto_codigo,gelado,data,consumido,criado_em,criado_por) VALUES (?,?,?,?,?,0,?,?)')
+    .run(litros, valor, codigo || null, gelado, ymdLocal(new Date()), new Date().toISOString(), (req.usuario || {}).usuario || '');
   res.json(db.prepare('SELECT * FROM litros_producao WHERE id=?').get(info.lastInsertRowid));
 });
 app.get('/api/litros', (req, res) => {

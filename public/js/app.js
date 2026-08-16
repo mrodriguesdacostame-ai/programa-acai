@@ -1637,7 +1637,7 @@ async function abrirLitros() {
     <div class="ltr">
       <div class="ltr-entrada"><div class="ltr-steps" id="ltr-steps"></div></div>
       <div class="ltr-dia">
-        <div class="ltr-dia-tit">📋 Produzido hoje <button type="button" class="crm-btn" id="ltr-fechar">🧮 Fechar dia (F10)</button></div>
+        <div class="ltr-dia-tit">📋 Produzido hoje <button type="button" class="crm-btn ltr-btn-gelado" id="ltr-gelado">🧊 Sobrou gelado</button><button type="button" class="crm-btn" id="ltr-fechar">🧮 Fechar dia (F10)</button></div>
         <div id="ltr-lista">${biLoading()}</div>
       </div>
     </div>`);
@@ -1786,6 +1786,7 @@ async function abrirLitros() {
   });
 
   $('ltr-fechar').addEventListener('click', () => { fecharErpModal(); abrirFechamentoLitros(); });
+  { const g = $('ltr-gelado'); if (g) g.addEventListener('click', () => { fecharErpModal(); abrirLitrosGelado(); }); }
   render();
   carregarDia();
   async function carregarDia() {
@@ -1796,11 +1797,41 @@ async function abrirLitros() {
       const hora = x.criado_em ? new Date(x.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
       const prod = x.produto_codigo ? PRODUTOS.find(p => p.codigo === x.produto_codigo) : null;
       const nome = prod ? prod.nome : '';
-      return `<div class="ltr-item"><span class="ltr-item-hora">🕒 ${hora}</span><span class="ltr-item-desc"><b>${biNum(x.litros)} L</b> · ${nome ? nome + ' · ' : ''}${fmt(x.valor_unit)}</span><button class="ac-mini del" data-del="${x.id}" title="Remover">🗑</button></div>`;
+      const desc = x.gelado
+        ? `<b>${biNum(x.litros)} L</b> · 🧊 gelado (não conta)${nome ? ' · ' + nome : ''}`
+        : `<b>${biNum(x.litros)} L</b> · ${nome ? nome + ' · ' : ''}${fmt(x.valor_unit)}`;
+      return `<div class="ltr-item${x.gelado ? ' ltr-item-gelado' : ''}"><span class="ltr-item-hora">🕒 ${hora}</span><span class="ltr-item-desc">${desc}</span><button class="ac-mini del" data-del="${x.id}" title="Remover">🗑</button></div>`;
     }).join('') || '<div class="ac-vazio">Nada ainda hoje.</div>';
-    $('ltr-lista').innerHTML = `<div class="ltr-total">Total: <b>${biNum(rz.totalLitros || 0)} litros</b></div><div class="ltr-porvalor">${porValor}</div>${linhas}`;
+    const geladoTag = (+rz.geladoLitros > 0) ? `<span class="ltr-gelado-tag">🧊 sobrou gelado (não conta): <b>${biNum(rz.geladoLitros)} L</b></span>` : '';
+    $('ltr-lista').innerHTML = `<div class="ltr-total">Total: <b>${biNum(rz.totalLitros || 0)} litros</b> ${geladoTag}</div><div class="ltr-porvalor">${porValor}</div>${linhas}`;
     $('ltr-lista').querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => { await fetch('/api/litros/' + b.dataset.del, { method: 'DELETE' }); carregarDia(); }));
   }
+}
+/* 🧊 Açaí que sobrou GELADO: registra a sobra pra controle, mas NÃO entra na contagem do dia
+   (desconsiderado do total e do F10). Reabre o F8 já com a sobra listada à parte. */
+async function abrirLitrosGelado() {
+  let valores = []; try { valores = normalizarValoresLitros(await (await fetch('/api/litros/valores', { cache: 'no-store' })).json()); } catch {}
+  const opts = valores.map(v => `<option value="${v.codigo || ''}" data-valor="${v.valor}">${(v.nome ? v.nome + ' · ' : '') + fmt(v.valor)}</option>`).join('');
+  abrirErpModal(`<h3 class="erp-modal-tit">🧊 Açaí que sobrou gelado</h3>
+    <form id="gel-form" class="fin-form">
+      <p class="fin-hint">Registre o açaí que ficou <b>gelado</b> (sobra do dia). Ele fica só pro seu controle — <b>NÃO entra na contagem</b> nem no fechamento (F10).</p>
+      <label>Litros que sobraram <small>(gelado)</small><input type="number" step="0.01" min="0.01" id="gel-litros" class="op-mov-vinput" inputmode="decimal" autocomplete="off" placeholder="ex.: 4"></label>
+      <label>Qual açaí? <small>(opcional)</small><select id="gel-prod"><option value="">— não especificar —</option>${opts}</select></label>
+      <button type="submit" class="fin-btn-salvar">🧊 Registrar sobra gelada</button>
+    </form>`);
+  $('modal-erp-box').classList.add('erp-mov');   // reaproveita o visual azul
+  const inp = $('gel-litros'); setTimeout(() => inp.focus(), 60);
+  $('gel-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const litros = parseFloat((inp.value || '').replace(',', '.')) || 0;
+    if (!(litros > 0)) { toast('⚠ Informe os litros que sobraram'); inp.focus(); return; }
+    const sel = $('gel-prod'), cod = sel.value || '';
+    const valor = cod ? (+sel.options[sel.selectedIndex].dataset.valor || 0) : 0;
+    const r = await (await fetch('/api/litros', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ litros, valor, produto_codigo: cod, gelado: 1 }) })).json();
+    if (r && r.erro) { toast('⚠ ' + r.erro); return; }
+    toast(`🧊 ${biNum(litros)} L de sobra gelada registrados (não contam)`);
+    fecharErpModal(); abrirLitros();   // reabre o F8 com a sobra listada à parte
+  });
 }
 /* F10 — fecha o dia: informa as sacas produzidas e o sistema joga os litros (por valor) no
    RENDIMENTO (processar vários produtos). Etapa 2 liga o pré-preenchimento do rendimento. */
