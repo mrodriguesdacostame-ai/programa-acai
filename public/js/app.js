@@ -2031,7 +2031,7 @@ async function waFilaFlush() {
 function montarRelatorioFechamento(r) {
   const linhas = [
     `🌅 *FECHAMENTO ${r.modo === 'consolidado' ? 'DO DIA' : 'DO PERÍODO'}* — ${r.data || ''} ${r.periodo_label || r.periodo || ''}`.trim(),
-    `👤 Operador: ${r.operador || (usuarioAtual && usuarioAtual.nome) || '—'}`,
+    `👤 Operador: ${r.operador ? nomeOp(r.operador) : ((usuarioAtual && usuarioAtual.nome) || '—')}`,
     `🥥 Sacas usadas: ${r.sacas_usadas != null ? r.sacas_usadas : 0}`,
     `🥤 Litros produzidos: ${r.litros_totais != null ? r.litros_totais : '—'} (P ${r.litros_popular || 0} · M ${r.litros_medio || 0} · G ${r.litros_grosso || 0})`,
     `📦 Restante físico: P ${r.restante_popular || 0} · M ${r.restante_medio || 0} · G ${r.restante_grosso || 0}`,
@@ -3450,11 +3450,18 @@ function mostrarTelaLogin() {
 }
 /* Tela de login: mostra os usuários cadastrados como botões — clicar preenche o usuário
    e pula pra senha (não precisa saber/digitar o nome de usuário). */
+// mapa login→nome (pra NUNCA mostrar o "admin"/login cru em campos de operador/criador)
+let MAPA_USUARIOS = {};
+function nomeOp(login) {
+  if (login == null || login === '') return '—';
+  return MAPA_USUARIOS[String(login).toLowerCase().trim()] || login;   // desconhecido → mostra como veio
+}
 async function carregarUsuariosLogin() {
   const box = $('login-usuarios'); if (!box) return;
   const irSenha = () => { const s = $('login-senha'); if (s) s.focus(); };
   try {
     const us = await (await fetch('/api/auth/usuarios', { cache: 'no-store' })).json();
+    if (Array.isArray(us)) us.forEach(u => { if (u && u.usuario) MAPA_USUARIOS[String(u.usuario).toLowerCase().trim()] = u.nome || u.usuario; });
     if (!Array.isArray(us) || !us.length) { box.innerHTML = ''; box.style.display = 'none'; const u = $('login-user'); if (u) u.focus(); return; }
     box.style.display = '';
     box.innerHTML = us.map((u, i) => `<button type="button" class="login-user-chip" role="option" data-u="${crmEsc(u.usuario)}" tabindex="${i === 0 ? '0' : '-1'}"><span class="luc-ava">👤</span><span class="luc-nome">${crmEsc(u.nome || u.usuario)}</span></button>`).join('');
@@ -5225,7 +5232,7 @@ function comprovantePagamentoHTML(d) {
     <div class="c">COMPROVANTE DE PAGAMENTO</div><hr>
     <div class="lin"><span>Cliente</span><span>${crmEsc(d.cliente || '')}</span></div>
     <div class="lin"><span>Data</span><span>${d.data.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div>
-    ${d.operador ? `<div class="lin"><span>Recebido por</span><span>${crmEsc(d.operador)}</span></div>` : ''}
+    ${d.operador ? `<div class="lin"><span>Recebido por</span><span>${crmEsc(nomeOp(d.operador))}</span></div>` : ''}
     <hr>
     <div class="tot"><span>VALOR PAGO</span><span>${fmt(d.valor)}</span></div>
     ${formas ? `<div style="margin-top:4px">${formas}</div>` : ''}
@@ -5924,7 +5931,7 @@ async function atzCarregarHistorico() {
   let h; try { h = await (await fetch('/api/atualizacao/historico', { cache: 'no-store' })).json(); } catch { box.innerHTML = '—'; return; }
   if (!Array.isArray(h) || !h.length) { box.innerHTML = '<div class="adm-aviso">Nenhuma atualização registrada ainda.</div>'; return; }
   const map = { sucesso: '✅ sucesso', falha: '🔴 falha', iniciada: '⏳ iniciada' };
-  box.innerHTML = `<div class="adm-tabela-wrap"><table class="adm-tabela"><thead><tr><th>Quando</th><th>Por</th><th>De→Para</th><th>Status</th><th>Detalhe</th></tr></thead><tbody>${h.map(x => `<tr><td>${fmtDataHora(x.quando)}</td><td>${crmEsc(x.por || '—')}</td><td>${(x.de_commit || '').slice(0, 7)}→${(x.para_commit || '').slice(0, 7) || '…'}</td><td>${map[x.status] || crmEsc(x.status || '')}</td><td>${crmEsc(x.detalhe || '')}</td></tr>`).join('')}</tbody></table></div>`;
+  box.innerHTML = `<div class="adm-tabela-wrap"><table class="adm-tabela"><thead><tr><th>Quando</th><th>Por</th><th>De→Para</th><th>Status</th><th>Detalhe</th></tr></thead><tbody>${h.map(x => `<tr><td>${fmtDataHora(x.quando)}</td><td>${crmEsc(nomeOp(x.por))}</td><td>${(x.de_commit || '').slice(0, 7)}→${(x.para_commit || '').slice(0, 7) || '…'}</td><td>${map[x.status] || crmEsc(x.status || '')}</td><td>${crmEsc(x.detalhe || '')}</td></tr>`).join('')}</tbody></table></div>`;
 }
 /* ── Fase 36: Plataforma — saúde do ERP + módulos ativos + próximos módulos ── */
 async function admCarregarPlataforma() {
@@ -6931,7 +6938,7 @@ async function confCarregarHistorico() {
     const dif = +c.diferenca || 0, cls = Math.abs(dif) < 0.005 ? '' : (dif > 0 ? 'bal-pos' : 'bal-neg');
     const per = c.de === c.ate ? acaiDataBR(c.de) : acaiDataBR(c.de) + '–' + acaiDataBR(c.ate);
     const sit = Math.abs(dif) < 0.005 ? '✅ bateu' : (dif > 0 ? `🔵 +${fmt(dif)}` : `🔴 ${fmt(dif)}`);
-    return `<tr class="conf-hist-row" data-conf-id="${c.id}" title="duplo-clique: abrir espelho"><td>${per}</td><td class="col-num">${fmt(c.total_esperado)}</td><td class="col-num">${fmt(c.total_informado)}</td><td class="col-num ${cls}">${sit}</td><td>${crmEsc(c.criado_por || '—')} <small>${fmtDataHora(c.criado_em).slice(-5)}</small></td></tr>`;
+    return `<tr class="conf-hist-row" data-conf-id="${c.id}" title="duplo-clique: abrir espelho"><td>${per}</td><td class="col-num">${fmt(c.total_esperado)}</td><td class="col-num">${fmt(c.total_informado)}</td><td class="col-num ${cls}">${sit}</td><td>${crmEsc(nomeOp(c.criado_por))} <small>${fmtDataHora(c.criado_em).slice(-5)}</small></td></tr>`;
   }).join('');
   box.innerHTML = insightsHTML + `<div class="conf-hist-dica">💡 duplo-clique numa linha abre o espelho do fechamento</div><div class="prod-tabela-wrap"><table class="prod-tabela conf-hist-tab"><thead><tr><th>Período</th><th class="col-num">Esperado</th><th class="col-num">Contado</th><th class="col-num">Diferença</th><th>Por</th></tr></thead><tbody>${linhas}</tbody></table></div>`;
   box.querySelectorAll('.conf-hist-row').forEach(tr => tr.addEventListener('dblclick', () => confEspelho(+tr.dataset.confId)));
@@ -6948,7 +6955,7 @@ async function confEspelho(id) {
   const sit = Math.abs(dif) < 0.005 ? '✅ Bateu certinho' : (dif > 0 ? `🔵 Saldo (sobra) de ${fmt(dif)}` : `🔴 Prejuízo do caixa de ${fmt(Math.abs(dif))}`);
   abrirErpModal(`<h3 class="erp-modal-tit">🧾 Espelho do fechamento</h3>
     <div class="cesp">
-      <div class="cesp-cab">Período <b>${per}</b> · ${fmtDataHora(d.criado_em)} · por <b>${crmEsc(d.criado_por || '—')}</b></div>
+      <div class="cesp-cab">Período <b>${per}</b> · ${fmtDataHora(d.criado_em)} · por <b>${crmEsc(nomeOp(d.criado_por))}</b></div>
       <table class="prod-tabela cesp-tab"><thead><tr><th>Forma</th><th class="col-num">Esperado</th><th class="col-num">Contado</th><th class="col-num">Diferença</th></tr></thead><tbody>${formasHTML}</tbody></table>
       ${maq ? `<div class="cesp-sub">💳 Contado por maquininha</div><table class="prod-tabela cesp-tab"><thead><tr><th>Máquina</th><th class="col-num">Crédito</th><th class="col-num">Débito</th><th class="col-num">PIX</th><th class="col-num">Alim.</th></tr></thead><tbody>${maq}</tbody></table>` : ''}
       <div class="cesp-extra">📱 PIX da conta: <b>${fmt(d.pixConta)}</b> · 💵 Dinheiro na gaveta: <b>${fmt(d.dinheiro)}</b></div>
@@ -7152,7 +7159,7 @@ async function balancoCarregarHistorico() {
   const linhas = lista.map(c => {
     const r = +c.resultado || 0, cls = Math.abs(r) < 0.005 ? '' : (r > 0 ? 'bal-pos' : 'bal-neg');
     const sit = Math.abs(r) < 0.005 ? '✅ sem dif.' : (r > 0 ? `🔵 +${fmt(r)}` : `🔴 ${fmt(r)}`);
-    return `<tr class="conf-hist-row" data-bal-id="${c.id}" title="duplo-clique: abrir espelho"><td>${acaiDataBR(c.data)}</td><td class="col-num">${c.n_ajustados}</td><td class="col-num ${cls}">${sit}</td><td>${crmEsc(c.criado_por || '—')} <small>${fmtDataHora(c.criado_em).slice(-5)}</small></td></tr>`;
+    return `<tr class="conf-hist-row" data-bal-id="${c.id}" title="duplo-clique: abrir espelho"><td>${acaiDataBR(c.data)}</td><td class="col-num">${c.n_ajustados}</td><td class="col-num ${cls}">${sit}</td><td>${crmEsc(nomeOp(c.criado_por))} <small>${fmtDataHora(c.criado_em).slice(-5)}</small></td></tr>`;
   }).join('');
   box.innerHTML = insightsHTML + '<div class="conf-hist-dica">💡 duplo-clique numa linha abre o espelho do balanço</div>' + `<div class="prod-tabela-wrap"><table class="prod-tabela conf-hist-tab"><thead><tr><th>Data</th><th class="col-num">Ajustados</th><th class="col-num">Resultado</th><th>Por</th></tr></thead><tbody>${linhas}</tbody></table></div>`;
   box.querySelectorAll('.conf-hist-row').forEach(tr => tr.addEventListener('dblclick', () => balancoEspelho(+tr.dataset.balId)));
@@ -7165,7 +7172,7 @@ async function balancoEspelho(id) {
   const sit = Math.abs(r) < 0.005 ? '✅ Sem diferença' : (r > 0 ? `🔵 Saldo (sobra) de ${fmt(r)}` : `🔴 Prejuízo de ${fmt(Math.abs(r))}`);
   abrirErpModal(`<h3 class="erp-modal-tit">🧾 Espelho do balanço</h3>
     <div class="cesp">
-      <div class="cesp-cab">${acaiDataBR(d.data)} · ${fmtDataHora(d.criado_em)} · por <b>${crmEsc(d.criado_por || '—')}</b> · ${d.n_ajustados} ajuste(s)</div>
+      <div class="cesp-cab">${acaiDataBR(d.data)} · ${fmtDataHora(d.criado_em)} · por <b>${crmEsc(nomeOp(d.criado_por))}</b> · ${d.n_ajustados} ajuste(s)</div>
       <table class="prod-tabela cesp-tab"><thead><tr><th>Produto</th><th class="col-num">Sistema</th><th class="col-num">Físico</th><th class="col-num">Dif.</th><th class="col-num">Valor</th></tr></thead><tbody>${linhas}</tbody></table>
       <div class="conf-sit conf-cmp-${clsT}">${sit}</div>
       ${d.obs ? `<div class="cesp-obs">📝 ${crmEsc(d.obs)}</div>` : ''}
@@ -7414,7 +7421,7 @@ async function finCarregarMovimentacoes() {
   for (const [k, id] of Object.entries(map)) { const v = $(id) && $(id).value; if (v) q.set(k, v); }
   let d; try { d = await (await fetch('/api/financeiro/movimentacoes?' + q, { cache: 'no-store' })).json(); } catch { $('mv-lista').innerHTML = biErro(); return; }
   const rows = d.linhas.map(m => [fmtDataHora(m.data), finOrigemChip(m.origem), crmEsc(m.descricao || '—'), crmEsc(m.conta_nome || '—'), crmEsc(m.categoria_nome || '—'), crmEsc(m.centro_custo_nome || '—'),
-    `<span class="fin-val ${m.tipo}">${m.tipo === 'entrada' ? '+' : '−'}${fmt(m.valor)}</span>`, `<b>${fmt(m.saldo)}</b>`, crmEsc(m.criado_por || m.responsavel || '—')]);
+    `<span class="fin-val ${m.tipo}">${m.tipo === 'entrada' ? '+' : '−'}${fmt(m.valor)}</span>`, `<b>${fmt(m.saldo)}</b>`, crmEsc(nomeOp(m.criado_por || m.responsavel))]);
   $('mv-lista').innerHTML = `<div class="fin-fluxo-topo">${d.total} movimentações · saldo final: <b>${fmt(d.saldoFinal)}</b></div>` +
     biTabela([{ h: 'Data' }, { h: 'Origem' }, { h: 'Histórico' }, { h: 'Conta' }, { h: 'Categoria' }, { h: 'Centro' }, { h: 'Valor', cls: 'num' }, { h: 'Saldo', cls: 'num' }, { h: 'Por' }], rows, 'Nenhuma movimentação no filtro.');
 }
@@ -8383,7 +8390,7 @@ async function carregarConciliacao() {
   let d; try { d = await (await fetch('/api/caixa/conciliacao?' + q, { cache: 'no-store' })).json(); } catch { $('cc-lista').innerHTML = biErro(); return; }
   const rows = d.linhas.map(l => {
     const conf = Math.round(((l.esperado || 0) + (l.diferenca || 0)) * 100) / 100;
-    return [crmEsc(l.operador), fmtDataHora(l.aberto_em), fmt(l.esperado), fmt(conf),
+    return [crmEsc(nomeOp(l.operador)), fmtDataHora(l.aberto_em), fmt(l.esperado), fmt(conf),
       `<span class="fin-val ${(l.diferenca || 0) === 0 ? '' : (l.diferenca > 0 ? 'entrada' : 'saida')}">${fmt(l.diferenca)}</span>`,
       `<span class="cc-sit cc-sit-${l.situacao}">${({ ok: '✅ OK', sobra: '🔵 Sobra', falta: '🔴 Falta' }[l.situacao] || l.situacao)}</span>`];
   });
@@ -8997,7 +9004,7 @@ function ciCanhotoHTML(c) {
   const w = c.largura || 80, formas = (c.formas || []).map(f => `<div>${crmEsc(f.forma)}: R$ ${(+f.valor || 0).toFixed(2)}</div>`).join('');
   return `<html><head><meta charset="utf-8"><style>@page{size:${w}mm auto;margin:0}body{font-family:'Courier New',monospace;width:${w}mm;padding:4mm;font-size:12px;color:#000}h3{text-align:center;margin:0 0 4px;font-size:14px}.c{text-align:center}hr{border:0;border-top:1px dashed #000;margin:5px 0}.tot{font-size:15px;font-weight:bold}</style></head><body>
     <h3>${crmEsc(c.loja ? c.loja.nome : '')}</h3><div class="c">COMPROVANTE DE VENDA</div><hr>
-    <div>Venda: ${crmEsc(String(c.numero))}</div><div>Data: ${new Date(c.data).toLocaleString('pt-BR')}</div>${c.operador ? `<div>Operador: ${crmEsc(c.operador)}</div>` : ''}
+    <div>Venda: ${crmEsc(String(c.numero))}</div><div>Data: ${new Date(c.data).toLocaleString('pt-BR')}</div>${c.operador ? `<div>Operador: ${crmEsc(nomeOp(c.operador))}</div>` : ''}
     <hr><div class="tot">TOTAL: R$ ${(+c.total || 0).toFixed(2)}</div>${formas}<hr><div class="c">Obrigado pela preferência!</div></body></html>`;
 }
 async function cpImprimir(pedidoId, via, filaId) {
@@ -9434,7 +9441,7 @@ async function cuOrdemDetalhe(id) {
 async function renderCuPerdas() {
   const el = $('cu-conteudo'); el.innerHTML = biLoading();
   let d; try { d = await cuGet('perdas'); } catch { el.innerHTML = biErro(); return; }
-  const rows = d.map(p => [fmtDataHora(p.data), crmEsc(p.nome), crmEsc(p.lote_numero || '—'), crmEsc(p.tipo), p.qtd, fmt(p.custo_total), crmEsc(p.operador || '—')]);
+  const rows = d.map(p => [fmtDataHora(p.data), crmEsc(p.nome), crmEsc(p.lote_numero || '—'), crmEsc(p.tipo), p.qtd, fmt(p.custo_total), crmEsc(nomeOp(p.operador))]);
   el.innerHTML = finBox('🗑️ Perdas registradas', biTabela([{ h: 'Data' }, { h: 'Produto' }, { h: 'Lote' }, { h: 'Tipo' }, { h: 'Qtd', cls: 'num' }, { h: 'Custo', cls: 'num' }, { h: 'Operador' }], rows, 'Nenhuma perda registrada.')) +
     `<p class="fin-hint">Registre perdas pelo detalhe de cada Lote (botão 🗑️). Cada perda vira uma <b>saída no Financeiro</b> (categoria "Perda"), pelo custo real do lote.</p>`;
 }
