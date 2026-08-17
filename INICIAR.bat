@@ -28,11 +28,11 @@ if not defined NAV if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe
 if not defined NAV if exist "%PFX86%\Google\Chrome\Application\chrome.exe" set "NAV=%PFX86%\Google\Chrome\Application\chrome.exe"
 
 if not defined NAV goto :semnav
-REM abre no perfil PADRAO do Chrome (mantem voce logado). O cache velho ja e resolvido
-REM pelo ?v=<mtime> de cada arquivo (servido pelo server) + ?nc na URL + Cache-Control no-store.
-REM abre em TELA CHEIA TOTAL (sem barra de titulo e cobrindo a barra do Windows).
-REM Pra fechar: Alt+F4. Pra sair da tela cheia sem fechar: F11.
-start "" "%NAV%" --app=%URL% --start-fullscreen --window-position=0,0
+REM abre numa JANELA PROPRIA E INDEPENDENTE (perfil dedicado --user-data-dir): NAO mistura com as
+REM abas do seu navegador (BotConversa etc.) e SEMPRE abre separado, mesmo com o Chrome/Edge ja aberto.
+REM Tela cheia total (sem barra). Pra fechar: Alt+F4. Pra sair da tela cheia: F11.
+set "PERFIL=%LocalAppData%\AcaiDoCentro\navegador"
+start "" "%NAV%" --user-data-dir="%PERFIL%" --app=%URL% --start-fullscreen --window-position=0,0
 goto :fim
 :semnav
 REM sem Chrome/Edge: abre no navegador padrao
