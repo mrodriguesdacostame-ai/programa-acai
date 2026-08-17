@@ -97,13 +97,33 @@ module.exports = function createManutencao({ db, rootDir }) {
   // que o próprio app de nuvem sobe sozinho. Sem chaves/API — usa a sincronização já instalada.
   // Origem da pasta: env BACKUP_NUVEM_DIR → arquivo backups/nuvem.txt → auto-detecta o OneDrive. ──
   const arqNuvemCfg = path.join(dirBackups, 'nuvem.txt');
+  // Google Drive para desktop monta uma UNIDADE (G: por padrão, mas varia) com a pasta
+  // "Meu Drive"/"My Drive". Também cobre o "Backup e Sincronização" antigo (pasta no perfil).
+  function detectarGoogleDrive() {
+    for (const L of 'GHIJKLMNOPDEF'.split('')) {
+      for (const n of ['Meu Drive', 'My Drive']) {
+        const p = `${L}:\\${n}`;
+        try { if (fs.existsSync(p)) return p; } catch {}
+      }
+    }
+    const up = process.env.USERPROFILE || '';
+    for (const n of ['Google Drive', 'GoogleDrive']) {
+      const p = path.join(up, n);
+      try { if (fs.existsSync(p)) return p; } catch {}
+    }
+    return null;
+  }
+  function detectarOneDrive() {
+    return process.env.OneDrive || process.env.OneDriveConsumer || process.env.OneDriveCommercial || '';
+  }
   function pastaNuvem() {
     let dir = (process.env.BACKUP_NUVEM_DIR || '').trim();
     if (!dir) { try { dir = fs.readFileSync(arqNuvemCfg, 'utf8').trim(); } catch {} }
     if (dir === 'OFF') return null;                         // desligado de propósito
-    if (!dir) {                                             // auto: OneDrive da máquina
-      const od = process.env.OneDrive || process.env.OneDriveConsumer || process.env.OneDriveCommercial || '';
-      if (od) dir = path.join(od, 'AcaiDoCentro-Backups');
+    if (!dir) {                                             // AUTO: prefere Google Drive, senão OneDrive
+      const gd = detectarGoogleDrive();
+      if (gd) dir = path.join(gd, 'AcaiDoCentro-Backups');
+      else { const od = detectarOneDrive(); if (od) dir = path.join(od, 'AcaiDoCentro-Backups'); }
     }
     if (!dir) return null;
     try { fs.mkdirSync(dir, { recursive: true }); return dir; } catch { return null; }
