@@ -3,84 +3,80 @@ title Programa Acai - Conectar ao GitHub (uma vez, na loja)
 color 5F
 cls
 cd /d "%~dp0"
+REM URL do repositorio JA EMBUTIDA (nao precisa digitar nada)
+set "REPO=https://github.com/mrodriguesdacostame-ai/programa-acai.git"
+set "GIT=git"
+
 echo.
 echo  ==================================================
-echo    LIGAR ESTA MAQUINA AO GITHUB (para atualizacoes)
+echo    LIGAR ESTA MAQUINA AO GITHUB (atualizacao online)
 echo  ==================================================
 echo.
-echo   Faca isto UMA VEZ, na maquina onde o sistema foi
-echo   instalado. Depois, as atualizacoes chegam so com o
-echo   ATUALIZAR.bat (baixando as mudancas do GitHub).
-echo.
+echo   Faca isto UMA VEZ. Depois, atualizar e so 1 clique
+echo   no ATUALIZAR (baixa as mudancas do GitHub).
 echo   Seus dados (banco, .env, backups) NAO sao tocados.
 echo.
 
+REM --- garante o Git: instala sozinho via winget se faltar ---
 where git >nul 2>&1
+if not errorlevel 1 goto :temgit
+echo  Git nao encontrado. Instalando automaticamente (precisa de internet, pode demorar)...
+winget install -e --id Git.Git --accept-package-agreements --accept-source-agreements
+REM apos o winget, o git ainda nao esta no PATH DESTA janela: usa o caminho padrao
+if exist "%ProgramFiles%\Git\cmd\git.exe" set "GIT=%ProgramFiles%\Git\cmd\git.exe"
+if exist "%ProgramFiles(x86)%\Git\cmd\git.exe" set "GIT=%ProgramFiles(x86)%\Git\cmd\git.exe"
+"%GIT%" --version >nul 2>&1
 if errorlevel 1 (
-  echo  [X] Git nao encontrado. Instale em: https://git-scm.com
-  echo      e rode este arquivo de novo.
+  echo.
+  echo  [X] Nao consegui instalar o Git automaticamente.
+  echo      Abri o site pra voce baixar: https://git-scm.com/download/win
+  echo      Instale, feche esta janela e rode este arquivo de novo.
+  start "" https://git-scm.com/download/win
   pause
   exit /b 1
 )
+:temgit
 
-REM ja e um repositorio ligado?
-git rev-parse --is-inside-work-tree >nul 2>&1
+REM ja esta ligado ao GitHub?
+"%GIT%" rev-parse --is-inside-work-tree >nul 2>&1
 if not errorlevel 1 (
-  git remote get-url origin >nul 2>&1
+  "%GIT%" remote get-url origin >nul 2>&1
   if not errorlevel 1 (
     echo  [OK] Esta maquina JA esta ligada ao GitHub:
-    git remote get-url origin
+    "%GIT%" remote get-url origin
     echo.
-    echo  Use o  ATUALIZAR.bat  para baixar a versao nova.
+    echo  Use o ATUALIZAR para baixar a versao nova.
     pause
     exit /b 0
   )
 )
 
-echo  Cole a URL do repositorio (a mesma do GitHub, termina em .git):
-echo    ex.:  https://github.com/SEU-USUARIO/programa-acai.git
+echo  Ligando ao repositorio do Acai do Centro...
+echo    %REPO%
 echo.
-set "URL="
-set /p URL=  URL:
-if not defined URL (
-  echo  [X] Nenhuma URL informada. Cancelado.
+if not exist ".git" "%GIT%" init
+"%GIT%" remote remove origin >nul 2>&1
+"%GIT%" remote add origin "%REPO%"
+"%GIT%" fetch origin main
+if errorlevel 1 (
+  echo  [X] Nao consegui baixar do GitHub. Confira a internet e tente de novo.
   pause
   exit /b 1
 )
-set URL=%URL:"=%
-
-echo.
-echo  Ligando ao repositorio (o GitHub pode pedir login no navegador)...
-if not exist ".git" git init
-git remote remove origin >nul 2>&1
-git remote add origin "%URL%"
-git fetch origin
+"%GIT%" checkout -B main >nul 2>&1
+"%GIT%" branch --set-upstream-to=origin/main main >nul 2>&1
+"%GIT%" reset --hard origin/main
 if errorlevel 1 (
-  echo  [X] Nao consegui acessar o repositorio. Confira a URL e o login.
-  pause
-  exit /b 1
-)
-
-REM descobre o ramo principal (main ou master)
-set "RAMO=main"
-git show-ref --verify --quiet refs/remotes/origin/main
-if errorlevel 1 set "RAMO=master"
-
-echo  Alinhando o codigo com o GitHub (ramo %RAMO%)...
-git checkout -B %RAMO% >nul 2>&1
-git branch --set-upstream-to=origin/%RAMO% %RAMO% >nul 2>&1
-git reset --hard origin/%RAMO%
-if errorlevel 1 (
-  echo  [X] Falhou ao alinhar. Veja o erro acima.
+  echo  [X] Falhou ao alinhar o codigo. Veja o erro acima.
   pause
   exit /b 1
 )
 
 echo.
 echo  ==================================================
-echo    [OK] Ligada ao GitHub!
+echo    [OK] LIGADA AO GITHUB!
 echo  ==================================================
-echo   Daqui pra frente, para atualizar e so rodar:
-echo        ATUALIZAR.bat
+echo   Agora, para atualizar, e so rodar o ATUALIZAR (1 clique).
+echo   Nunca mais precisa de pen drive.
 echo.
 pause
