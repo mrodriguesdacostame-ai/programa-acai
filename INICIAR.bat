@@ -21,11 +21,17 @@ REM ?nc=aleatorio a cada abertura → o Chrome busca a pagina NOVA (sem cache ve
 set "URL=http://localhost:3001/?nc=%RANDOM%%RANDOM%"
 set "PFX86=%ProgramFiles(x86)%"
 set "NAV="
-REM prioriza o EDGE (o Chrome desta maquina estava travando o app) — cai pro Chrome se nao tiver Edge
+REM procura o EDGE e o CHROME em TODOS os locais possiveis (inclusive instalacao no perfil do usuario,
+REM que era o que faltava: sem achar, ele abria como ABA comum em vez de janela propria do app).
 if exist "%PFX86%\Microsoft\Edge\Application\msedge.exe" set "NAV=%PFX86%\Microsoft\Edge\Application\msedge.exe"
 if not defined NAV if exist "%ProgramFiles%\Microsoft\Edge\Application\msedge.exe" set "NAV=%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"
 if not defined NAV if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set "NAV=%ProgramFiles%\Google\Chrome\Application\chrome.exe"
 if not defined NAV if exist "%PFX86%\Google\Chrome\Application\chrome.exe" set "NAV=%PFX86%\Google\Chrome\Application\chrome.exe"
+if not defined NAV if exist "%LocalAppData%\Google\Chrome\Application\chrome.exe" set "NAV=%LocalAppData%\Google\Chrome\Application\chrome.exe"
+if not defined NAV if exist "%LocalAppData%\Microsoft\Edge\Application\msedge.exe" set "NAV=%LocalAppData%\Microsoft\Edge\Application\msedge.exe"
+REM ultimo recurso: pergunta ao Windows onde esta o chrome/msedge (via where)
+if not defined NAV for /f "delims=" %%p in ('where chrome 2^>nul') do if not defined NAV set "NAV=%%p"
+if not defined NAV for /f "delims=" %%p in ('where msedge 2^>nul') do if not defined NAV set "NAV=%%p"
 
 if not defined NAV goto :semnav
 REM abre numa JANELA PROPRIA E INDEPENDENTE (perfil dedicado --user-data-dir): NAO mistura com as
