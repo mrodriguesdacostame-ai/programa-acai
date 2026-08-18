@@ -5834,7 +5834,8 @@ async function admCarregarAtualizacoes() {
   catch { el.innerHTML = '<div class="adm-aviso">Falha ao carregar o estado das atualizações.</div>'; return; }
   const ur = s.ultimoResultado;
   const conBadge = s.conectado ? '<span class="atz-badge on">✅ ligada ao GitHub</span>'
-    : (s.gitDisponivel ? '<span class="atz-badge off">⚠️ não ligada ao repositório</span>' : '<span class="atz-badge off">⚠️ Git não instalado</span>');
+    : (s.onlineSemGit ? '<span class="atz-badge on">✅ atualização online (sem Git)</span>'
+    : (s.gitDisponivel ? '<span class="atz-badge off">⚠️ não ligada ao repositório</span>' : '<span class="atz-badge off">⚠️ Git não instalado</span>'));
   // ESTADO ATUAL (o que importa) — só cai pra "falha" antiga como notinha discreta.
   let estado = '';
   if (s.conectado) {
@@ -5855,7 +5856,7 @@ async function admCarregarAtualizacoes() {
       ${ultimo}
       <div class="atz-acoes">
         ${s.gitDisponivel ? `<button class="adm-btn ${s.conectado ? '' : 'destaque'}" id="atz-conectar">${s.conectado ? '🔧 Reparar / realinhar' : '🔗 Ligar ao GitHub'}</button>` : ''}
-        <button class="adm-btn" id="atz-verificar" ${s.conectado ? '' : 'disabled'}>🔍 Verificar atualização</button>
+        <button class="adm-btn" id="atz-verificar" ${(s.conectado || s.onlineSemGit) ? '' : 'disabled'}>🔍 Verificar atualização</button>
         <button class="adm-btn secundario" id="atz-atualizar" disabled>⬆️ Atualizar agora</button>
       </div>
       <div id="atz-resultado" class="atz-resultado"></div>

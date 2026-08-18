@@ -22,6 +22,36 @@ module.exports = function createAtualizacao({ db, rootDir, manut }) {
   const lerConfig = () => { try { return JSON.parse(fs.readFileSync(cfgPath, 'utf8')); } catch { return { repo: '', branch: 'main' }; } };
   const versaoInstalada = () => { try { return JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version || '?'; } catch { return '?'; } };
 
+  // ── ATUALIZAÇÃO ONLINE SEM GIT (repo PÚBLICO): compara a versão do package.json remoto
+  // e aplica via atualizador_online.bat (baixa o ZIP do GitHub). Não precisa de Git. ──
+  const https = require('https');
+  const batOnlinePath = path.join(rootDir, 'atualizador_online.bat');
+  const repoSlug = () => { const m = (lerConfig().repo || '').match(/github\.com[/:]([^/]+\/[^/.]+)/i); return m ? m[1] : 'mrodriguesdacostame-ai/programa-acai'; };
+  function httpGet(url, redirects) {
+    redirects = redirects || 0;
+    return new Promise(resolve => {
+      try {
+        const req = https.get(url, { headers: { 'User-Agent': 'acai-updater' }, timeout: 15000 }, res => {
+          if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && redirects < 4) { res.resume(); return httpGet(res.headers.location, redirects + 1).then(resolve); }
+          let d = ''; res.on('data', c => d += c); res.on('end', () => resolve({ status: res.statusCode, body: d }));
+        });
+        req.on('error', () => resolve(null));
+        req.on('timeout', () => { req.destroy(); resolve(null); });
+      } catch { resolve(null); }
+    });
+  }
+  async function versaoRemota() {
+    const branch = lerConfig().branch || 'main';
+    const r = await httpGet(`https://raw.githubusercontent.com/${repoSlug()}/${branch}/package.json`);
+    if (!r || r.status !== 200) return null;
+    try { return JSON.parse(r.body).version || null; } catch { return null; }
+  }
+  const versaoMaior = (a, b) => {   // a > b ?
+    const pa = String(a).split('.').map(n => parseInt(n, 10) || 0), pb = String(b).split('.').map(n => parseInt(n, 10) || 0);
+    for (let i = 0; i < 3; i++) { const x = pa[i] || 0, y = pb[i] || 0; if (x > y) return true; if (x < y) return false; }
+    return false;
+  };
+
   const gitP = (args) => new Promise(res => {
     execFile('git', args, { cwd: rootDir, windowsHide: true, timeout: 90000 }, (err, out, errout) =>
       res({ ok: !err, out: (out || '').trim(), errout: (errout || '').trim() }));
@@ -77,6 +107,7 @@ module.exports = function createAtualizacao({ db, rootDir, manut }) {
       commitLocal: repo ? (await gitP(['rev-parse', '--short', 'HEAD'])).out : '',
       gitDisponivel: disp,
       conectado,
+      onlineSemGit: fs.existsSync(batOnlinePath),   // da pra atualizar online mesmo SEM Git (repo publico + ZIP)
       atras, aFrente,
       repoUrl: lerConfig().repo,
       ultimoResultado: ultimoResultado(),
@@ -84,9 +115,14 @@ module.exports = function createAtualizacao({ db, rootDir, manut }) {
   }
 
   async function verificar() {
-    if (!await gitDisponivel()) return { erro: 'O Git não está instalado nesta máquina.' };
-    if (!await ehRepo() || !await temRemote())
-      return { erro: 'Esta máquina ainda não está ligada ao repositório.', conectado: false };
+    // SEM GIT (ou nao conectado) — repo e PUBLICO: confere pela versao do package.json remoto
+    if (!(await gitDisponivel() && await ehRepo() && await temRemote())) {
+      const vr = await versaoRemota();
+      if (!vr) return { erro: 'Nao consegui acessar o GitHub. Confira a internet.' };
+      const vi = versaoInstalada();
+      const nova = versaoMaior(vr, vi);
+      return { novaVersao: nova, semGit: true, versaoRemota: vr, versaoLocal: vi, resumo: nova ? [`Nova versao ${vr} disponivel (voce esta na ${vi}).`] : [] };
+    }
     const branch = lerConfig().branch || 'main';
     const fetch = await gitP(['fetch', 'origin', branch]);
     if (!fetch.ok) return { erro: 'Não consegui acessar o GitHub. Confira a internet e o login.', detalhe: fetch.errout };
@@ -113,10 +149,23 @@ module.exports = function createAtualizacao({ db, rootDir, manut }) {
   }
 
   async function aplicar(usuario) {
-    if (!await gitDisponivel()) return { erro: 'O Git não está instalado nesta máquina.' };
-    if (!await ehRepo() || !await temRemote()) return { erro: 'Esta máquina não está ligada ao repositório.' };
     const chk = podeAtualizar();
     if (!chk.pode) return { erro: chk.motivo, bloqueado: true };
+
+    // SEM GIT (ou nao conectado) — repo PUBLICO: aplica pelo atualizador_online.bat (baixa o ZIP)
+    if (!(await gitDisponivel() && await ehRepo() && await temRemote())) {
+      const vr = await versaoRemota(), vi = versaoInstalada();
+      if (!vr) return { erro: 'Nao consegui acessar o GitHub. Confira a internet.' };
+      if (!versaoMaior(vr, vi)) return { ok: true, semNovidade: true, mensagem: 'Voce ja esta na versao mais recente — nada para atualizar.' };
+      if (!fs.existsSync(batOnlinePath)) return { erro: 'atualizador_online.bat nao encontrado na pasta do sistema.' };
+      const bk = manut.criarBackup('antes da atualizacao (online)');
+      db.prepare('INSERT INTO atualizacoes (quando,por,de_commit,para_commit,status,detalhe) VALUES (?,?,?,?,?,?)')
+        .run(new Date().toISOString(), usuario || '', vi, vr, 'iniciada', bk.ok ? 'backup ' + bk.arquivo : 'sem backup');
+      manut.logAcao('atualizacao online iniciada', 'atualizacao', { por: usuario, de: vi, para: vr, backup: bk.arquivo || null }, 'admin');
+      try { const child = spawn('cmd.exe', ['/c', batOnlinePath], { cwd: rootDir, detached: true, stdio: 'ignore', windowsHide: true }); child.unref(); }
+      catch (e) { return { erro: 'Falha ao iniciar o atualizador: ' + e.message }; }
+      return { ok: true, mensagem: 'Atualizacao iniciada (online). O sistema vai reiniciar em instantes.', backup: bk.arquivo || null };
+    }
 
     // BLINDAGEM: só atualiza se houver MESMO versão nova no GitHub. Sem isso, o atualizador
     // faria `git reset --hard origin/BR` à toa — o que, numa máquina à frente do repositório,
