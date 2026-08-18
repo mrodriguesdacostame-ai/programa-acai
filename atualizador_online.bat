@@ -21,8 +21,14 @@ timeout /t 2 /nobreak >nul
 
 echo  Baixando a versao nova do GitHub...
 del "%ZIP%" >nul 2>&1
-powershell -NoProfile -Command "$ErrorActionPreference='Stop'; try { Invoke-WebRequest -Uri '%URLZIP%' -OutFile \"$env:TEMP\acai-online.zip\" -UseBasicParsing; exit 0 } catch { exit 1 }" > "logs\atualizador-online.log" 2>&1
-if errorlevel 1 goto :err_download
+REM 1a tentativa: CURL (existe no Win10+, resolve TLS e redirecionamento sozinho)
+where curl >nul 2>&1
+if not errorlevel 1 curl -fL -s -o "%ZIP%" "%URLZIP%" > "logs\atualizador-online.log" 2>&1
+REM 2a tentativa (se curl faltar/falhar): PowerShell FORCANDO TLS 1.2 (o GitHub exige TLS 1.2+)
+if not exist "%ZIP%" powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]'Tls12'; try { Invoke-WebRequest -Uri '%URLZIP%' -OutFile \"$env:TEMP\acai-online.zip\" -UseBasicParsing } catch { $_ | Out-String }" >> "logs\atualizador-online.log" 2>&1
+REM valida: o arquivo existe e tem tamanho de verdade (download parcial/erro deixa arquivo minusculo)
+if not exist "%ZIP%" goto :err_download
+for %%A in ("%ZIP%") do if %%~zA LSS 10000 goto :err_download
 
 echo  Extraindo o pacote...
 rmdir /s /q "%EXT%" >nul 2>&1
