@@ -404,6 +404,7 @@ function bipErro() {
 
 /* Campo de código: Enter registra · duplo-espaço abre a busca por nome */
 let ultimoEspaco = 0;
+let qtdPendentePdv = 0;   // quantidade digitada antes do "*" (ex.: 5*) pra aplicar ao escolher na busca
 // Registra UM código (com suporte a "qtd*código"). Retorna true se adicionou.
 function registrarCodigoPdv(parte) {
   let entrada = (parte || '').trim();
@@ -437,12 +438,17 @@ $('codigo').addEventListener('keydown', e => {
     focusCodigoMercadoria();   // pronto pro próximo código, sem tirar a mão do teclado
     return;
   }
-  // duplo-espaço (campo vazio) → busca por nome
-  if (e.key === ' ' && $('codigo').value.trim() === '') {
+  // duplo-espaço → busca por nome. Funciona com o campo VAZIO ou com só a QUANTIDADE pendente
+  // (ex.: digitar "5*" e dar dois espaços → abre a busca; ao escolher, adiciona 5 unidades).
+  const mQtd = $('codigo').value.match(/^\s*(\d+(?:[.,]\d+)?)\s*\*\s*$/);   // "5*" sem código ainda
+  if (e.key === ' ' && ($('codigo').value.trim() === '' || mQtd)) {
     e.preventDefault();                      // não digita espaço no código
     const agora = Date.now();
-    if (agora - ultimoEspaco < 450) { ultimoEspaco = 0; abrirBuscaProduto(); }
-    else ultimoEspaco = agora;
+    if (agora - ultimoEspaco < 450) {
+      ultimoEspaco = 0;
+      qtdPendentePdv = mQtd ? (parseFloat(mQtd[1].replace(',', '.')) || 0) : 0;   // guarda a qtd pra aplicar na escolha
+      abrirBuscaProduto();
+    } else ultimoEspaco = agora;
   }
   // ↓/↑ com o campo vazio → entra na lista do espelho pra selecionar item
   if ($('codigo').value.trim() === '' && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
@@ -602,6 +608,7 @@ function abrirBuscaProduto(contexto = 'pdv') {
 }
 function fecharBusca() {
   $('overlay-busca').classList.remove('aberto');
+  qtdPendentePdv = 0;   // se cancelou a busca, esquece a quantidade pendente (5*)
   if (buscaContexto === 'pdv') focusCodigoMercadoria();
   else if (buscaContexto === 'rendimento' && rendLinhaAtual) rendLinhaAtual.querySelector('.rl-desc').focus();
   else if (buscaContexto === 'materia') $('rend-materia').focus();
@@ -719,7 +726,9 @@ function selecionarBusca(i) {
     fecharBusca();
     preencherLinhaRendimento(rendLinhaAtual, p);   // carrega o produto existente na linha (dar entrada de novo)
   } else {
-    adicionarProduto(p);
+    adicionarProduto(p, qtdPendentePdv > 0 ? qtdPendentePdv : 1);   // aplica a quantidade pendente (5*) se houver
+    qtdPendentePdv = 0;
+    if ($('codigo')) $('codigo').value = '';   // limpa o "5*" que tinha ficado no campo
     fecharBusca();
   }
 }
