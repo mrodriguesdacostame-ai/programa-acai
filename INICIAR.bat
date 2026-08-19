@@ -6,7 +6,7 @@ REM encerra qualquer servidor antigo preso
 taskkill /F /IM node.exe >nul 2>&1
 
 REM primeira vez: instala as dependencias
-if not exist node_modules call npm install
+if not exist node_modules call npm install --omit=dev
 
 REM inicia o servidor em segundo plano, minimizado (deixe essa janelinha aberta)
 start "Acai do Centro - servidor (nao feche esta janela)" /min cmd /c node server.js

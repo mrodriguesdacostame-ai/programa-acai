@@ -51,7 +51,7 @@ git branch --set-upstream-to=origin/main main >nul 2>&1
 for /f "delims=" %%p in ('git rev-parse HEAD:package.json 2^>nul') do set "PKG_DEPOIS=%%p"
 if "%PKG_ANTES%"=="%PKG_DEPOIS%" goto :ok
 echo Atualizando dependencias...
-call npm install >> "logs\atualizador-git.log" 2>&1
+call npm install --omit=dev >> "logs\atualizador-git.log" 2>&1
 if errorlevel 1 goto :err_npm
 goto :ok
 

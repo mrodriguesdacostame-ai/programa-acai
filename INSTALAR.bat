@@ -44,7 +44,7 @@ REM --- 3) dependencias ---
 echo  Instalando as dependencias ^(npm install^)...
 echo  Isso baixa o necessario e PODE DEMORAR alguns minutos. Aguarde.
 echo.
-call npm install
+call npm install --omit=dev
 if errorlevel 1 (
   echo.
   echo  [X] Deu erro no npm install. Veja a mensagem acima.

@@ -44,7 +44,7 @@ echo  Aplicando o codigo novo (seus dados NAO sao tocados)...
 robocopy "%NOVO%" "%~dp0." /E /XF acai.db acai.db-wal acai.db-shm acai.db-journal .env *.log /XD node_modules .git backups .wwebjs_auth .wwebjs_cache logs instalador dist-instalador assets >> "logs\atualizador-online.log" 2>&1
 
 echo  Atualizando dependencias...
-call npm install >> "logs\atualizador-online.log" 2>&1
+call npm install --omit=dev >> "logs\atualizador-online.log" 2>&1
 
 > "%RESULT%" echo OK^|%date% %time%^|atualizado online (sem git)
 goto :reabrir

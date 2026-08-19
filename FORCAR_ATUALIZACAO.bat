@@ -39,7 +39,7 @@ rmdir /s /q "%LocalAppData%\Google\Chrome\User Data\Default\Cache"      >nul 2>&
 rmdir /s /q "%LocalAppData%\Google\Chrome\User Data\Default\Code Cache" >nul 2>&1
 
 echo  Atualizando dependencias (se preciso)...
-call npm install
+call npm install --omit=dev
 
 echo.
 echo  ==================================================

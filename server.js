@@ -62,7 +62,11 @@ app.use((req, res, next) => {
    Pedidos do Delivery e um espelho do catálogo de produtos precisam existir
    no SERVIDOR (não só no localStorage do navegador) pro atendimento por IA
    poder ler o cardápio e criar pedidos mesmo sem ninguém com a tela aberta. */
-const db = new DatabaseSync(process.env.ACAI_DB || path.join(__dirname, 'acai.db'));
+// DADOS_DIR: onde ficam os DADOS (banco, backups, sessao do WhatsApp). Por padrao e a propria
+// pasta do sistema (compatibilidade). No app nativo vem apontado pra %APPDATA% (permanente),
+// entao reinstalar / trocar de maquina NAO perde os dados.
+const DADOS_DIR = process.env.DADOS_DIR || __dirname;
+const db = new DatabaseSync(process.env.ACAI_DB || path.join(DADOS_DIR, 'acai.db'));
 
 /* ══ FASE 37 — HARDENING: pragmas de performance/robustez + migrations versionadas ══
    WAL deixa leitores e escritores conviverem sem travar (essencial p/ crescer);
@@ -127,7 +131,7 @@ function emTransacao(fn) {
 
 // ── Manutenção / OPS (Fase 11): backup automático, logs de erro/ações e mídia ──
 // Cria as pastas backups/ e logs/ + a tabela logs_acoes. Ver 24_BACKUP_SEGURANCA_FASE11.md.
-const manut = require('./backend/manutencao')({ db, rootDir: __dirname });
+const manut = require('./backend/manutencao')({ db, rootDir: DADOS_DIR });   // backups na pasta de dados (permanente)
 const atualizacao = require('./backend/atualizacao')({ db, rootDir: __dirname, manut });
 // além do console (blindagem acima), grava os erros de processo em logs/erro.log
 process.on('unhandledRejection', (err) => manut.logErro('unhandledRejection', err));
@@ -7595,10 +7599,14 @@ console.log(executablePath
 let whatsappPronto = false;
 let ultimoQR = null;   // string crua do QR atual — null quando conectado (não precisa mais escanear)
 const whatsapp = new Client({
-  authStrategy: new LocalAuth({ dataPath: path.join(__dirname, '.wwebjs_auth') }),
+  authStrategy: new LocalAuth({ dataPath: path.join(DADOS_DIR, '.wwebjs_auth') }),
   puppeteer: {
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    // argumentos LEVES: reduzem memoria/CPU do Chrome do WhatsApp (importante em PC fraco,
+    // ainda mais junto do app nativo que ja tem o proprio Chromium).
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+      '--disable-extensions', '--disable-background-networking', '--disable-renderer-backgrounding',
+      '--disable-background-timer-throttling', '--no-first-run', '--no-default-browser-check', '--mute-audio'],
     ...(executablePath ? { executablePath } : {}),
   },
 });
@@ -7726,9 +7734,15 @@ whatsapp.on('message', async message => {
 // PERFORMANCE: o WhatsApp sobe o Chrome do Puppeteer (pesado, ~vários segundos). Pra o sistema ABRIR
 // RÁPIDO, NÃO iniciamos aqui — adiamos pra DEPOIS do servidor já estar no ar (ver app.listen), em 2º plano.
 let whatsappAgendado = false;
+// Em PC fraco, criar o arquivo "whatsapp-desligado.txt" na pasta do sistema PULA o WhatsApp
+// (deixa o programa bem mais leve). Some ao apagar o arquivo. WA_DISABLE=1 também pula.
+const whatsappDesligadoPorArquivo = () => { try { return fs.existsSync(path.join(__dirname, 'whatsapp-desligado.txt')); } catch { return false; } };
 function iniciarWhatsappEmBackground() {
   if (whatsappAgendado) return; whatsappAgendado = true;
-  if (process.env.WA_DISABLE === '1') { console.log('⚠️  WhatsApp desativado (WA_DISABLE=1) — avisos automáticos não serão enviados.'); return; }
+  if (process.env.WA_DISABLE === '1' || whatsappDesligadoPorArquivo()) {
+    console.log('⚠️  WhatsApp DESLIGADO (config) — programa mais leve. Pra ligar: apague o arquivo whatsapp-desligado.txt e reabra.');
+    return;
+  }
   console.log('… iniciando WhatsApp em segundo plano (não trava a abertura)');
   whatsapp.initialize().catch(err => console.log('❌ Não foi possível iniciar o cliente WhatsApp:', err.message));
 }
@@ -7872,7 +7886,7 @@ const servidor = app.listen(PORTA, () => {
   } catch (e) { console.log('   (verificação de consistência falhou:', e.message, ')'); }
   // WhatsApp em SEGUNDO PLANO, alguns segundos depois — o sistema já abriu e responde; o Chrome do
   // WhatsApp sobe sem competir com a abertura. Avisos/atendimento ficam prontos logo em seguida.
-  setTimeout(iniciarWhatsappEmBackground, 4000);
+  setTimeout(iniciarWhatsappEmBackground, 15000);   // 15s: abre RÁPIDO e leve; o Chrome do WhatsApp sobe bem depois, sem competir com a abertura
 });
 
 // Fase 37 — graceful shutdown: faz checkpoint do WAL e fecha o banco limpo ao encerrar.

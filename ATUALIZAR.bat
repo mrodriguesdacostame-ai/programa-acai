@@ -29,7 +29,7 @@ if not errorlevel 1 (
       )
       echo.
       echo  Conferindo dependencias...
-      call npm install
+      call npm install --omit=dev
       echo.
       echo  [OK] Atualizado pelo GitHub! Rode o  iniciar.bat
       echo.
@@ -71,7 +71,7 @@ robocopy "%ORIGEM%" "%~dp0." /E /XD node_modules backups .wwebjs_auth .wwebjs_ca
 echo  [OK] Codigo atualizado.
 echo.
 echo  Conferindo dependencias (caso a nova versao precise)...
-call npm install
+call npm install --omit=dev
 echo.
 echo  ================================================
 echo    PRONTO! Rode o  iniciar.bat  para usar a versao nova.
