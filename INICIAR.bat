@@ -38,7 +38,7 @@ REM abre numa JANELA PROPRIA E INDEPENDENTE (perfil dedicado --user-data-dir): N
 REM abas do seu navegador (BotConversa etc.) e SEMPRE abre separado, mesmo com o Chrome/Edge ja aberto.
 REM Tela cheia total (sem barra). Pra fechar: Alt+F4. Pra sair da tela cheia: F11.
 set "PERFIL=%LocalAppData%\AcaiDoCentro\navegador"
-start "" "%NAV%" --user-data-dir="%PERFIL%" --app=%URL% --start-fullscreen --window-position=0,0
+start "" "%NAV%" --user-data-dir="%PERFIL%" --app=%URL% --start-maximized --window-position=0,0
 goto :fim
 :semnav
 REM sem Chrome/Edge: abre no navegador padrao

@@ -32,6 +32,11 @@ function irPara(tela) {
   navMarcarAtivo(tela);
   // Etapa 2: MODO OPERAÇÃO tela-cheia — PDV e Produção escondem sidebar/topo (sai por ESC ou botão)
   document.body.classList.toggle('modo-operacao', tela === 'pdv' || tela === 'producao');
+  // PDV preenche a TELA TODA (fullscreen, sem barra); as outras telas voltam pra JANELA (com o X/barra de tarefas)
+  try {
+    if (tela === 'pdv') { if (!document.fullscreenElement && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {}); }
+    else if (document.fullscreenElement && document.exitFullscreen) { document.exitFullscreen().catch(() => {}); }
+  } catch {}
   if (tela === 'pdv') focusCodigoMercadoria();
   if (tela === 'delivery') { renderDelivery(); iniciarPollPedidos(); carregarEstadoLoja(); }
   else { pararPollPedidos(); }
