@@ -7885,10 +7885,25 @@ app.post('/api/whatsapp/enviar', async (req, res) => {
   res.status(envio.ok ? 200 : (envio.status || 500)).json(envio);
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  SINCRONIZAÇÃO ENTRE MÁQUINAS (multi-master via pasta do Google Drive)
+//  Inicializado AQUI (depois de TODAS as tabelas existirem — os gatilhos precisam
+//  das tabelas criadas). Desligado por padrão; liga na tela de Sincronização.
+// ─────────────────────────────────────────────────────────────────────────────
+const sync = require('./backend/sync')({ db, dadosDir: DADOS_DIR, logErro: manut.logErro });
+app.get('/api/sync/status', (req, res) => res.json(sync.status()));
+app.post('/api/sync/configurar', (req, res) => res.json(sync.configurar(req.body || {})));
+app.post('/api/sync/ligar', (req, res) => res.json(sync.ligar(!!(req.body && req.body.ligar))));
+app.post('/api/sync/agora', (req, res) => {   // força um ciclo agora (botão "Sincronizar agora")
+  const e = sync.exportarAgora(); const i = sync.importarAgora();
+  res.json({ ok: true, exportou: e, importou: i, status: sync.status() });
+});
+
 const PORTA = process.env.PORT ? +process.env.PORT : 3001;
 const servidor = app.listen(PORTA, () => {
   console.log('✅ PROGRAMA AÇAÍ rodando em http://localhost:' + PORTA);
   manut.iniciarAgendador(); // Fase 11 — backup automático DE HORA EM HORA (e um logo ao abrir se o último tem +1h)
+  try { sync.iniciarAgendador(20000); } catch (e) { console.log('   (sync agendador falhou:', e.message, ')'); } // troca com as outras máquinas a cada 20s quando ligado
   // Fase 37 — verificação de consistência no boot (só loga; não bloqueia nem altera nada)
   try {
     const c = consistenciaERP();

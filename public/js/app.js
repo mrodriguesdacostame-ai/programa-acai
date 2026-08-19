@@ -5827,16 +5827,80 @@ function renderAdministracao() {
 function abrirAbaAdm(aba) {
   abaAdmAtual = aba;
   document.querySelectorAll('.adm-tab').forEach(b => b.classList.toggle('ativo', b.dataset.aba === aba));
-  ['usuarios', 'funcionarios', 'loja', 'dados', 'logs', 'backup', 'midia', 'plataforma', 'atualizacoes'].forEach(a => { const el = $('adm-pane-' + a); if (el) el.style.display = a === aba ? '' : 'none'; });
+  ['usuarios', 'funcionarios', 'loja', 'dados', 'logs', 'backup', 'sync', 'midia', 'plataforma', 'atualizacoes'].forEach(a => { const el = $('adm-pane-' + a); if (el) el.style.display = a === aba ? '' : 'none'; });
   if (aba === 'usuarios') admCarregarUsuarios();
   if (aba === 'funcionarios') admCarregarFuncionarios();
   if (aba === 'loja') admCarregarLoja();
   if (aba === 'dados') admCarregarDados();
   if (aba === 'logs') admCarregarLogs();
   if (aba === 'backup') admCarregarBackup();
+  if (aba === 'sync') admCarregarSync();
   if (aba === 'midia') admCarregarMidia();
   if (aba === 'plataforma') admCarregarPlataforma();
   if (aba === 'atualizacoes') admCarregarAtualizacoes();
+}
+
+/* ── Sincronização entre máquinas (Administração → Sincronização) — só admin ── */
+let sySt = null;
+async function admCarregarSync() {
+  const box = $('sy-status'); if (!box) return;
+  let s; try { s = await (await fetch('/api/sync/status', { cache: 'no-store' })).json(); }
+  catch { box.innerHTML = '<div class="adm-aviso">Falha ao carregar o estado da sincronização.</div>'; return; }
+  sySt = s;
+  const badge = s.ativo ? '<span class="atz-badge on">🟢 LIGADO</span>' : '<span class="atz-badge off">🔴 desligado</span>';
+  const drive = s.driveDetectado ? '<span class="atz-badge on">✅ Google Drive detectado</span>' : '<span class="atz-badge off">⚠️ Google Drive não encontrado</span>';
+  box.innerHTML = `
+    <div><span>Estado</span><b>${badge}</b></div>
+    <div><span>Esta máquina</span><b>${crmEsc(s.nome || '—')}${s.numero ? ' (nº ' + s.numero + ')' : ''}</b></div>
+    <div><span>Google Drive</span><b>${drive}</b></div>
+    <div><span>Pasta</span><b style="font-size:.82em">${crmEsc(s.pasta || '— (configure/instale o Google Drive)')}</b></div>
+    <div><span>A enviar</span><b>${s.pendentesEnvio || 0} mudança(s)</b></div>
+    <div><span>Último envio</span><b>${s.ultimoExport ? fmtDataHora(s.ultimoExport) : '—'}</b></div>
+    <div><span>Última leitura</span><b>${s.ultimoImport ? fmtDataHora(s.ultimoImport) : '—'}</b></div>`;
+  // preenche o formulário só na 1ª carga (não atropela o que o usuário está digitando)
+  if (!$('sy-nome').value) $('sy-nome').value = s.nome || '';
+  if (s.numero && (+$('sy-numero').value === 1)) $('sy-numero').value = s.numero;
+  if (!$('sy-pasta').value && s.pastaConfigurada && s.pastaConfigurada !== 'OFF') $('sy-pasta').value = s.pastaConfigurada;
+  $('sy-primeira').checked = !!s.primeiraMaquina;
+  // botão ligar/desligar — verde quando vai LIGAR? não: cor do ESTADO. Ligado=verde, desligado=vermelho.
+  const tg = $('sy-toggle');
+  tg.textContent = s.ativo ? '🔴 Desligar' : '🟢 Ligar';
+  tg.classList.toggle('perigo', s.ativo);
+  tg.classList.toggle('destaque', !s.ativo);
+  // peers
+  const tb = $('sy-peers');
+  tb.innerHTML = (s.maquinas && s.maquinas.length)
+    ? s.maquinas.map(m => `<tr><td>${crmEsc(m.nome || m.station)}</td><td>${m.visto_em ? fmtDataHora(m.visto_em) : '—'}</td></tr>`).join('')
+    : '<tr><td colspan="2" class="adm-vazio">Nenhuma ainda.</td></tr>';
+}
+async function admSalvarSync() {
+  const body = {
+    nome: $('sy-nome').value.trim(),
+    numero: +$('sy-numero').value || 1,
+    pasta: $('sy-pasta').value.trim(),   // vazio = auto (Google Drive)
+    primeira: $('sy-primeira').checked,
+  };
+  try {
+    await fetch('/api/sync/configurar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    toast('Configuração salva.');
+    admCarregarSync();
+  } catch { toast('Falha ao salvar.', 'erro'); }
+}
+async function admToggleSync() {
+  const ligar = !(sySt && sySt.ativo);
+  if (ligar && !$('sy-nome').value.trim()) { toast('Dê um nome pra esta máquina antes de ligar.', 'erro'); return; }
+  if (ligar) await admSalvarSync();   // garante que salvou nome/pasta/principal antes de ligar
+  try {
+    await fetch('/api/sync/ligar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ligar }) });
+    toast(ligar ? '🟢 Sincronização ligada.' : '🔴 Sincronização desligada.');
+    admCarregarSync();
+  } catch { toast('Falha ao ligar/desligar.', 'erro'); }
+}
+async function admSyncAgora() {
+  const b = $('sy-agora'); b.disabled = true; b.textContent = '⏳ Sincronizando…';
+  try { await fetch('/api/sync/agora', { method: 'POST' }); toast('Sincronizado.'); admCarregarSync(); }
+  catch { toast('Falha ao sincronizar.', 'erro'); }
+  finally { b.disabled = false; b.textContent = '🔄 Sincronizar agora'; }
 }
 
 /* ── Atualização do sistema (Administração → Atualizações) — só admin ── */
@@ -6257,6 +6321,13 @@ $('ab-criar').addEventListener('click', async () => {
   } catch { toast('⚠ Servidor indisponível'); }
   finally { $('ab-criar').disabled = false; }
 });
+
+/* ── Aba Sincronização — listeners ── */
+{
+  const f = $('sy-form'); if (f) f.addEventListener('submit', e => { e.preventDefault(); admSalvarSync(); });
+  const t = $('sy-toggle'); if (t) t.addEventListener('click', admToggleSync);
+  const a = $('sy-agora'); if (a) a.addEventListener('click', admSyncAgora);
+}
 
 /* ── Aba Mídia WhatsApp ── */
 async function admCarregarMidia() {

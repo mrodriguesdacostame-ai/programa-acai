@@ -1040,6 +1040,7 @@
           <button class="adm-tab" data-aba="dados">📤 Dados / Exportar</button>
           <button class="adm-tab" data-aba="logs">🛡 Segurança / Logs</button>
           <button class="adm-tab" data-aba="backup">💾 Backup</button>
+          <button class="adm-tab" data-aba="sync">🔁 Sincronização</button>
           <button class="adm-tab" data-aba="midia">🖼 Mídia WhatsApp</button>
           <button class="adm-tab" data-aba="plataforma">🧩 Plataforma</button>
           <button class="adm-tab" data-aba="atualizacoes">🔄 Atualizações</button>
@@ -1130,6 +1131,66 @@
                 <tbody id="adm-backups-tbody"><tr><td colspan="3" class="adm-vazio">Carregando…</td></tr></tbody>
               </table>
             </div>
+          </div>
+        </div>
+
+        <!-- ABA — Sincronização entre máquinas (multi-master via Google Drive) -->
+        <div class="adm-pane" id="adm-pane-sync" style="display:none">
+          <div class="adm-card">
+            <div class="adm-card-tit">🔁 Sincronização entre máquinas</div>
+            <p class="adm-aviso">Cada máquina roda o <b>seu próprio programa</b> (funciona sozinha, mesmo sem internet) e as mudanças viajam por uma <b>pasta do Google Drive</b>. O que uma vende/cadastra aparece na outra — <b>sem duplicar dinheiro</b>. Ideal pra 2 caixas na mesma loja ou pra acompanhar de outro lugar pela internet.</p>
+            <div class="adm-status-grid" id="sy-status">Carregando…</div>
+          </div>
+
+          <div class="adm-card">
+            <div class="adm-card-tit">⚙️ Configurar esta máquina</div>
+            <form class="adm-form-loja" id="sy-form">
+              <label>Nome desta máquina
+                <input type="text" id="sy-nome" placeholder="Ex.: Caixa 1 / Balcão / Casa" autocomplete="off">
+              </label>
+              <label>Número da máquina
+                <input type="number" id="sy-numero" min="1" value="1" style="width:90px" title="Só um rótulo pra você identificar (1, 2, 3…)">
+              </label>
+              <label>Pasta de sincronização <small>(deixe em branco = detecta o Google Drive sozinho)</small>
+                <input type="text" id="sy-pasta" placeholder="Automático (Google Drive)" autocomplete="off">
+              </label>
+              <label class="sy-check">
+                <input type="checkbox" id="sy-primeira">
+                Esta máquina <b>já tem os dados</b> (é a principal). Marque só na 1ª — ela envia todo o acervo pras novas.
+              </label>
+              <button type="submit" class="adm-btn destaque">💾 Salvar configuração</button>
+            </form>
+          </div>
+
+          <div class="adm-card">
+            <div class="adm-card-tit-row">
+              <div class="adm-card-tit">🔌 Ligar / desligar</div>
+              <div>
+                <button type="button" class="adm-btn" id="sy-agora">🔄 Sincronizar agora</button>
+                <button type="button" class="adm-btn" id="sy-toggle">Ligar</button>
+              </div>
+            </div>
+            <p class="adm-nota" id="sy-toggle-nota">Enquanto ligado, troca com as outras máquinas a cada ~20 segundos.</p>
+          </div>
+
+          <div class="adm-card">
+            <div class="adm-card-tit">🖥 Outras máquinas vistas</div>
+            <div class="adm-tabela-wrap">
+              <table class="adm-tabela">
+                <thead><tr><th>Máquina</th><th>Última vez</th></tr></thead>
+                <tbody id="sy-peers"><tr><td colspan="2" class="adm-vazio">Nenhuma ainda.</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="adm-card">
+            <div class="adm-card-tit">➕ Como colocar uma 2ª máquina</div>
+            <ol class="adm-passos">
+              <li>Instale o programa na outra máquina (o mesmo instalador).</li>
+              <li>Instale o <b>Google Drive para computador</b> nas duas, logado na <b>mesma conta</b>.</li>
+              <li>Nesta máquina (a que já tem os dados): marque <b>“já tem os dados”</b>, dê um nome e <b>Ligar</b>.</li>
+              <li>Na máquina nova: só dê um nome/número diferente e <b>Ligar</b> — ela recebe todo o catálogo, clientes e histórico sozinha.</li>
+            </ol>
           </div>
         </div>
 
