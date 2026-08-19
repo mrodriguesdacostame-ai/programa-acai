@@ -171,6 +171,17 @@ app.get('/api/logs-acoes', (req, res) => {
   const where = cond.length ? ' WHERE ' + cond.join(' AND ') : '';
   res.json(db.prepare(`SELECT * FROM logs_acoes${where} ORDER BY id DESC LIMIT 500`).all(...args));
 });
+// REDE: enderecos desta maquina (pra ligar TERMINAIS na mesma loja). Os terminais usam um
+// desses http://IP:porta no CONFIGURAR_TERMINAL. (Pela internet, usa-se a URL do tunel.)
+app.get('/api/rede/enderecos', (req, res) => {
+  try {
+    const nets = require('os').networkInterfaces(); const ips = [];
+    for (const nome of Object.keys(nets)) for (const n of (nets[nome] || [])) {
+      if (n.family === 'IPv4' && !n.internal && !/^169\.254\./.test(n.address)) ips.push(n.address);
+    }
+    res.json({ porta: PORTA, ips, enderecos: ips.map(ip => `http://${ip}:${PORTA}`) });
+  } catch (e) { res.json({ porta: PORTA, ips: [], enderecos: [], erro: e.message }); }
+});
 app.get('/api/backup/status', (req, res) => res.json(manut.statusBackup()));
 app.get('/api/backup/listar', (req, res) => res.json(manut.listarBackups()));
 app.post('/api/backup/criar', (req, res) => res.json(manut.criarBackup('manual')));
