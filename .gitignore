@@ -31,3 +31,7 @@ logs/
 
 # Instalador gerado (Setup.exe) - artefato de build, nao versionar
 dist-instalador/
+
+# pacote autossuficiente (Node embutido + deps) - gerado, nao versionar
+_bundle/
+runtime/

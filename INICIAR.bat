@@ -15,21 +15,22 @@ if exist "servidor.txt" echo  Modo TERMINAL - conectando no servidor principal..
 if exist "servidor.txt" goto :abrir
 
 REM ===== MODO PRINCIPAL (padrao): sobe o servidor local =====
-REM 1) Node instalado? (numa maquina recem-formatada pode faltar) - avisa e nao trava
-where node >nul 2>&1
-if errorlevel 1 goto :semnode
+REM 1) Node: usa o EMBUTIDO (runtime\node.exe, vem dentro do instalador) se existir;
+REM    senao cai no Node do sistema. Assim NAO precisa instalar Node na maquina.
+set "NODEEXE=node"
+if exist "%~dp0runtime\node.exe" set "NODEEXE=%~dp0runtime\node.exe"
+if not exist "%~dp0runtime\node.exe" where node >nul 2>&1
+if not exist "%~dp0runtime\node.exe" if errorlevel 1 goto :semnode
 
 REM 2) limpa instancias velhas (node zumbi que trava o "Abrindo...") e garante a pasta de log
 taskkill /F /IM node.exe >nul 2>&1
 if not exist logs mkdir logs >nul 2>&1
-if not exist node_modules echo  Instalando dependencias pela 1a vez... (pode demorar)
-if not exist node_modules call npm install --omit=dev
 
 REM 3) sobe o servidor em 2o plano GRAVANDO O LOG (Start-Process do PowerShell herda o
 REM    cwd deste .bat; e' o jeito confiavel - cmd /c com caminho que tem espaco falha).
 REM    Se o servidor cair, o motivo fica em logs\servidor-erros.txt.
 echo  Iniciando o servidor...
-powershell -NoProfile -Command "Start-Process node -ArgumentList 'server.js' -RedirectStandardOutput 'logs\servidor.txt' -RedirectStandardError 'logs\servidor-erros.txt' -WindowStyle Hidden"
+powershell -NoProfile -Command "Start-Process '%NODEEXE%' -ArgumentList 'server.js' -RedirectStandardOutput 'logs\servidor.txt' -RedirectStandardError 'logs\servidor-erros.txt' -WindowStyle Hidden"
 
 REM 4) espera a porta 3001 responder (ate ~30s) - UMA chamada PowerShell, sem loop de cmd
 echo  Abrindo o Acai do Centro...
