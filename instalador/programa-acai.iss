@@ -64,7 +64,7 @@ Name: "{autodesktop}\{#AppNome}";        Filename: "{app}\iniciar.bat"; WorkingD
 
 [Run]
 ; instala as dependencias (Node ja verificado em PrepareToInstall; .puppeteerrc.cjs pula o Chrome)
-Filename: "{cmd}"; Parameters: "/c npm install"; WorkingDir: "{app}"; \
+Filename: "{cmd}"; Parameters: "/c npm install --omit=dev"; WorkingDir: "{app}"; \
   StatusMsg: "Instalando componentes (pode demorar alguns minutos)..."; Flags: runhidden
 ; abre o sistema ao final
 Filename: "{app}\iniciar.bat"; Description: "Abrir o {#AppNome} agora"; \
