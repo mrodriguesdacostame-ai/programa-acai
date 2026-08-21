@@ -40,25 +40,43 @@ module.exports = function createSync({ db, dadosDir, logErro }) {
   //  tipoPk: 'text' (chave natural global, ex. produtos.codigo) | 'int' (autoincrement local)
   //  estrategia: 'lww' (última mudança vence) · 'append' (imutável) · 'estoque' (delta)
   //  fks: colunas que apontam pra outra tabela (traduzidas por guid). ref 'produtos' é texto (global).
+  //  estrategia: 'lww' (cadastro; ult.-mudanca-vence, com LOG de conflito p/ nada sumir calado)
+  //            · 'append' (imutavel puro; insere 1x e nunca muda)
+  //            · 'imutavel' (dinheiro/venda; insere 1x + so aplica transicoes MONOTONICAS de
+  //               cancelamento/estorno/pagamento — nunca sobrescreve, nunca apaga operacao)
+  //            · 'estoque' (movimento; aplica DELTA 1x)
+  //  mono: { campoGatilho: [colunas a copiar] } — copia SO quando o par tem o gatilho "ligado"
+  //        (nao-nulo/1) e o local ainda "desligado". Ex.: cancelar venda, estornar, marcar pago.
   const TABELAS = [
-    { tbl: 'produtos',              pk: 'codigo', tipoPk: 'text', estrategia: 'lww', ts: 'atualizado_em', ignorar: ['estoque'] },
-    { tbl: 'clientes',              pk: 'id', tipoPk: 'int', estrategia: 'lww', ts: 'atualizado_em' },
-    { tbl: 'funcionarios',          pk: 'id', tipoPk: 'int', estrategia: 'lww', ts: 'criado_em' },
+    { tbl: 'produtos',              pk: 'codigo', tipoPk: 'text', estrategia: 'lww', ts: 'atualizado_em', ignorar: ['estoque'], conflito: true },
+    { tbl: 'clientes',              pk: 'id', tipoPk: 'int', estrategia: 'lww', ts: 'atualizado_em', conflito: true },
+    { tbl: 'funcionarios',          pk: 'id', tipoPk: 'int', estrategia: 'lww', ts: 'criado_em', conflito: true },
     { tbl: 'financeiro_contas',     pk: 'id', tipoPk: 'int', estrategia: 'lww', ts: 'atualizado_em' },
     { tbl: 'financeiro_categorias', pk: 'id', tipoPk: 'int', estrategia: 'lww', ts: 'criado_em' },
-    { tbl: 'vendas',                pk: 'id', tipoPk: 'int', estrategia: 'lww', ts: 'criado_em', fks: [{ col: 'cliente_id', ref: 'clientes' }] },
+    { tbl: 'vendas',                pk: 'id', tipoPk: 'int', estrategia: 'imutavel', ts: 'criado_em', fks: [{ col: 'cliente_id', ref: 'clientes' }],
+      mono: { cancelada_em: ['status', 'cancelada_em', 'motivo_cancelamento'] } },
     { tbl: 'vendas_itens',          pk: 'id', tipoPk: 'int', estrategia: 'append', ts: 'criado_em', fks: [{ col: 'venda_id', ref: 'vendas' }] },
     { tbl: 'pagamentos',            pk: 'id', tipoPk: 'int', estrategia: 'append', ts: 'criado_em', fks: [{ col: 'venda_id', ref: 'vendas' }, { col: 'cliente_id', ref: 'clientes' }] },
     { tbl: 'clientes_extrato',      pk: 'id', tipoPk: 'int', estrategia: 'append', ts: 'criado_em', fks: [{ col: 'cliente_id', ref: 'clientes' }] },
     { tbl: 'fidelidade_movimentos', pk: 'id', tipoPk: 'int', estrategia: 'append', ts: 'criado_em', fks: [{ col: 'cliente_id', ref: 'clientes' }] },
-    { tbl: 'anotacoes',             pk: 'id', tipoPk: 'int', estrategia: 'lww', ts: 'criado_em', fks: [{ col: 'venda_id', ref: 'vendas' }] },
+    { tbl: 'anotacoes',             pk: 'id', tipoPk: 'int', estrategia: 'imutavel', ts: 'criado_em', fks: [{ col: 'venda_id', ref: 'vendas' }],
+      mono: { pago: ['pago', 'pago_em', 'pago_formas', 'historico'] } },
     { tbl: 'estoque_movimentos',    pk: 'id', tipoPk: 'int', estrategia: 'estoque', ts: 'criado_em' },
-    { tbl: 'financeiro_movimentos', pk: 'id', tipoPk: 'int', estrategia: 'lww', ts: 'criado_em', fks: [{ col: 'conta_id', ref: 'financeiro_contas' }, { col: 'categoria_id', ref: 'financeiro_categorias' }] },
-    { tbl: 'compras_acai',          pk: 'id', tipoPk: 'int', estrategia: 'lww', ts: 'criado_em' },
-    { tbl: 'movimentacoes_nc',      pk: 'id', tipoPk: 'int', estrategia: 'append', ts: 'criado_em' },
-    { tbl: 'operacao_fechamentos',  pk: 'id', tipoPk: 'int', estrategia: 'lww', ts: 'criado_em' },
+    { tbl: 'financeiro_movimentos', pk: 'id', tipoPk: 'int', estrategia: 'imutavel', ts: 'criado_em', fks: [{ col: 'conta_id', ref: 'financeiro_contas' }, { col: 'categoria_id', ref: 'financeiro_categorias' }],
+      mono: { estornado_em: ['situacao', 'estornado_em', 'estorno_motivo'] } },
+    { tbl: 'compras_acai',          pk: 'id', tipoPk: 'int', estrategia: 'imutavel', ts: 'criado_em',
+      mono: { pago: ['pago', 'data_pagamento', 'forma_pagamento', 'financeiro_movimento_id'] } },
+    { tbl: 'movimentacoes_nc',      pk: 'id', tipoPk: 'int', estrategia: 'imutavel', ts: 'criado_em',
+      mono: { estornado: ['estornado'] } },
+    { tbl: 'operacao_fechamentos',  pk: 'id', tipoPk: 'int', estrategia: 'append', ts: 'criado_em' },
     { tbl: 'balancos',              pk: 'id', tipoPk: 'int', estrategia: 'append', ts: 'criado_em' },
     { tbl: 'litros_producao',       pk: 'id', tipoPk: 'int', estrategia: 'lww', ts: 'criado_em' },
+    // Produção (registros/custo; o EFEITO no estoque ja vai por estoque_movimentos)
+    { tbl: 'producoes',                pk: 'id', tipoPk: 'int', estrategia: 'append', ts: 'criado_em' },
+    { tbl: 'producoes_itens_entrada',  pk: 'id', tipoPk: 'int', estrategia: 'append', fks: [{ col: 'producao_id', ref: 'producoes' }] },
+    { tbl: 'producoes_itens_saida',    pk: 'id', tipoPk: 'int', estrategia: 'append', fks: [{ col: 'producao_id', ref: 'producoes' }] },
+    { tbl: 'producao_ordens',          pk: 'id', tipoPk: 'int', estrategia: 'append', ts: 'criado_em' },
+    { tbl: 'producao_ordens_saidas',   pk: 'id', tipoPk: 'int', estrategia: 'append', fks: [{ col: 'ordem_id', ref: 'producao_ordens' }] },
   ];
   const CFG = Object.fromEntries(TABELAS.map(t => [t.tbl, t]));
   const INT = TABELAS.filter(t => t.tipoPk === 'int');
@@ -76,6 +94,10 @@ module.exports = function createSync({ db, dadosDir, logErro }) {
       CREATE INDEX IF NOT EXISTS idx_guid_local ON sync_guid(tbl, local_id);
       CREATE TABLE IF NOT EXISTS sync_peers (
         station TEXT PRIMARY KEY, nome TEXT, ultimo_contador INTEGER DEFAULT 0, visto_em TEXT
+      );
+      CREATE TABLE IF NOT EXISTS sync_conflitos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, tbl TEXT, guid TEXT, quando TEXT,
+        vencedor TEXT, versao_local TEXT, versao_peer TEXT, revisado INTEGER DEFAULT 0
       );
     `);
     if (!getMeta('sync_aplicando')) setMeta('sync_aplicando', '0');
@@ -278,9 +300,17 @@ module.exports = function createSync({ db, dadosDir, logErro }) {
 
     // PRODUTO (chave natural): saldo NÃO vem do par (só o cadastro); estoque só por delta
     if (t.tipoPk === 'text') {
-      const ex = db.prepare(`SELECT ${t.ts} ts FROM ${t.tbl} WHERE ${t.pk}=?`).get(row[t.pk]);
-      if (ex) { if ((op.ts || '') < (ex.ts || '')) return false; upsertExcluindo(t, row, t.ignorar || []); }
-      else upsertExcluindo(t, row, []);                     // produto novo: entra COM estoque (saldo de abertura)
+      const local = db.prepare(`SELECT * FROM ${t.tbl} WHERE ${t.pk}=?`).get(row[t.pk]);
+      if (local) {
+        const ign = (t.ignorar || []).concat([t.ts]);
+        const peerTs = (row[t.ts] != null ? row[t.ts] : op.ts) || '';   // compara mesma régua: atualizado_em × atualizado_em
+        if (peerTs < (local[t.ts] || '')) {                 // local é mais novo → mantém
+          if (t.conflito && rowsDiferentes(local, row, ign)) logConflito(t.tbl, op.guid, 'local', local, row);
+          return true;
+        }
+        if (t.conflito && rowsDiferentes(local, row, ign)) logConflito(t.tbl, op.guid, 'peer', local, row);
+        upsertExcluindo(t, row, t.ignorar || []);
+      } else upsertExcluindo(t, row, []);                    // produto novo: entra COM estoque (saldo de abertura)
       return true;
     }
 
@@ -288,9 +318,17 @@ module.exports = function createSync({ db, dadosDir, logErro }) {
     traduzirFks(t, row);
     const lid = localDeGuid(op.tbl, op.guid);
     if (lid != null) {                                       // já existe local
-      if (t.estrategia === 'append' || t.estrategia === 'estoque') return false;   // imutável: nada a fazer
-      const ex = db.prepare(`SELECT ${t.ts} ts FROM ${t.tbl} WHERE ${t.pk}=?`).get(lid);
-      if (ex && (op.ts || '') < (ex.ts || '')) return false; // local é mais novo
+      if (t.estrategia === 'append' || t.estrategia === 'estoque') return false;   // imutável puro / delta: nada muda
+      if (t.estrategia === 'imutavel') { aplicarMono(t, lid, row); return true; }  // só transições: cancelou/estornou/pagou
+      // 'lww' (cadastro): última-mudança-vence + LOG de conflito (nada some calado)
+      const local = db.prepare(`SELECT * FROM ${op.tbl} WHERE ${t.pk}=?`).get(lid);
+      const localTs = (local && local[t.ts]) || '';
+      const peerTs = (row[t.ts] != null ? row[t.ts] : op.ts) || '';   // mesma régua: coluna de data × coluna de data
+      if (peerTs < localTs) {                                // local é mais novo → mantém
+        if (t.conflito && local && rowsDiferentes(local, row, [t.ts])) logConflito(op.tbl, op.guid, 'local', local, row);
+        return true;
+      }
+      if (t.conflito && local && rowsDiferentes(local, row, [t.ts])) logConflito(op.tbl, op.guid, 'peer', local, row);
       const cols = Object.keys(row);
       const set = cols.map(c => `"${c}"=?`).join(',');
       try { db.prepare(`UPDATE ${op.tbl} SET ${set} WHERE ${t.pk}=?`).run(...cols.map(c => row[c]), lid); } catch (e) { erro('upd-' + op.tbl, e); }
@@ -331,6 +369,33 @@ module.exports = function createSync({ db, dadosDir, logErro }) {
     try { db.prepare('UPDATE produtos SET estoque=? WHERE codigo=?').run(Math.round(novo * 100) / 100, cod); } catch (e) { erro('delta', e); }
   }
 
+  // IMUTÁVEL: nunca sobrescreve a operação; só copia transições MONOTÔNICAS (cancelou/
+  // estornou/pagou) quando o par tem o gatilho "ligado" e o local ainda "desligado".
+  const ligado = (v) => v != null && v !== '' && v !== 0 && v !== '0';
+  function aplicarMono(t, lid, peerRow) {
+    const mono = t.mono || {};
+    const local = db.prepare(`SELECT * FROM ${t.tbl} WHERE ${t.pk}=?`).get(lid);
+    if (!local) return;
+    const sets = [], args = [];
+    for (const gat of Object.keys(mono)) {
+      if (ligado(peerRow[gat]) && !ligado(local[gat])) {     // transição só num sentido (nunca "des-cancela")
+        for (const c of mono[gat]) { sets.push(`"${c}"=?`); args.push(peerRow[c]); }
+      }
+    }
+    if (sets.length) { args.push(lid); try { db.prepare(`UPDATE ${t.tbl} SET ${sets.join(',')} WHERE ${t.pk}=?`).run(...args); } catch (e) { erro('mono-' + t.tbl, e); } }
+  }
+
+  // Log de conflito de cadastro (LWW) — guarda a versão que PERDEU pra nada sumir calado.
+  function rowsDiferentes(a, b, ignorar) {
+    const skip = new Set(ignorar || []);
+    for (const k of Object.keys(b)) { if (skip.has(k)) continue; if (String(a[k] == null ? '' : a[k]) !== String(b[k] == null ? '' : b[k])) return true; }
+    return false;
+  }
+  function logConflito(tbl, guid, vencedor, localRow, peerRow) {
+    try { db.prepare('INSERT INTO sync_conflitos(tbl,guid,quando,vencedor,versao_local,versao_peer) VALUES(?,?,?,?,?,?)')
+      .run(tbl, guid, new Date().toISOString(), vencedor, JSON.stringify(localRow || null), JSON.stringify(peerRow || null)); } catch (e) { erro('conflito', e); }
+  }
+
   // Poda o diário já exportado (o arquivo no Drive é o registro durável) — evita crescer sem fim
   function podarOplog() {
     const ate = +(getMeta('last_export_seq') || 0) - 2000;   // guarda uma folga
@@ -353,16 +418,35 @@ module.exports = function createSync({ db, dadosDir, logErro }) {
     return status();
   }
 
+  // Quantos pacotes das OUTRAS máquinas ainda não li (pendentes para receber)
+  function pendentesReceber() {
+    const raiz = pastaSync(); if (!raiz) return 0;
+    const outbox = path.join(raiz, 'outbox'); const meu = getMeta('station_id');
+    let total = 0;
+    try {
+      for (const d of fs.readdirSync(outbox, { withFileTypes: true })) {
+        if (!d.isDirectory() || d.name === meu) continue;
+        const jaLido = +((db.prepare('SELECT ultimo_contador c FROM sync_peers WHERE station=?').get(d.name) || {}).c || 0);
+        for (const f of fs.readdirSync(path.join(outbox, d.name))) { if (/^\d+\.json$/.test(f) && parseInt(f, 10) > jaLido) total++; }
+      }
+    } catch {}
+    return total;
+  }
   function status() {
-    let pendentes = 0, peers = [];
+    let pendentes = 0, peers = [], conflitos = 0;
     try { pendentes = (db.prepare('SELECT COUNT(*) c FROM sync_oplog WHERE seq>?').get(+(getMeta('last_export_seq') || 0)) || {}).c || 0; } catch {}
     try { peers = db.prepare('SELECT station,nome,ultimo_contador,visto_em FROM sync_peers ORDER BY visto_em DESC').all(); } catch {}
+    try { conflitos = (db.prepare('SELECT COUNT(*) c FROM sync_conflitos WHERE revisado=0').get() || {}).c || 0; } catch {}
+    const pasta = pastaSync();
+    let online = false; try { online = !!pasta && fs.existsSync(pasta); } catch {}   // a pasta do Drive está acessível?
     return {
-      ativo: getMeta('ativo') === '1', station_id: getMeta('station_id') || null,
+      ativo: getMeta('ativo') === '1', online: getMeta('ativo') === '1' && online,
+      station_id: getMeta('station_id') || null,
       nome: getMeta('station_nome') || null, numero: +(getMeta('station_numero') || 0) || null,
-      pasta: pastaSync(), pastaConfigurada: getMeta('pasta') || null, driveDetectado: !!detectarGoogleDrive(),
+      pasta, pastaConfigurada: getMeta('pasta') || null, driveDetectado: !!detectarGoogleDrive(),
       primeiraMaquina: getMeta('primeira_maquina') === '1', backfillFeito: getMeta('backfilled') === '1',
-      pendentesEnvio: pendentes, ultimoExport: getMeta('ultimo_export') || null, ultimoImport: getMeta('ultimo_import') || null,
+      pendentesEnvio: pendentes, pendentesReceber: pendentesReceber(), conflitos,
+      ultimoExport: getMeta('ultimo_export') || null, ultimoImport: getMeta('ultimo_import') || null,
       maquinas: peers,
     };
   }

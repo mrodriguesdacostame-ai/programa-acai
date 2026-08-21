@@ -5847,16 +5847,19 @@ async function admCarregarSync() {
   let s; try { s = await (await fetch('/api/sync/status', { cache: 'no-store' })).json(); }
   catch { box.innerHTML = '<div class="adm-aviso">Falha ao carregar o estado da sincronização.</div>'; return; }
   sySt = s;
-  const badge = s.ativo ? '<span class="atz-badge on">🟢 LIGADO</span>' : '<span class="atz-badge off">🔴 desligado</span>';
+  const badge = s.ativo ? (s.online ? '<span class="atz-badge on">🟢 Online</span>' : '<span class="atz-badge off">🟠 Ligado, sem a pasta (offline)</span>') : '<span class="atz-badge off">🔴 Desligado</span>';
   const drive = s.driveDetectado ? '<span class="atz-badge on">✅ Google Drive detectado</span>' : '<span class="atz-badge off">⚠️ Google Drive não encontrado</span>';
+  const conf = (s.conflitos || 0) > 0 ? `<span class="atz-badge off">⚠️ ${s.conflitos} conflito(s) p/ revisar</span>` : '<span class="atz-badge on">✅ nenhum</span>';
   box.innerHTML = `
-    <div><span>Estado</span><b>${badge}</b></div>
+    <div><span>Sincronização</span><b>${badge}</b></div>
     <div><span>Esta máquina</span><b>${crmEsc(s.nome || '—')}${s.numero ? ' (nº ' + s.numero + ')' : ''}</b></div>
     <div><span>Google Drive</span><b>${drive}</b></div>
-    <div><span>Pasta</span><b style="font-size:.82em">${crmEsc(s.pasta || '— (configure/instale o Google Drive)')}</b></div>
-    <div><span>A enviar</span><b>${s.pendentesEnvio || 0} mudança(s)</b></div>
+    <div><span>Pasta</span><b style="font-size:.82em">${crmEsc(s.pasta || '— (instale/aguarde o Google Drive)')}</b></div>
+    <div><span>Pendentes para enviar</span><b>${s.pendentesEnvio || 0}</b></div>
+    <div><span>Pendentes para receber</span><b>${s.pendentesReceber || 0}</b></div>
     <div><span>Último envio</span><b>${s.ultimoExport ? fmtDataHora(s.ultimoExport) : '—'}</b></div>
-    <div><span>Última leitura</span><b>${s.ultimoImport ? fmtDataHora(s.ultimoImport) : '—'}</b></div>`;
+    <div><span>Última leitura</span><b>${s.ultimoImport ? fmtDataHora(s.ultimoImport) : '—'}</b></div>
+    <div><span>Conflitos</span><b>${conf}</b></div>`;
   // preenche o formulário só na 1ª carga (não atropela o que o usuário está digitando)
   if (!$('sy-nome').value) $('sy-nome').value = s.nome || '';
   if (s.numero && (+$('sy-numero').value === 1)) $('sy-numero').value = s.numero;

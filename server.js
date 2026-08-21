@@ -7893,7 +7893,12 @@ app.post('/api/whatsapp/enviar', async (req, res) => {
 const sync = require('./backend/sync')({ db, dadosDir: DADOS_DIR, logErro: manut.logErro });
 app.get('/api/sync/status', (req, res) => res.json(sync.status()));
 app.post('/api/sync/configurar', (req, res) => res.json(sync.configurar(req.body || {})));
-app.post('/api/sync/ligar', (req, res) => res.json(sync.ligar(!!(req.body && req.body.ligar))));
+app.post('/api/sync/ligar', (req, res) => {
+  const ligar = !!(req.body && req.body.ligar);
+  // Regra de segurança: BACKUP antes de ligar a sincronização (1ª vez faz backfill/troca dados).
+  if (ligar && !sync.status().ativo) { try { manut.criarBackup('antes de ligar sincronização'); } catch (e) { console.log('(backup pré-sync falhou:', e.message, ')'); } }
+  res.json(sync.ligar(ligar));
+});
 app.post('/api/sync/agora', (req, res) => {   // força um ciclo agora (botão "Sincronizar agora")
   const e = sync.exportarAgora(); const i = sync.importarAgora();
   res.json({ ok: true, exportou: e, importou: i, status: sync.status() });
