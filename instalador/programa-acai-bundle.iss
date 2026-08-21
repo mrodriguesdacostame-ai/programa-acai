@@ -40,6 +40,7 @@ Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortugue
 
 [Tasks]
 Name: "desktopicon"; Description: "Criar atalho na Área de Trabalho"; GroupDescription: "Atalhos:"
+Name: "startupicon"; Description: "Abrir automaticamente ao ligar o computador (recomendado na loja — fica pronto na tela)"; GroupDescription: "Início automático:"
 
 [Files]
 ; TUDO pronto: codigo + node.exe embutido + node_modules. Sem npm, sem internet, sem Node do sistema.
@@ -53,6 +54,7 @@ Source: "..\assets\icone-acai.ico"; DestDir: "{app}"; Flags: ignoreversion
 Name: "{group}\{#AppNome}";              Filename: "{app}\iniciar.bat"; WorkingDir: "{app}"; IconFilename: "{app}\icone-acai.ico"; Comment: "Abrir o {#AppNome}"
 Name: "{group}\Desinstalar {#AppNome}";  Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppNome}";        Filename: "{app}\iniciar.bat"; WorkingDir: "{app}"; IconFilename: "{app}\icone-acai.ico"; Tasks: desktopicon; Comment: "Abrir o {#AppNome}"
+Name: "{userstartup}\{#AppNome}";        Filename: "{app}\iniciar.bat"; WorkingDir: "{app}"; IconFilename: "{app}\icone-acai.ico"; Tasks: startupicon; Comment: "Abrir o {#AppNome} ao ligar o computador"
 
 [Run]
 ; abre o sistema ao final — nada de npm/node pra instalar, ja vem tudo pronto

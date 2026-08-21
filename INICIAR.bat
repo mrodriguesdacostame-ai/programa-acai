@@ -57,9 +57,12 @@ if not defined NAV for /f "delims=" %%p in ('where chrome 2^>nul') do if not def
 if not defined NAV for /f "delims=" %%p in ('where msedge 2^>nul') do if not defined NAV set "NAV=%%p"
 
 if not defined NAV goto :semnav
-REM janela PROPRIA e independente (perfil dedicado), maximizada (com X e barra de tarefas)
+REM janela PROPRIA e independente (perfil dedicado), maximizada (com X e barra de tarefas).
+REM Flags de ARRANQUE RAPIDO: pula 1a-execucao, checagem de navegador padrao, updates e
+REM redes em 2o plano (safebrowsing/sync/telemetria) que atrasam o cold start.
 set "PERFIL=%LocalAppData%\AcaiDoCentro\navegador"
-start "" "%NAV%" --user-data-dir="%PERFIL%" --app=%URL% --start-maximized --window-position=0,0
+set "FAST=--no-first-run --no-default-browser-check --disable-background-networking --disable-component-update --disable-sync --disable-extensions --disable-features=Translate,MediaRouter --disable-default-apps --no-service-autorun --metrics-recording-only"
+start "" "%NAV%" --user-data-dir="%PERFIL%" --app=%URL% --start-maximized --window-position=0,0 %FAST%
 goto :fim
 
 :semnav
