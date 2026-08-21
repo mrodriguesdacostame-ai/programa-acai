@@ -5875,6 +5875,42 @@ async function admCarregarSync() {
   tb.innerHTML = (s.maquinas && s.maquinas.length)
     ? s.maquinas.map(m => `<tr><td>${crmEsc(m.nome || m.station)}</td><td>${m.visto_em ? fmtDataHora(m.visto_em) : '—'}</td></tr>`).join('')
     : '<tr><td colspan="2" class="adm-vazio">Nenhuma ainda.</td></tr>';
+  // dica de onboarding: marcou "nova" (não-principal) numa máquina que JÁ tem dados → alerta de mistura
+  const nota = $('sy-toggle-nota');
+  if (nota) {
+    if (!s.primeiraMaquina && s.temDados && !s.ativo)
+      nota.innerHTML = '⚠️ <b>Atenção:</b> esta máquina já tem dados e NÃO está marcada como principal. Se ela for uma máquina NOVA que vai só receber, o certo é começar com o banco vazio (senão os dois se misturam). Se ela é a que tem os dados bons, marque <b>"já tem os dados"</b>.';
+    else nota.textContent = 'Enquanto ligado, troca com as outras máquinas a cada ~20 segundos.';
+  }
+  admCarregarConflitos();
+}
+async function admCarregarConflitos() {
+  const card = $('sy-conflitos-card'), box = $('sy-conflitos'); if (!card || !box) return;
+  let lista = []; try { lista = await (await fetch('/api/sync/conflitos', { cache: 'no-store' })).json(); } catch {}
+  if (!Array.isArray(lista) || !lista.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const campo = (o, k) => (o && o[k] != null ? String(o[k]) : '');
+  box.innerHTML = lista.map(c => {
+    const l = c.local || {}, p = c.peer || {};
+    const chaves = [...new Set([...Object.keys(l), ...Object.keys(p)])].filter(k => !['id', 'criado_em', 'atualizado_em'].includes(k) && campo(l, k) !== campo(p, k));
+    const dif = chaves.map(k => `<tr><td>${crmEsc(k)}</td><td>${crmEsc(campo(l, k))}</td><td>${crmEsc(campo(p, k))}</td></tr>`).join('') || '<tr><td colspan="3" class="adm-vazio">(diferença sutil)</td></tr>';
+    return `<div class="adm-card" style="margin:8px 0">
+      <div class="adm-card-tit" style="font-size:.95em">${crmEsc(c.tbl)} · ${fmtDataHora(c.quando)} <small>(ficou com: ${c.vencedor === 'peer' ? 'a outra máquina' : 'esta máquina'})</small></div>
+      <div class="adm-tabela-wrap"><table class="adm-tabela"><thead><tr><th>Campo</th><th>Esta máquina</th><th>Outra máquina</th></tr></thead><tbody>${dif}</tbody></table></div>
+      <div style="margin-top:8px;display:flex;gap:8px">
+        <button class="adm-btn destaque" data-conf="${c.id}" data-esc="manter">✔ Manter a versão atual</button>
+        <button class="adm-btn" data-conf="${c.id}" data-esc="trocar">↔ Usar a outra versão</button>
+      </div>
+    </div>`;
+  }).join('');
+  box.querySelectorAll('[data-conf]').forEach(b => b.addEventListener('click', () => admResolverConflito(b.dataset.conf, b.dataset.esc)));
+}
+async function admResolverConflito(id, escolha) {
+  try {
+    await fetch('/api/sync/conflitos/resolver', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: +id, escolha }) });
+    toast(escolha === 'trocar' ? 'Trocado pela outra versão.' : 'Mantida a versão atual.', 'sucesso');
+    admCarregarSync();
+  } catch { toast('Falha ao resolver.', 'erro'); }
 }
 async function admSalvarSync() {
   const body = {

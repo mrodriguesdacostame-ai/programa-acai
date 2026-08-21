@@ -7903,6 +7903,8 @@ app.post('/api/sync/agora', (req, res) => {   // força um ciclo agora (botão "
   const e = sync.exportarAgora(); const i = sync.importarAgora();
   res.json({ ok: true, exportou: e, importou: i, status: sync.status() });
 });
+app.get('/api/sync/conflitos', (req, res) => res.json(sync.listarConflitos()));
+app.post('/api/sync/conflitos/resolver', (req, res) => res.json(sync.resolverConflito((req.body || {}).id, (req.body || {}).escolha)));
 
 const PORTA = process.env.PORT ? +process.env.PORT : 3001;
 const servidor = app.listen(PORTA, () => {

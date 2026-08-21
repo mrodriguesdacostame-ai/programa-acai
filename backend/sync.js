@@ -102,6 +102,7 @@ module.exports = function createSync({ db, dadosDir, logErro }) {
     `);
     if (!getMeta('sync_aplicando')) setMeta('sync_aplicando', '0');
   }
+  const existe = (tbl) => { try { return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(tbl); } catch { return false; } };
   const getMeta = (k) => { try { const r = db.prepare('SELECT valor FROM sync_meta WHERE chave=?').get(k); return r ? r.valor : null; } catch { return null; } };
   const setMeta = (k, v) => { try { db.prepare('INSERT INTO sync_meta(chave,valor) VALUES(?,?) ON CONFLICT(chave) DO UPDATE SET valor=excluded.valor').run(k, String(v)); } catch (e) { erro('meta', e); } };
   const aplicando = (v) => setMeta('sync_aplicando', v ? '1' : '0');
@@ -112,6 +113,7 @@ module.exports = function createSync({ db, dadosDir, logErro }) {
     const st = "(SELECT valor FROM sync_meta WHERE chave='station_id')";
     const cap = `(SELECT valor FROM sync_meta WHERE chave='ativo')='1' AND (SELECT valor FROM sync_meta WHERE chave='sync_aplicando')<>'1'`;
     for (const t of TABELAS) {
+      if (!existe(t.tbl)) continue;                          // tabela não existe nesta versão → ignora (sem erro)
       const b = ('_sync_' + t.tbl).slice(0, 55);
       const oplog = (ref) => `INSERT INTO sync_oplog(tbl,pk,op,ts) VALUES('${t.tbl}', ${ref}.${t.pk}, 'U', ${agora});`;
       const guid = (ref) => t.tipoPk === 'int'
@@ -143,6 +145,7 @@ module.exports = function createSync({ db, dadosDir, logErro }) {
     try {
       db.exec('BEGIN');
       for (const t of INT) {
+        if (!existe(t.tbl)) continue;
         try { db.prepare(`INSERT OR IGNORE INTO sync_guid(tbl,guid,local_id) SELECT '${t.tbl}', ?||':'||${t.pk}, ${t.pk} FROM ${t.tbl}`).run(st); } catch (e) { erro('adotar-' + t.tbl, e); }
       }
       db.exec('COMMIT');
@@ -432,11 +435,46 @@ module.exports = function createSync({ db, dadosDir, logErro }) {
     } catch {}
     return total;
   }
+  // ── Conflitos de cadastro (revisão manual — nada some calado) ──────────────
+  const safeParse = (s) => { try { return JSON.parse(s); } catch { return null; } };
+  function listarConflitos(limite) {
+    try {
+      return db.prepare('SELECT id,tbl,guid,quando,vencedor,versao_local,versao_peer FROM sync_conflitos WHERE revisado=0 ORDER BY id DESC LIMIT ?').all(limite || 50)
+        .map(c => ({ id: c.id, tbl: c.tbl, guid: c.guid, quando: c.quando, vencedor: c.vencedor, local: safeParse(c.versao_local), peer: safeParse(c.versao_peer) }));
+    } catch { return []; }
+  }
+  // escolha: 'manter' (aceita a atual) | 'trocar' (aplica a versão que perdeu e propaga como a mais nova)
+  function resolverConflito(id, escolha) {
+    const c = db.prepare('SELECT * FROM sync_conflitos WHERE id=?').get(+id);
+    if (!c) return { ok: false, erro: 'não encontrado' };
+    if (escolha === 'trocar') {
+      const t = CFG[c.tbl];
+      const perdedora = c.vencedor === 'peer' ? safeParse(c.versao_local) : safeParse(c.versao_peer);
+      if (t && perdedora) {
+        if (t.ts) perdedora[t.ts] = new Date().toISOString();   // vira a mais nova → propaga e vence nas outras
+        try {
+          if (t.tipoPk === 'text') upsertExcluindo(t, perdedora, t.ignorar || []);
+          else {
+            const lid = localDeGuid(c.tbl, c.guid);
+            if (lid != null) {
+              const cols = Object.keys(perdedora).filter(k => k !== t.pk);
+              const set = cols.map(k => `"${k}"=?`).join(',');
+              db.prepare(`UPDATE ${c.tbl} SET ${set} WHERE ${t.pk}=?`).run(...cols.map(k => perdedora[k]), lid);
+            }
+          }
+        } catch (e) { erro('resolver', e); }
+      }
+    }
+    db.prepare('UPDATE sync_conflitos SET revisado=1 WHERE id=?').run(+id);
+    return { ok: true };
+  }
+
   function status() {
-    let pendentes = 0, peers = [], conflitos = 0;
+    let pendentes = 0, peers = [], conflitos = 0, temDados = false;
     try { pendentes = (db.prepare('SELECT COUNT(*) c FROM sync_oplog WHERE seq>?').get(+(getMeta('last_export_seq') || 0)) || {}).c || 0; } catch {}
     try { peers = db.prepare('SELECT station,nome,ultimo_contador,visto_em FROM sync_peers ORDER BY visto_em DESC').all(); } catch {}
     try { conflitos = (db.prepare('SELECT COUNT(*) c FROM sync_conflitos WHERE revisado=0').get() || {}).c || 0; } catch {}
+    try { temDados = ((db.prepare('SELECT COUNT(*) c FROM vendas').get() || {}).c || 0) > 0 || ((db.prepare('SELECT COUNT(*) c FROM produtos').get() || {}).c || 0) > 0; } catch {}
     const pasta = pastaSync();
     let online = false; try { online = !!pasta && fs.existsSync(pasta); } catch {}   // a pasta do Drive está acessível?
     return {
@@ -445,7 +483,7 @@ module.exports = function createSync({ db, dadosDir, logErro }) {
       nome: getMeta('station_nome') || null, numero: +(getMeta('station_numero') || 0) || null,
       pasta, pastaConfigurada: getMeta('pasta') || null, driveDetectado: !!detectarGoogleDrive(),
       primeiraMaquina: getMeta('primeira_maquina') === '1', backfillFeito: getMeta('backfilled') === '1',
-      pendentesEnvio: pendentes, pendentesReceber: pendentesReceber(), conflitos,
+      pendentesEnvio: pendentes, pendentesReceber: pendentesReceber(), conflitos, temDados,
       ultimoExport: getMeta('ultimo_export') || null, ultimoImport: getMeta('ultimo_import') || null,
       maquinas: peers,
     };
@@ -461,5 +499,5 @@ module.exports = function createSync({ db, dadosDir, logErro }) {
   instalarGatilhos();
   log('pronto (' + (getMeta('station_nome') || 's/ nome') + ', ' + (getMeta('ativo') === '1' ? 'LIGADO' : 'desligado') + ')');
 
-  return { status, configurar, ligar, backfill, exportarAgora, importarAgora, iniciarAgendador, pastaSync };
+  return { status, configurar, ligar, backfill, exportarAgora, importarAgora, iniciarAgendador, pastaSync, listarConflitos, resolverConflito };
 };
