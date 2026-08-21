@@ -15,6 +15,10 @@ if exist "servidor.txt" echo  Modo TERMINAL - conectando no servidor principal..
 if exist "servidor.txt" goto :abrir
 
 REM ===== MODO PRINCIPAL (padrao): sobe o servidor local =====
+REM 0) Se o servidor JA esta no ar, NAO reinicia  abre direto (bem mais rapido nas reaberturas)
+powershell -NoProfile -Command "try{$c=New-Object Net.Sockets.TcpClient;$c.Connect('localhost',3001);$c.Close();exit 0}catch{exit 1}" >nul 2>&1
+if not errorlevel 1 goto :abrir
+
 REM 1) Node: usa o EMBUTIDO (runtime\node.exe, vem dentro do instalador) se existir;
 REM    senao cai no Node do sistema. Assim NAO precisa instalar Node na maquina.
 set "NODEEXE=node"
