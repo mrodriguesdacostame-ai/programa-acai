@@ -1743,16 +1743,16 @@ db.exec(`CREATE TABLE IF NOT EXISTS litros_producao (id INTEGER PRIMARY KEY AUTO
 try { db.exec('ALTER TABLE litros_producao ADD COLUMN produto_codigo TEXT'); } catch {} // liga a produção ao PRODUTO (não só ao valor) — o F10 usa o produto exato
 try { db.exec('ALTER TABLE litros_producao ADD COLUMN gelado INTEGER DEFAULT 0'); } catch {} // açaí que sobrou GELADO — DESCONSIDERADO da contagem (só controle)
 function litrosResumo(rows) {
-  // Agrupa por PRODUTO quando houver código; senão pelo valor (retrocompat com lançamentos antigos).
-  // Assim dois produtos de mesmo preço NÃO se misturam, e o F10 preenche o produto certo.
-  // O açaí GELADO (sobra) NÃO entra na contagem nem nos grupos — vai num total à parte.
-  const grupos = {}; let total = 0, gelado = 0;
+  // Agrupa por PRODUTO quando houver código; senão pelo valor.
+  // O açaí GELADO é uma PARTE do produzido: sai da conta e sobra o LÍQUIDO pra processar
+  // (ex.: produziu 10 L, 2 viraram gelado → 8 L a processar). Desconto proporcional nos grupos.
+  const grupos = {}; let bruto = 0, gelado = 0;
   for (const r of rows) {
     const l = r2(+r.litros || 0);
-    if (r.gelado) { gelado = r2(gelado + l); continue; }   // sobra gelada: desconsiderada da contagem
+    if (r.gelado) { gelado = r2(gelado + l); continue; }
     const v = r2(+r.valor_unit || 0), cod = r.produto_codigo || '';
     const key = cod ? ('c:' + cod) : ('v:' + v);
-    total += l;
+    bruto += l;
     if (!grupos[key]) {
       let nome = '';
       if (cod) { try { const p = db.prepare('SELECT nome FROM produtos WHERE codigo=?').get(cod); nome = p ? p.nome : ''; } catch {} }
@@ -1760,7 +1760,9 @@ function litrosResumo(rows) {
     }
     grupos[key].litros = r2(grupos[key].litros + l); grupos[key].n++;
   }
-  return { totalLitros: r2(total), geladoLitros: gelado, porValor: Object.values(grupos).sort((a, b) => a.valor - b.valor), n: rows.length };
+  const net = Math.max(0, r2(bruto - gelado));   // líquido = produzido − gelado
+  if (bruto > 0 && net < bruto) for (const key in grupos) grupos[key].litros = r2(grupos[key].litros * net / bruto);
+  return { totalLitros: r2(net), totalBruto: r2(bruto), geladoLitros: gelado, porValor: Object.values(grupos).filter(g => g.litros > 0).sort((a, b) => a.valor - b.valor), n: rows.length };
 }
 app.post('/api/litros', (req, res) => {
   const d = req.body || {}, litros = r2(+d.litros || 0), valor = r2(+d.valor || +d.valor_unit || 0);
@@ -1813,10 +1815,50 @@ app.post('/api/litros/valores', (req, res) => {
 app.post('/api/litros/fechar', (req, res) => {
   const rows = db.prepare('SELECT * FROM litros_producao WHERE consumido=0').all();
   const resumo = litrosResumo(rows);
-  // fecha só a PRODUÇÃO (vira rendimento). O açaí GELADO (sobra) NÃO é consumido: fica pro
-  // próximo dia porque se mistura com a produção seguinte (é só controle, some no 🗑 manual).
-  db.prepare('UPDATE litros_producao SET consumido=1 WHERE consumido=0 AND COALESCE(gelado,0)=0').run();
+  // Ao FINALIZAR de vez (gelado:true), consome TUDO — inclusive o gelado (some da lista).
+  // Sem o flag, fecha só a produção e o gelado fica (comportamento antigo).
+  if (req.body && req.body.gelado) db.prepare('UPDATE litros_producao SET consumido=1 WHERE consumido=0').run();
+  else db.prepare('UPDATE litros_producao SET consumido=1 WHERE consumido=0 AND COALESCE(gelado,0)=0').run();
   res.json({ ok: true, resumo });
+});
+
+// ── LATAS produzidas no dia (matéria-prima) — MESMO esquema dos litros: vai dando entrada
+//    durante o dia (soma), e o "Finalizar" fecha e leva o total pro rendimento. ──
+db.exec(`CREATE TABLE IF NOT EXISTS latas_producao (id INTEGER PRIMARY KEY AUTOINCREMENT, qtd REAL, valor_unit REAL DEFAULT 0, data TEXT, consumido INTEGER DEFAULT 0, criado_em TEXT, criado_por TEXT)`);
+app.post('/api/latas', (req, res) => {
+  const qtd = r2(+((req.body || {}).qtd) || 0), valor = r2(+((req.body || {}).valor) || 0);
+  if (qtd <= 0) return res.status(400).json({ erro: 'Informe as latas (maior que zero).' });
+  const info = db.prepare('INSERT INTO latas_producao (qtd,valor_unit,data,consumido,criado_em,criado_por) VALUES (?,?,?,0,?,?)')
+    .run(qtd, valor, ymdLocal(new Date()), new Date().toISOString(), (req.usuario || {}).usuario || '');
+  res.json(db.prepare('SELECT * FROM latas_producao WHERE id=?').get(info.lastInsertRowid));
+});
+app.get('/api/latas', (req, res) => {
+  const rows = db.prepare('SELECT * FROM latas_producao WHERE consumido=0 ORDER BY id DESC').all();
+  res.json({ lista: rows, total: r2(rows.reduce((s, r) => s + (+r.qtd || 0), 0)) });
+});
+app.delete('/api/latas/:id', (req, res) => { db.prepare('DELETE FROM latas_producao WHERE id=? AND consumido=0').run(+req.params.id); res.json({ ok: true }); });
+app.post('/api/latas/fechar', (req, res) => { db.prepare('UPDATE latas_producao SET consumido=1 WHERE consumido=0').run(); res.json({ ok: true }); });
+// Lucro REAL do dia ao finalizar: faturamento (litros × preço) − custo das latas − consumo interno de HOJE.
+app.get('/api/latas/lucro', (req, res) => {
+  const hoje = ymdLocal(new Date());
+  const fat = db.prepare("SELECT COALESCE(SUM(litros*valor_unit),0) t FROM litros_producao WHERE consumido=0 AND COALESCE(gelado,0)=0").get().t;
+  const custoLatas = db.prepare("SELECT COALESCE(SUM(qtd*valor_unit),0) t FROM latas_producao WHERE consumido=0").get().t;
+  // consumo interno pelo PREÇO DE VENDA (bate com o faturamento, que também é a preço de venda):
+  // é o valor do açaí consumido internamente, igual você vê no cupom.
+  // consumo interno: mostra pelo PREÇO DE VENDA (valor certo do que foi consumido),
+  // mas desconta do lucro só o CUSTO do açaí (m.valor = custo_unit × qtd).
+  const consumoVenda = db.prepare(`SELECT COALESCE(SUM(m.quantidade * COALESCE(p.precoVenda,0)),0) t
+    FROM movimentacoes_nc m LEFT JOIN produtos p ON p.codigo=m.produto_codigo
+    WHERE m.tipo='consumo_interno' AND COALESCE(m.estornado,0)=0 AND COALESCE(m.contab_lucro,0)=0 AND m.data=?`).get(hoje).t;
+  const consumoCusto = db.prepare(`SELECT COALESCE(SUM(m.valor),0) t FROM movimentacoes_nc m
+    WHERE m.tipo='consumo_interno' AND COALESCE(m.estornado,0)=0 AND COALESCE(m.contab_lucro,0)=0 AND m.data=?`).get(hoje).t;
+  res.json({ faturamento: r2(fat), custoLatas: r2(custoLatas), consumoInterno: r2(consumoVenda), consumoInternoCusto: r2(consumoCusto), lucro: r2(fat - custoLatas - consumoCusto) });
+});
+// Ao DAR ENTRADA (finalizar): marca o consumo interno de HOJE como já contabilizado — some do
+// lucro (não conta de novo), mas os registros FICAM na lista/histórico ("Ver consumo").
+app.post('/api/consumo-interno/fechar', (req, res) => {
+  const info = db.prepare("UPDATE movimentacoes_nc SET contab_lucro=1 WHERE tipo='consumo_interno' AND COALESCE(estornado,0)=0 AND COALESCE(contab_lucro,0)=0 AND data=?").run(ymdLocal(new Date()));
+  res.json({ ok: true, fechados: info.changes });
 });
 
 /* ── ANOTAÇÕES ("pagar depois") ──────────────────────────────────────────────
@@ -3320,6 +3362,7 @@ function movncFront(m) {
 // vigente no momento do lançamento, pra o valor não mudar depois se o custo do produto mudar.
 try { db.exec('ALTER TABLE movimentacoes_nc ADD COLUMN custo_unit REAL'); } catch {}
 try { db.exec('ALTER TABLE movimentacoes_nc ADD COLUMN valor REAL'); } catch {}
+try { db.exec('ALTER TABLE movimentacoes_nc ADD COLUMN contab_lucro INTEGER DEFAULT 0'); } catch {}  // consumo interno já contabilizado no lucro (ao finalizar) — some do cálculo, mas fica na lista
 function salvarMovNC(d, usuario, origem) {
   const cod = d.produto_codigo || d.codigo; if (!cod) throw new Error('Produto é obrigatório.');
   const prod = db.prepare("SELECT codigo, nome, COALESCE(unidade,'un') unidade, COALESCE(estoque,0) estoque, COALESCE(precoCompra,0) custo FROM produtos WHERE codigo=?").get(cod);

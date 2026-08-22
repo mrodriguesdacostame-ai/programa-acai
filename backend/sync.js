@@ -71,6 +71,7 @@ module.exports = function createSync({ db, dadosDir, logErro }) {
     { tbl: 'operacao_fechamentos',  pk: 'id', tipoPk: 'int', estrategia: 'append', ts: 'criado_em' },
     { tbl: 'balancos',              pk: 'id', tipoPk: 'int', estrategia: 'append', ts: 'criado_em' },
     { tbl: 'litros_producao',       pk: 'id', tipoPk: 'int', estrategia: 'lww', ts: 'criado_em' },
+    { tbl: 'latas_producao',        pk: 'id', tipoPk: 'int', estrategia: 'lww', ts: 'criado_em' },
     // Produção (registros/custo; o EFEITO no estoque ja vai por estoque_movimentos)
     { tbl: 'producoes',                pk: 'id', tipoPk: 'int', estrategia: 'append', ts: 'criado_em' },
     { tbl: 'producoes_itens_entrada',  pk: 'id', tipoPk: 'int', estrategia: 'append', fks: [{ col: 'producao_id', ref: 'producoes' }] },

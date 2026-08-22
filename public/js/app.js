@@ -1647,17 +1647,36 @@ function normalizarValoresLitros(arr) {
 async function abrirLitros() {
   let valores = []; try { valores = await (await fetch('/api/litros/valores', { cache: 'no-store' })).json(); } catch {}
   valores = normalizarValoresLitros(valores);
-  abrirErpModal(`<h3 class="erp-modal-tit">🫐 Litros produzidos <small class="op-ci-sub">(F8)</small></h3>
+  abrirErpModal(`<h3 class="erp-modal-tit">🫐 Açaí do dia <small class="op-ci-sub">(F8)</small></h3>
     <div class="ltr">
-      <div class="ltr-entrada"><div class="ltr-steps" id="ltr-steps"></div></div>
-      <div class="ltr-dia">
-        <div class="ltr-dia-tit">📋 Produzido hoje <button type="button" class="crm-btn ltr-btn-gelado" id="ltr-gelado">🧊 Sobrou gelado</button><button type="button" class="crm-btn" id="ltr-fechar">🧮 Fechar dia (F10)</button></div>
-        <div id="ltr-lista">${biLoading()}</div>
+      <div class="ltr-entrada">
+        <div class="ltr-steps" id="ltr-steps"></div>
+        <div class="ltr-produzido" id="ltr-produzido">
+          <div class="ltr-dia-tit">📋 Produzido hoje</div>
+          <div id="ltr-lista">${biLoading()}</div>
+        </div>
       </div>
-    </div>`);
+      <div class="ltr-dia">
+        <div class="ltr-gelado-inline">🧊 Sobrou gelado: <input type="text" id="ltr-gelado-qtd" class="ltr-input-mini" inputmode="decimal" autocomplete="off" placeholder="litros ⏎"> <button type="button" class="crm-btn" id="ltr-gelado-add">registrar</button></div>
+        <div class="ltr-fechar-box" id="ltr-fechar-box">
+          <div class="ltr-fechar-tit">🥫 Latas do dia <small>(vá dando entrada durante o dia)</small></div>
+          <div class="ltr-latas-add">
+            <input type="text" id="ltr-lata-qtd" class="ltr-input" inputmode="decimal" autocomplete="off" placeholder="quantas latas? ⏎">
+            <input type="text" id="ltr-lata-valor" class="ltr-input" inputmode="decimal" autocomplete="off" placeholder="preço da lata ⏎" style="display:none">
+            <button type="button" class="crm-btn" id="ltr-lata-add">➕ Adicionar</button>
+          </div>
+          <label class="ltr-latas-varpreco"><input type="checkbox" id="ltr-lata-varpreco"> 💲 preço variado <small>(cada lata com um valor · senão o custo é no processamento)</small></label>
+          <div id="ltr-latas-lista">${biLoading()}</div>
+        </div>
+      </div>
+    </div>
+    <button class="ltr-btn-finalizar" id="ltr-fx-ok">🏁 Finalizar e dar entrada</button>`);
 
+  try { const mb = $('modal-erp-box'); if (mb) mb.classList.add('ltr-modal'); } catch {}   // tela AMPLIADA (padrão operacional)
   // Fluxo guiado em 3 passos: (1) litros → Enter · (2) valor por número · (3) confirma (registrar/editar).
   let passo = 1, litros = 0, valorSel = null, codigoSel = '', nomeSel = '';
+  let diaResumo = null;   // resumo do dia (setado por carregarDia) — usado pelo "Finalizar"
+  let latasTotal = 0, latasValorMedio = 0;   // latas do dia (soma) + valor médio por lata — setado por carregarLatas
   const stepBox = $('ltr-steps');
   const wrap = document.querySelector('.ltr');
 
@@ -1668,36 +1687,40 @@ async function abrirLitros() {
 
   function renderPasso1() {
     stepBox.innerHTML = `
-      <div class="ltr-passo">
-        <div class="ltr-passo-n">Passo 1 de 3</div>
-        <label class="ltr-lbl">Quantos litros você produziu?</label>
-        <input type="text" id="ltr-litros" class="ltr-input ltr-input-grande" inputmode="text" autocomplete="off" placeholder="ex.: 12   ·   ou   3*10 (litros × código)" value="${litros > 0 ? litros : ''}">
-        <div class="ltr-dica">digite os litros e <b>Enter ⏎</b> · ou <b>litros*código</b> (ex.: <b>3*10</b>) pra ir direto pra confirmação</div>
-        <button class="fin-btn-salvar" id="ltr-av1">Continuar ⏎</button>
+      <div class="ltr-reg">
+        <div class="ltr-reg-top"><span class="ltr-reg-tit">🫐 Registro de litros produzidos</span><span class="ltr-reg-foco">● FOCO</span></div>
+        <input type="text" id="ltr-litros" class="ltr-reg-input" inputmode="text" autocomplete="off" placeholder="ex.: 12   ou   3*10" value="${litros > 0 ? litros : ''}">
+        <div class="ltr-reg-hint">Tecle <kbd>Enter</kbd> para adicionar · <kbd>3*cód</kbd> para quantidade</div>
       </div>`;
     const inp = $('ltr-litros'); setTimeout(() => { inp.focus(); inp.select(); }, 60);
-    const avancar = () => {
-      const raw = (inp.value || '').trim();
-      // ATALHO "litros*código": resolve o produto pelo código e vai DIRETO pra confirmação (passo 3)
-      if (raw.includes('*')) {
-        const [q, c] = raw.split('*');
-        const qn = parseFloat(String(q || '').replace(',', '.'));
-        const cod = String(c || '').trim();
-        if (!(qn > 0)) { toast('⚠ Quantidade de litros inválida'); inp.focus(); return; }
-        if (!cod) { toast('⚠ Informe o código do produto (ex.: 3*10)'); inp.focus(); return; }
+    // FÓRMULA (litros*código, encadeada por +): registra direto — "5*15+2*10" = 5 L do cód 15 + 2 L do cód 10
+    async function registrarFormulaLitros(raw) {
+      const itens = [];
+      for (const t of raw.split('+').map(s => s.trim()).filter(Boolean)) {
+        if (!t.includes('*')) { toast('⚠ Use litros*código (ex.: 5*15). Erro em "' + t + '"'); inp.focus(); return; }
+        const [q, c] = t.split('*');
+        const qn = parseFloat(String(q).replace(',', '.')), cod = String(c || '').trim();
+        if (!(qn > 0) || !cod) { toast('⚠ Fórmula inválida em "' + t + '"'); inp.focus(); return; }
         let obj = valores.find(v => v.codigo && String(v.codigo).toLowerCase() === cod.toLowerCase());
         if (!obj) { const p = (typeof buscarPorCodigo === 'function') ? buscarPorCodigo(cod) : null; if (p) obj = { valor: r2loc(+p.precoVenda || +p.preco || 0), codigo: p.codigo, nome: p.nome }; }
         if (!obj || !(obj.valor > 0)) { toast('❌ Código não encontrado ou sem preço: ' + cod); inp.focus(); return; }
-        litros = r2loc(qn); valorSel = obj.valor; codigoSel = obj.codigo || cod; nomeSel = obj.nome || ''; passo = 3; render();
-        return;
+        itens.push({ litros: r2loc(qn), valor: obj.valor, produto_codigo: obj.codigo || cod });
       }
+      let totalL = 0;
+      for (const it of itens) { const r = await (await fetch('/api/litros', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ litros: it.litros, valor: it.valor, produto_codigo: it.produto_codigo, gelado: 0 }) })).json(); if (r && r.erro) { toast('⚠ ' + r.erro); return; } totalL += it.litros; }
+      toast(`🫐 ${biNum(totalL)} L registrados`);
+      litros = 0; passo = 1; render(); carregarDia();
+    }
+    const avancar = () => {
+      const raw = (inp.value || '').trim();
+      // tem código (com * e/ou +) → registra DIRETO pela fórmula (igual ao gelado)
+      if (raw.includes('*')) { registrarFormulaLitros(raw); return; }
       // só a quantidade → fluxo normal (escolhe o valor no passo 2)
       const v = +String(raw).replace(',', '.') || 0;
       if (!(v > 0)) { toast('⚠ Informe os litros'); inp.focus(); return; }
       litros = r2loc(v); passo = 2; render();
     };
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); avancar(); } });   // stopPropagation: não deixa o Enter cair no "registrar" do passo 3
-    $('ltr-av1').addEventListener('click', avancar);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); avancar(); } });   // Enter adiciona (sem botão)
   }
 
   function renderPasso2() {
@@ -1799,15 +1822,96 @@ async function abrirLitros() {
     } else if (passo === 3 && e.key === 'Enter') { e.preventDefault(); registrar(); }
   });
 
-  $('ltr-fechar').addEventListener('click', () => { fecharErpModal(); abrirFechamentoLitros(); });
-  { const g = $('ltr-gelado'); if (g) g.addEventListener('click', () => { fecharErpModal(); abrirLitrosGelado(); }); }
+  // 🧊 SOBROU GELADO — mesma lógica de digitar dos litros: tecla os litros e Enter (ou litros*código).
+  //    Registra como GELADO (não conta no total, fica pro dia seguinte).
+  async function registrarGelado() {
+    const raw = ($('ltr-gelado-qtd').value || '').trim(); if (!raw) return;
+    // FÓRMULA (mesma lógica do registro): "5*15+2*10" = 5 L do código 15 + 2 L do código 10.
+    const termos = raw.split('+').map(t => t.trim()).filter(Boolean);
+    const itens = [];
+    for (const t of termos) {
+      let qtd, cod = '';
+      if (t.includes('*')) { const [q, c] = t.split('*'); qtd = parseFloat(String(q).replace(',', '.')); cod = String(c || '').trim(); }
+      else qtd = parseFloat(t.replace(',', '.'));
+      if (!(qtd > 0)) { toast('⚠ Fórmula inválida em "' + t + '"'); $('ltr-gelado-qtd').focus(); return; }
+      let valor = 0;
+      if (cod) { const obj = valores.find(v => v.codigo && String(v.codigo).toLowerCase() === cod.toLowerCase()); if (obj) valor = obj.valor; }
+      itens.push({ litros: r2loc(qtd), valor, produto_codigo: cod, gelado: 1 });
+    }
+    let totalL = 0;
+    for (const it of itens) { const r = await (await fetch('/api/litros', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(it) })).json(); if (r && r.erro) { toast('⚠ ' + r.erro); return; } totalL += it.litros; }
+    toast(`🧊 ${biNum(totalL)} L de sobra gelada registrados (não contam)`);
+    $('ltr-gelado-qtd').value = ''; $('ltr-gelado-qtd').focus(); carregarDia();
+  }
+  // gelado: Enter no campo → FOCA o botão "registrar" (aí Enter/clique registra)
+  $('ltr-gelado-qtd').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); $('ltr-gelado-add').focus(); } });
+  $('ltr-gelado-add').addEventListener('click', registrarGelado);
+
+  // 🥫 LATAS — fluxo por Enter: quantidade → Enter vai pro VALOR → Enter registra. Soma no dia.
+  const latasVarPreco = () => { const c = $('ltr-lata-varpreco'); return !!(c && c.checked); };
+  async function adicionarLata() {
+    const raw = ($('ltr-lata-qtd').value || '').trim(); if (!raw) { $('ltr-lata-qtd').focus(); return; }
+    const qtd = parseFloat(raw.replace(',', '.'));
+    if (!(qtd > 0)) { toast('⚠ Informe quantas latas'); $('ltr-lata-qtd').focus(); return; }
+    const valor = latasVarPreco() ? (parseFloat(($('ltr-lata-valor').value || '').replace(',', '.')) || 0) : 0;   // preço só quando "preço variado"; senão o custo é no processamento
+    const r = await (await fetch('/api/latas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ qtd, valor }) })).json();
+    if (r && r.erro) { toast('⚠ ' + r.erro); return; }
+    $('ltr-lata-qtd').value = ''; $('ltr-lata-valor').value = ''; $('ltr-lata-qtd').focus(); carregarLatas();
+  }
+  $('ltr-lata-qtd').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); if (latasVarPreco()) $('ltr-lata-valor').focus(); else adicionarLata(); } });
+  $('ltr-lata-valor').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); adicionarLata(); } });
+  $('ltr-lata-add').addEventListener('click', adicionarLata);
+  { const cb = $('ltr-lata-varpreco'); if (cb) cb.addEventListener('change', () => { const v = $('ltr-lata-valor'); if (v) { v.style.display = cb.checked ? '' : 'none'; if (!cb.checked) v.value = ''; } }); }
+  async function carregarLatas() {
+    let d; try { d = await (await fetch('/api/latas', { cache: 'no-store' })).json(); } catch { $('ltr-latas-lista').innerHTML = ''; return; }
+    latasTotal = +d.total || 0;
+    const lista = d.lista || [];
+    let somaValor = 0, somaQtd = 0;
+    for (const x of lista) { const v = +x.valor_unit || 0; if (v > 0) { somaValor += v * (+x.qtd || 0); somaQtd += (+x.qtd || 0); } }
+    latasValorMedio = somaQtd > 0 ? r2loc(somaValor / somaQtd) : 0;
+    if (!lista.length) { $('ltr-latas-lista').innerHTML = `<div class="ltr-latas-vazio">Nenhuma lata ainda hoje — adicione acima.</div>`; return; }
+    // LISTA (cada entrada, não agrupa) + a SOMA no card do topo
+    const linhas = lista.map(x => {
+      const hora = x.criado_em ? new Date(x.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+      const v = +x.valor_unit || 0; const vtxt = v > 0 ? ' · ' + fmt(v) : '';
+      return `<div class="ltr-item ltr-item-lata"><span class="ltr-item-hora">🕒 ${hora}</span><span class="ltr-item-desc">🥫 <b>${biNum(x.qtd)}</b> lata(s)${vtxt}</span><button class="ac-mini del" data-dellata="${x.id}" title="Remover">🗑</button></div>`;
+    }).join('');
+    $('ltr-latas-lista').innerHTML = `
+      <div class="ltr-latas-card">
+        <div class="ltr-latas-ico">🥫</div>
+        <div style="flex:1"><div class="ltr-latas-lbl">Total do dia</div><div class="ltr-latas-big"><b>${biNum(latasTotal)}</b> lata(s)</div></div>
+        ${somaValor > 0 ? `<div class="ltr-latas-valor">${fmt(somaValor)}</div>` : ''}
+      </div>
+      <div class="ltr-latas-itens">${linhas}</div>`;
+    $('ltr-latas-lista').querySelectorAll('[data-dellata]').forEach(b => b.addEventListener('click', async () => { await fetch('/api/latas/' + b.dataset.dellata, { method: 'DELETE' }); carregarLatas(); }));
+  }
+  carregarLatas();
+
+  // 🏁 FINALIZAR — NÃO dá baixa aqui. Vai pra tela de rendimento (o lucro aparece LÁ);
+  //    a baixa (litros + latas + gelado somem) só acontece quando você GRAVAR o rendimento.
+  $('ltr-fx-ok').addEventListener('click', async () => {
+    const rz = diaResumo || {};
+    if (!(rz.totalLitros > 0)) { toast('🫐 Nenhum litro pra finalizar. Lance a produção primeiro.'); const li = $('ltr-litros'); if (li) li.focus(); return; }
+    if (!(latasTotal > 0)) { toast('🥫 Adicione as latas do dia antes de finalizar'); $('ltr-lata-qtd').focus(); return; }
+    let lucro = null; try { lucro = await (await fetch('/api/latas/lucro', { cache: 'no-store' })).json(); } catch {}
+    litrosFechamentoPendente = { sacas: latasTotal, valorSaca: latasValorMedio || 0, resumo: rz, lucro };
+    litrosBaixaPendente = true;   // a baixa só acontece ao GRAVAR o rendimento
+    { const ta = document.querySelector('.tela.ativa'); telaAntesRendimento = ta ? ta.id.replace('tela-', '') : 'pdv'; }   // pra ESC voltar
+    fecharErpModal();
+    irPara('produtos');
+    setTimeout(() => { try { abrirRendimento(); preencherRendimentoDeLitros(); } catch (e) { toast('Abra "Processar em vários produtos" pra concluir.'); } }, 400);
+  });
   render();
   carregarDia();
   async function carregarDia() {
     let d; try { d = await (await fetch('/api/litros', { cache: 'no-store' })).json(); } catch { $('ltr-lista').innerHTML = biErro(); return; }
     const rz = d.resumo || {};
+    diaResumo = rz;   // deixa o "Fechar o dia" saber quanto foi produzido
+    { const box = $('ltr-fechar-box'); if (box) box.classList.toggle('ltr-fechar-vazio', !(rz.totalLitros > 0)); }
     const porValor = (rz.porValor || []).map(p => `<span class="ltr-chip">${p.nome ? p.nome + ' · ' : ''}${fmt(p.valor)}: <b>${biNum(p.litros)} L</b></span>`).join('');
-    const linhas = (d.lista || []).map(x => {
+    // os GELADOS vão pro FIM da lista (produção do dia primeiro, sobra gelada depois)
+    const listaOrd = (d.lista || []).slice().sort((a, b) => (a.gelado ? 1 : 0) - (b.gelado ? 1 : 0));
+    const linhas = listaOrd.map(x => {
       const hora = x.criado_em ? new Date(x.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
       const prod = x.produto_codigo ? PRODUTOS.find(p => p.codigo === x.produto_codigo) : null;
       const nome = prod ? prod.nome : '';
@@ -1817,7 +1921,11 @@ async function abrirLitros() {
       return `<div class="ltr-item${x.gelado ? ' ltr-item-gelado' : ''}"><span class="ltr-item-hora">🕒 ${hora}</span><span class="ltr-item-desc">${desc}</span><button class="ac-mini del" data-del="${x.id}" title="Remover">🗑</button></div>`;
     }).join('') || '<div class="ac-vazio">Nada ainda hoje.</div>';
     const geladoTag = (+rz.geladoLitros > 0) ? `<span class="ltr-gelado-tag">🧊 sobrou gelado (não conta): <b>${biNum(rz.geladoLitros)} L</b></span>` : '';
-    $('ltr-lista').innerHTML = `<div class="ltr-total">Total: <b>${biNum(rz.totalLitros || 0)} litros</b> ${geladoTag}</div><div class="ltr-porvalor">${porValor}</div>${linhas}`;
+    const bruto = +rz.totalBruto || +rz.totalLitros || 0, gel = +rz.geladoLitros || 0, net = +rz.totalLitros || 0;
+    const totalTxt = gel > 0
+      ? `Produzido: <b>${biNum(bruto)} L</b> · 🧊 gelado: <b>${biNum(gel)} L</b> · ✅ a processar: <b>${biNum(net)} L</b>`
+      : `Total: <b>${biNum(net)} litros</b>`;
+    $('ltr-lista').innerHTML = `<div class="ltr-total">${totalTxt}</div><div class="ltr-porvalor">${porValor}</div>${linhas}`;
     $('ltr-lista').querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => { await fetch('/api/litros/' + b.dataset.del, { method: 'DELETE' }); carregarDia(); }));
   }
 }
@@ -1847,37 +1955,14 @@ async function abrirLitrosGelado() {
     fecharErpModal(); abrirLitros();   // reabre o F8 com a sobra listada à parte
   });
 }
-/* F10 — fecha o dia: informa as sacas produzidas e o sistema joga os litros (por valor) no
-   RENDIMENTO (processar vários produtos). Etapa 2 liga o pré-preenchimento do rendimento. */
-async function abrirFechamentoLitros() {
-  let d; try { d = await (await fetch('/api/litros', { cache: 'no-store' })).json(); } catch { d = { resumo: {}, lista: [] }; }
-  const rz = d.resumo || {};
-  if (!(rz.totalLitros > 0)) { toast('🫐 Nenhum litro pendente pra fechar. Use F8 pra lançar a produção.'); return; }
-  const porValor = (rz.porValor || []).map(p => `<div class="ltr-fx-linha"><span>${p.nome ? p.nome + ' · ' : ''}${fmt(p.valor)}</span><b>${biNum(p.litros)} L</b></div>`).join('');
-  abrirErpModal(`<h3 class="erp-modal-tit">🧮 Fechar o dia — sacas produzidas <small class="op-ci-sub">(F10)</small></h3>
-    <div class="ltr-fx">
-      <div class="ltr-fx-resumo"><div class="ltr-fx-tot">Produzido hoje: <b>${biNum(rz.totalLitros)} litros</b></div>${porValor}</div>
-      <label class="ltr-lbl">Quantas sacas foram produzidas?</label>
-      <input type="number" step="0.01" min="0" id="ltr-fx-sacas" class="ltr-input" inputmode="decimal" autocomplete="off" placeholder="ex.: 3">
-      <label class="ltr-lbl">Valor por saca (R$) <small>(opcional — custo)</small></label>
-      <input type="number" step="0.01" min="0" id="ltr-fx-valorsaca" class="ltr-input" placeholder="0,00">
-      <p class="fin-hint">Ao confirmar, o sistema abre o <b>Processar em vários produtos</b> com os litros já preenchidos por valor — é só conferir e gravar.</p>
-      <button class="fin-btn-salvar" id="ltr-fx-ok">✅ Confirmar e ir pro rendimento</button>
-    </div>`);
-  setTimeout(() => $('ltr-fx-sacas').focus(), 60);
-  $('ltr-fx-ok').addEventListener('click', async () => {
-    const sacas = +$('ltr-fx-sacas').value || 0;
-    if (!(sacas > 0)) { toast('⚠ Informe as sacas'); $('ltr-fx-sacas').focus(); return; }
-    const valorSaca = +$('ltr-fx-valorsaca').value || 0;
-    const r = await (await fetch('/api/litros/fechar', { method: 'POST', headers: { 'Content-Type': 'application/json' } })).json();
-    fecharErpModal();
-    litrosFechamentoPendente = { sacas, valorSaca, resumo: (r && r.resumo) || rz };
-    toast(`🫐 Dia fechado · ${biNum(rz.totalLitros)} L de ${biNum(sacas)} saca(s)`);
-    irPara('produtos');
-    setTimeout(() => { try { abrirRendimento(); preencherRendimentoDeLitros(); } catch (e) { toast('Abra "Processar em vários produtos" pra concluir.'); } }, 400);
-  });
-}
+/* O "fechar o dia" foi ACOPLADO dentro do F8 (🫐 Açaí do dia) e a tecla F10 foi liberada.
+   Esta função virou um atalho: qualquer referência antiga abre a tela mesclada. */
+function abrirFechamentoLitros() { abrirLitros(); }
 let litrosFechamentoPendente = null;
+let litrosBaixaPendente = false;   // true depois do "Finalizar": a baixa (litros/latas/gelado) só ocorre ao GRAVAR o rendimento
+let telaAntesRendimento = null;    // tela de onde veio o Finalizar — ESC/fechar o rendimento volta pra ela
+let consumoInternoDia = 0;         // consumo interno do dia a PREÇO DE VENDA — só pra MOSTRAR (valor consumido)
+let consumoInternoCustoDia = 0;    // consumo interno do dia a CUSTO — é o que REALMENTE desconta do lucro
 // Um produto é "de açaí" se o nome ou o departamento tiver "açaí"/"acai" (ignora acento/maiúscula).
 // Serve pra o F10 casar litros→produto SEM pescar Farinha/complemento que tenha o mesmo preço.
 function ehProdutoAcai(p) {
@@ -1889,7 +1974,7 @@ function ehProdutoAcai(p) {
 function preencherRendimentoDeLitros() {
   if (!litrosFechamentoPendente) return;
   const { sacas, valorSaca, resumo } = litrosFechamentoPendente;
-  if (!$('rend-materia').value.trim()) $('rend-materia').value = 'Açaí (saca)';
+  if (!$('rend-materia').value.trim()) $('rend-materia').value = 'Açaí (lata)';
   $('rend-qtd-materia').value = sacas || 1;
   if (valorSaca > 0) $('rend-valor-unit').value = valorSaca;
   calcularTotalRendimento();
@@ -1909,7 +1994,13 @@ function preencherRendimentoDeLitros() {
     });
     recalcularRendimento();
   }
-  toast(`🫐 ${biNum(sacas)} saca(s) → ${porValor.length} saída(s) preenchida(s). Confira e grave.`);
+  // troca o "Custo alocado" pelo LUCRO; a barra ao vivo mostra receita − custo − consumo interno
+  { const ab = $('rend-r-aloc-box'); if (ab) ab.style.display = 'none'; }
+  const _l = litrosFechamentoPendente.lucro || {};
+  consumoInternoDia = +_l.consumoInterno || 0;            // valor consumido (preço de venda) — só mostra
+  consumoInternoCustoDia = +_l.consumoInternoCusto || 0;  // custo — é o que desconta
+  recalcularRendimento();   // recalcula o lucro descontando o CUSTO do consumo interno
+  toast(`🫐 ${biNum(sacas)} lata(s) → ${porValor.length} saída(s) preenchida(s). Confira e grave.`);
   litrosFechamentoPendente = null;
 }
 // Atalhos operacionais: F9 abre Vendas (de qualquer tela) · F8 Litros · F10 Fecha dia · C Consumo · S Sangria/Suprimento.
@@ -1926,7 +2017,7 @@ document.addEventListener('keydown', e => {
   if ($('overlay-erp') && $('overlay-erp').classList.contains('aberto')) return;
   const naOperacao = $('tela-pdv').classList.contains('ativa');
   if (e.key === 'F8') { e.preventDefault(); abrirLitros(); return; }         // F8 → entrada de LITROS produzidos (sangria foi pro menu S)
-  if (e.key === 'F10') { e.preventDefault(); abrirFechamentoLitros(); return; } // F10 → fecha o dia (sacas → rendimento)
+  // F10 LIBERADO — o "fechar o dia" agora fica DENTRO do F8 (🫐 Açaí do dia). A tecla ficou livre.
   // C → Consumo Interno · S → ações financeiras (Sangria/Suprimento). Só no PDV e com o campo
   // de código VAZIO (não atrapalha quem digita códigos com letras — princípio do duplo-espaço).
   if ((e.key === 'c' || e.key === 'C' || e.key === 's' || e.key === 'S') && naOperacao) {
@@ -3833,6 +3924,8 @@ function abrirRendimento() {
   $('rend-fornecedor').value = $('pf-fornecedor').value.trim();
   // Nº da nota fica disponível pro próximo cadastro — só herda do form principal se ainda não tiver uma própria
   if (!$('rend-nota').value.trim() && $('pf-nota').value.trim()) $('rend-nota').value = $('pf-nota').value.trim();
+  { const ab = $('rend-r-aloc-box'); if (ab) ab.style.display = ''; }       // "Custo alocado" no uso normal
+  consumoInternoDia = 0; consumoInternoCustoDia = 0;                        // rendimento manual não desconta consumo interno
   $('rend-linhas').innerHTML = '';
   addLinhaRendimento(); addLinhaRendimento(); addLinhaRendimento();   // começa com 3 linhas (ex.: 10/15/20)
   recalcularRendimento();
@@ -3887,7 +3980,13 @@ function calcularTotalRendimento() {
 ['rend-qtd-materia', 'rend-valor-unit'].forEach(id => $(id).addEventListener('input', calcularTotalRendimento));
 function fecharRendimento() {
   $('overlay-rendimento').classList.remove('aberto');
-  $('pf-nota').focus();
+  litrosBaixaPendente = false;   // fechou SEM gravar → não dá baixa; litros/latas/gelado ficam pendentes
+  { const lb = $('rend-lucro-box'); if (lb) lb.style.display = 'none'; }
+  { const ab = $('rend-r-aloc-box'); if (ab) ab.style.display = ''; }
+  { const bar = $('rend-lucro-bar'); if (bar) bar.style.display = ''; }
+  // veio do Finalizar (F8)? volta pra tela de onde saiu (ESC/fechar/gravar). Senão fica em produtos.
+  if (telaAntesRendimento) { const t = telaAntesRendimento; telaAntesRendimento = null; irPara(t); }
+  else { const n = $('pf-nota'); if (n) n.focus(); }
 }
 $('btn-abrir-rendimento').addEventListener('click', abrirRendimento);
 $('btn-fechar-rend').addEventListener('click', fecharRendimento);
@@ -3927,10 +4026,11 @@ function recalcularRendimento() {
   linhas.forEach(l => somaQtd += +l.querySelector('.rl-qtd').value || 0);
   const custoPadrao = somaQtd > 0 ? total / somaQtd : 0;
 
-  let somaAloc = 0, linhasValidas = 0;
+  let somaAloc = 0, linhasValidas = 0, somaReceita = 0;
   linhas.forEach(l => {
     const qtd = +l.querySelector('.rl-qtd').value || 0;
     const preco = +l.querySelector('.rl-preco').value || 0;
+    somaReceita += preco * qtd;                           // faturamento potencial (qtd × preço venda)
     const custoInp = l.querySelector('.rl-custo');
     if (custoInp.dataset.manual !== '1') {                // custo automático se não foi editado à mão
       custoInp.value = custoPadrao > 0 ? custoPadrao.toFixed(2) : '';
@@ -3956,6 +4056,18 @@ function recalcularRendimento() {
   const box = $('rend-r-aloc-box');
   box.classList.remove('ok', 'dif');
   if (total > 0) box.classList.add(Math.abs(somaAloc - total) < 0.01 ? 'ok' : 'dif');
+
+  // LUCRO desta tela = faturamento (qtd × preço) − custo da matéria − consumo interno do dia. Negativo = vermelho.
+  const consumoV = +consumoInternoDia || 0;          // valor consumido (preço de venda) — só mostra
+  const consumoC = +consumoInternoCustoDia || 0;     // custo do consumo — é o que desconta
+  const lucro = r2loc(somaReceita - total - consumoC);
+  { const lb = $('rend-lucro-bar'); if (lb) {
+      lb.innerHTML = `<div class="rlb-quebra"><span>Faturamento <small>(venda)</small></span><b>${fmt(somaReceita)}</b>`
+        + `<span>− Custo da matéria</span><b class="neg">${fmt(total)}</b>`
+        + (consumoV > 0 ? `<span>− Consumo interno <small>(só o custo · consumido ${fmt(consumoV)})</small></span><b class="neg">${fmt(consumoC)}</b>` : '')
+        + `</div><div class="rlb-total"><span>💰 Lucro</span><b>${fmt(lucro)}</b></div>`;
+      lb.classList.toggle('neg', lucro < 0);
+  } }
 
   $('btn-confirmar-rend').disabled = !(total > 0 && linhasValidas > 0);
 }
@@ -4046,6 +4158,14 @@ async function confirmarRendimento() {
     const r = await fetch('/api/producoes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     if (!r.ok) { const j = await r.json().catch(() => ({})); toast(j.erro || 'Falha ao registrar a produção', 'erro'); if (btn) btn.disabled = false; return; }
   } catch { toast('Sem conexão com o servidor', 'erro'); if (btn) btn.disabled = false; return; }
+
+  // BAIXA do dia — só AGORA (depois de gravar): consome litros + latas + GELADO (somem da lista)
+  if (litrosBaixaPendente) {
+    try { await fetch('/api/litros/fechar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gelado: true }) }); } catch {}
+    try { await fetch('/api/latas/fechar', { method: 'POST', headers: { 'Content-Type': 'application/json' } }); } catch {}
+    try { await fetch('/api/consumo-interno/fechar', { method: 'POST', headers: { 'Content-Type': 'application/json' } }); } catch {}   // consumo interno some do lucro, fica na lista
+    litrosBaixaPendente = false;
+  }
 
   // memoriza a composição (pra reaproveitar quando a mesma matéria-prima for digitada de novo)
   const chave = chaveMateria(materia);
