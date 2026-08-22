@@ -1706,10 +1706,10 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 /* ── Modal Rendimento / Processamento ── */
 .modal-rend {
   background: #ffffff; border: 1px solid var(--vidro-borda); border-radius: 18px;
-  width: min(900px, 96vw); max-height: 92vh; display: flex; flex-direction: column;
+  width: min(900px, 96vw); max-height: none; display: flex; flex-direction: column;
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
 }
-.rend-body { padding: 18px 20px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+.rend-body { padding: 16px 20px 18px; display: flex; flex-direction: column; gap: 12px; }
 .rend-topo { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 12px; }
 .rend-topo.rend-topo-3 { grid-template-columns: 1fr 1fr 1fr; }
 .rend-topo input {
@@ -1773,6 +1773,12 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 .rend-lucro-bar.neg .rlb-total span { color: #a5281c; }
 .rlb-total b { font-size: 26px; font-weight: 800; color: #0a9b4b; font-variant-numeric: tabular-nums; }
 .rend-lucro-bar.neg .rlb-total b { color: #c0392b; }
+.rlb-porlata { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #a8e0bd; font-size: 13.5px; }
+.rend-lucro-bar.neg .rlb-porlata { border-top-color: #f0b0b0; }
+.rlb-porlata span { font-weight: 700; color: var(--branco); }
+.rlb-porlata small { color: #0d6ea9; font-weight: 700; }
+.rlb-porlata b { font-weight: 800; color: #0a9b4b; font-variant-numeric: tabular-nums; }
+.rend-lucro-bar.neg .rlb-porlata b { color: #c0392b; }
 /* toggle "preço variado" das latas */
 .ltr-latas-varpreco { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6d28d9; font-weight: 700; margin: 2px 0 8px; cursor: pointer; }
 .ltr-latas-varpreco small { color: rgba(15, 47, 77, .78); font-weight: 700; }
@@ -4100,9 +4106,9 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 /* ── F8 "Açaí do dia" AMPLIADO e EQUILIBRADO — 2 painéis cheios, sem espaço vazio ── */
 /* ENQUADRA no viewport: modal = coluna flex com teto de altura; título no topo,
    painéis rolam por dentro se precisar, botão Finalizar SEMPRE visível no rodapé. */
-.modal-erp.ltr-modal:not(.erp-conf-grande) { width: min(1000px, 96vw); max-height: calc(100dvh - 14px); padding: 16px 20px; display: flex; flex-direction: column; overflow: hidden; }
+.modal-erp.ltr-modal:not(.erp-conf-grande) { width: min(1000px, 96vw); max-height: none; padding: 16px 20px; display: flex; flex-direction: column; overflow: visible; }
 .ltr-modal .erp-modal-tit { flex: 0 0 auto; font-size: 21px; margin-bottom: 10px; }
-.ltr-modal .ltr { flex: 1 1 auto; min-height: 0; overflow-y: auto; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.ltr-modal .ltr { grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 .ltr-modal .ltr-btn-finalizar { flex: 0 0 auto; }
 /* os dois lados viram PAINÉIS (cards) de altura natural, cada um cheio do seu conteúdo */
 .ltr-modal .ltr-entrada, .ltr-modal .ltr-dia { display: flex; flex-direction: column; gap: 14px; background: rgba(30, 136, 200, 0.045); border: 1px solid var(--vidro-borda); border-radius: 14px; padding: 16px 18px; }

@@ -94,6 +94,29 @@ function observarFit() {
 window.addEventListener('resize', agendarFit);
 window.ajustarFitTela = ajustarFitTela;   // disponível pra chamadas pontuais
 
+/* ── FIT dos MODAIS (F8, rendimento) — cabem inteiros na tela, sem rolar (auto-encolhe) ── */
+let _fitModalEl = null, _fitModalObs = null, _fitModalT;
+function ajustarFitModal(el) {
+  if (!el || !el.isConnected) return;
+  el.style.zoom = '';                                     // mede natural
+  const disp = window.innerHeight - 20;                   // margem de respiro
+  const cont = el.scrollHeight;
+  if (!disp || cont <= disp) return;                      // já cabe
+  const f = disp / cont;
+  el.style.zoom = Math.max(0.5, f);                       // encolhe só o necessário (piso 0.5)
+}
+function observarFitModal(el) {
+  _fitModalEl = el || null;
+  const run = () => ajustarFitModal(_fitModalEl);
+  if (_fitModalObs) _fitModalObs.disconnect();
+  if (!el) return;
+  run(); setTimeout(run, 90); setTimeout(run, 260);       // no arranque e após render assíncrono
+  _fitModalObs = new MutationObserver(() => { clearTimeout(_fitModalT); _fitModalT = setTimeout(run, 60); });
+  _fitModalObs.observe(el, { childList: true, subtree: true, characterData: true });
+}
+window.addEventListener('resize', () => { if (_fitModalEl && _fitModalEl.isConnected) ajustarFitModal(_fitModalEl); });
+window.ajustarFitModal = ajustarFitModal;
+
 // A navegação é a BARRA SUPERIOR (gerada por montarTopo) — a home não repete os atalhos.
 $('btn-home-logo').addEventListener('click', () => irPara('home'));
 // Fase 17: botão "Atualizar" do dashboard
@@ -1672,7 +1695,7 @@ async function abrirLitros() {
     </div>
     <button class="ltr-btn-finalizar" id="ltr-fx-ok">🏁 Finalizar e dar entrada</button>`);
 
-  try { const mb = $('modal-erp-box'); if (mb) mb.classList.add('ltr-modal'); } catch {}   // tela AMPLIADA (padrão operacional)
+  try { const mb = $('modal-erp-box'); if (mb) { mb.classList.add('ltr-modal'); observarFitModal(mb); } } catch {}   // tela AMPLIADA que cabe no viewport (auto-encolhe)
   // Fluxo guiado em 3 passos: (1) litros → Enter · (2) valor por número · (3) confirma (registrar/editar).
   let passo = 1, litros = 0, valorSel = null, codigoSel = '', nomeSel = '';
   let diaResumo = null;   // resumo do dia (setado por carregarDia) — usado pelo "Finalizar"
@@ -3936,6 +3959,7 @@ function abrirRendimento() {
   recalcularRendimento();
   atualizarResumoNotaRend();
   $('overlay-rendimento').classList.add('aberto');
+  observarFitModal(document.querySelector('#overlay-rendimento .modal-rend'));   // cabe inteiro na tela, sem rolar
   setTimeout(() => $('rend-valor-unit').focus(), 60);
 }
 
@@ -3985,6 +4009,7 @@ function calcularTotalRendimento() {
 ['rend-qtd-materia', 'rend-valor-unit'].forEach(id => $(id).addEventListener('input', calcularTotalRendimento));
 function fecharRendimento() {
   $('overlay-rendimento').classList.remove('aberto');
+  observarFitModal(null); { const mr = document.querySelector('#overlay-rendimento .modal-rend'); if (mr) mr.style.zoom = ''; }
   litrosBaixaPendente = false;   // fechou SEM gravar → não dá baixa; litros/latas/gelado ficam pendentes
   { const lb = $('rend-lucro-box'); if (lb) lb.style.display = 'none'; }
   { const ab = $('rend-r-aloc-box'); if (ab) ab.style.display = ''; }
@@ -4066,11 +4091,14 @@ function recalcularRendimento() {
   const consumoV = +consumoInternoDia || 0;          // valor consumido (preço de venda) — só mostra
   const consumoC = +consumoInternoCustoDia || 0;     // custo do consumo — é o que desconta
   const lucro = r2loc(somaReceita - total - consumoC);
+  const qtdLatas = +$('rend-qtd-materia').value || 0;
+  const lucroLata = qtdLatas > 0 ? r2loc(lucro / qtdLatas) : 0;
   { const lb = $('rend-lucro-bar'); if (lb) {
       lb.innerHTML = `<div class="rlb-quebra"><span>Faturamento <small>(venda)</small></span><b>${fmt(somaReceita)}</b>`
         + `<span>− Custo da matéria</span><b class="neg">${fmt(total)}</b>`
         + (consumoV > 0 ? `<span>− Consumo interno <small>(só o custo · consumido ${fmt(consumoV)})</small></span><b class="neg">${fmt(consumoC)}</b>` : '')
-        + `</div><div class="rlb-total"><span>💰 Lucro</span><b>${fmt(lucro)}</b></div>`;
+        + `</div><div class="rlb-total"><span>💰 Lucro</span><b>${fmt(lucro)}</b></div>`
+        + (qtdLatas > 0 ? `<div class="rlb-porlata"><span>Lucro por lata <small>(${biNum(qtdLatas)} lata(s))</small></span><b>${fmt(lucroLata)}</b></div>` : '');
       lb.classList.toggle('neg', lucro < 0);
   } }
 
