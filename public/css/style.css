@@ -4038,28 +4038,28 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 /* fundo claro, foco amarelo, funcionários em azul, itens em lavanda, confirmar verde */
 .modal-erp.erp-ci { background: #ffffff !important; color: var(--branco) !important; border: 1px solid #e3d9f5 !important; box-shadow: 0 30px 80px rgba(20, 10, 40, 0.28) !important; width: min(720px, 96vw); }
 .modal-erp.erp-ci .erp-modal-tit { background: #f4f1fd !important; color: #4c2a92 !important; border-bottom: 1px solid #e3d9f5 !important; }
-.modal-erp.erp-ci .op-ci-sub { color: #6d28d9 !important; opacity: 0.9; }
+.modal-erp.erp-ci .op-ci-sub { color: #6d28d9 !important; opacity: 1; }
 .modal-erp.erp-ci .op-ci { display: flex; flex-direction: column; gap: 12px; }
 /* aviso quando não há itens no cupom (o registro é feito na tela de Vendas) */
-.erp-ci .op-ci-aviso { background: #fef6d9; border: 1.5px solid #e6cb46; border-radius: 12px; padding: 12px 14px; font-size: 13.5px; color: #6b5600; line-height: 1.4; }
+.erp-ci .op-ci-aviso { background: #fdeeb8; border: 1.5px solid #e0b400; border-radius: 12px; padding: 12px 14px; font-size: 13.5px; color: #5c4a00; line-height: 1.4; }
 .erp-ci .op-ci-aviso b { color: #4c2a92; }
 .erp-ci .op-ci-aviso kbd { background: #fff; border: 1px solid #e2c84a; border-bottom-width: 2px; border-radius: 6px; padding: 1px 7px; font-weight: 800; color: #6b5600; font-family: inherit; }
-/* rótulo + funcionários (azul) */
+/* rótulo + funcionários (azul FORTE, nada apagado) */
 .erp-ci .op-ci-labelfunc { font-size: 13px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: #0d6ea9; margin-top: 2px; }
-.erp-ci .op-ci-funcbtn { background: #eef5fd; border: 1.5px solid #bcdcf6; color: #16467c; border-radius: 10px; padding: 11px 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 700; }
-.erp-ci .op-ci-funcbtn:hover { background: #dcecfb; border-color: #7db6ec; }
+.erp-ci .op-ci-funcbtn { background: #d7e9fb; border: 1.5px solid #86baec; color: #123a63; border-radius: 10px; padding: 11px 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 800; }
+.erp-ci .op-ci-funcbtn:hover { background: #c2ddf8; border-color: #4b96db; }
 .erp-ci .op-ci-funcbtn.sel { background: var(--acai-claro); border-color: var(--acai-claro); color: #fff; }
-.erp-ci .op-ci-funcbtn .num { background: #cfe2fb; color: #16467c; border-radius: 6px; min-width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
-.erp-ci .op-ci-funcbtn.sel .num { background: rgba(255,255,255,0.3); color: #fff; }
-.erp-ci .op-ci-funcoutro { background: #fff; border: 1.5px solid #bcdcf6; border-radius: 10px; padding: 11px 13px; color: var(--branco); font-size: 15px; outline: none; }
-.erp-ci .op-ci-funcoutro::placeholder { color: #9aa7bd; }
+.erp-ci .op-ci-funcbtn .num { background: var(--acai-claro); color: #fff; border-radius: 6px; min-width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
+.erp-ci .op-ci-funcbtn.sel .num { background: rgba(255,255,255,0.32); color: #fff; }
+.erp-ci .op-ci-funcoutro { background: #fff; border: 1.5px solid #86baec; border-radius: 10px; padding: 11px 13px; color: var(--branco); font-size: 15px; outline: none; }
+.erp-ci .op-ci-funcoutro::placeholder { color: #7386a1; }
 .erp-ci .op-ci-funcoutro:focus { border-color: #e0a800; background: #fffbea; box-shadow: 0 0 0 3px rgba(255, 200, 0, 0.5); }
-.erp-ci .op-ci-op { color: #6b6685; opacity: 1; }
-.erp-ci .crm-btn { background: #f4f1fd; border: 1px solid #d9cff5; color: #6d28d9; border-radius: 10px; padding: 9px 14px; font-weight: 700; cursor: pointer; }
-.erp-ci .crm-btn:hover { background: #ece5fd; }
+.erp-ci .op-ci-op { color: #453f5e; opacity: 1; }
+.erp-ci .crm-btn { background: #e6dbfb; border: 1.5px solid #b699ee; color: #5b21b6; border-radius: 10px; padding: 9px 14px; font-weight: 800; cursor: pointer; }
+.erp-ci .crm-btn:hover { background: #d7c4f7; border-color: #9a72e6; }
 .erp-ci .fin-btn-salvar { background: var(--verde); color: #fff; border: 1px solid var(--verde); border-radius: 10px; padding: 12px 20px; font-weight: 800; cursor: pointer; }
 .erp-ci .fin-btn-salvar:hover:not(:disabled) { background: #087a3b; }
-.erp-ci .fin-btn-salvar:disabled { opacity: 0.5; cursor: not-allowed; }
+.erp-ci .fin-btn-salvar:disabled { background: #cfd6e0; border-color: #cfd6e0; color: #6b7688; opacity: 1; cursor: not-allowed; }
 /* Litros produzidos (F8) e fechamento do dia (F10) */
 .ltr { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; }
 .ltr-lbl { display: block; font-size: 13px; font-weight: 700; color: rgba(15, 47, 77, 0.85); margin-bottom: 6px; }
