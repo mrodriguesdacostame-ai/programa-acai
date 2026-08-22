@@ -623,7 +623,7 @@ const BUSCA_PLACEHOLDER = {
   pdv: '🔍 Buscar produto pelo nome...', produtos: '🔍 Buscar produto pelo nome...',
   rendimento: '🔍 Buscar produto pelo nome...', materia: '🔍 Buscar matéria-prima já processada...',
   clientes: '🔍 Buscar cliente pelo nome...', 'recebimento-fiado': '🔍 Buscar cliente pelo nome...',
-  'receber-conta': '💰 Cliente que vai pagar a conta...',
+  'receber-conta': '💰 Cliente que vai pagar a conta...', consumo: '🔍 Buscar produto pelo nome...',
 };
 
 function abrirBuscaProduto(contexto = 'pdv') {
@@ -643,6 +643,7 @@ function fecharBusca() {
   else if (buscaContexto === 'clientes') $('cl-nome').focus();
   else if (buscaContexto === 'recebimento-fiado') $('receb-fiado-cliente').focus();
   else if (buscaContexto === 'movimentacoes') { const e = $('movnc-produto'); if (e) e.focus(); }
+  else if (buscaContexto === 'consumo') { const e = $('ci-add'); if (e) e.focus(); }
 }
 function renderBusca(termo) {
   termo = termo.trim().toLowerCase();
@@ -743,6 +744,14 @@ function selecionarBusca(i) {
     const p = buscaResultados[i]; if (!p) return;
     fecharBusca();
     movncSelecionarProduto(p.codigo);
+    return;
+  }
+  if (buscaContexto === 'consumo') {
+    const p = buscaResultados[i]; if (!p) return;
+    const q = ciQtdPendente > 0 ? ciQtdPendente : (parseFloat(($('ci-add-qtd') || {}).value) || 1);
+    ciQtdPendente = 0;
+    fecharBusca();
+    ciAddProduto(p, q);
     return;
   }
   const p = buscaResultados[i];
@@ -1538,6 +1547,7 @@ const abrirSuprimento = () => abrirCaixaMov('suprimento');
 // Paleta padrão (claro) via classe .erp-ci. Ver [[feedback_paleta_padrao]].
 let ciItens = [];
 let ciVeioDoCupom = false;
+let ciQtdPendente = 0;   // quantidade do "3*" pendente ao abrir a busca por nome (igual PDV)
 function ciRenderLista() {
   const el = $('ci-lista'); if (!el) return;
   if (!ciItens.length) { el.innerHTML = '<div class="op-ci-vazio">Nenhum item ainda — busque um produto acima</div>'; }
@@ -1576,11 +1586,11 @@ async function abrirConsumoInterno() {
     <div class="op-ci">
       ${temCupom ? '' : `<div class="op-ci-addwrap">
         <div class="op-ci-add">
-          <input id="ci-add" class="op-ci-addinp" autocomplete="off" placeholder="🔎 produto — código ou nome (Enter adiciona)">
+          <input id="ci-add" class="op-ci-addinp" autocomplete="off" placeholder="código  ·  3*código  ·  dois espaços = buscar por nome">
           <input id="ci-add-qtd" class="op-ci-addqtd" type="number" min="0" step="any" value="1" title="quantidade">
-          <button type="button" class="op-ci-addbtn" id="ci-add-btn">＋ Adicionar</button>
+          <button type="button" class="op-ci-addbtn" id="ci-add-btn">🔎 Buscar</button>
         </div>
-        <div class="op-ci-sug" id="ci-sug"></div>
+        <div class="op-ci-addhint">Tecle <kbd>Enter</kbd> no código · <kbd>3*código</kbd> pra quantidade · <kbd>espaço espaço</kbd> abre a busca por nome</div>
       </div>
       <div class="op-ci-lista" id="ci-lista"></div>`}
       <div class="op-ci-labelfunc">👤 Pra quem?</div>
@@ -1613,39 +1623,37 @@ async function abrirConsumoInterno() {
   });
   btnOk.addEventListener('click', confirmarConsumoInterno);
 
-  // Busca de produto (só quando NÃO veio do cupom) — código/nome, Enter ou clique adiciona
+  // Busca de produto (só quando NÃO veio do cupom) — MESMA "fórmula" do PDV:
+  // código + Enter · 3*código pra quantidade · dois espaços abrem a busca por nome (overlay padrão).
   if (!temCupom) {
-    const add = $('ci-add'), qtd = $('ci-add-qtd'), sug = $('ci-sug');
-    let achados = [], idx = 0;
+    const add = $('ci-add'), qtd = $('ci-add-qtd');
     const acharPorCodigo = t => PRODUTOS.find(p => p.codigo.toLowerCase() === t.toLowerCase());
-    const render = () => {
-      if (!achados.length) { sug.innerHTML = ''; sug.classList.remove('aberta'); return; }
-      sug.classList.add('aberta');
-      sug.innerHTML = achados.map((p, i) => `<div class="op-ci-sugit ${i === idx ? 'sel' : ''}" data-i="${i}">
-          <span class="bi-cod">${crmEsc(p.codigo)}</span><span class="bi-nome">${crmEsc(p.nome)}</span></div>`).join('');
-      sug.querySelectorAll('.op-ci-sugit').forEach(it => it.addEventListener('click', () => { ciAddProduto(achados[+it.dataset.i], qtd.value); add.value = ''; achados = []; render(); add.focus(); }));
-    };
-    add.addEventListener('input', () => {
-      const t = add.value.trim().toLowerCase();
-      achados = t ? PRODUTOS.filter(p => p.nome.toLowerCase().includes(t) || p.codigo.toLowerCase().includes(t)).slice(0, 8) : [];
-      idx = 0; render();
-    });
+    const qtdCampo = () => { const v = parseFloat((qtd.value || '').replace(',', '.')); return v > 0 ? v : 1; };
+    let ultimoEspacoCi = 0;
+    const abrirBuscaConsumo = (qtdPend) => { ciQtdPendente = qtdPend > 0 ? qtdPend : qtdCampo(); abrirBuscaProduto('consumo'); };
+    // Enter: "3*código" ou "código" exato adiciona direto; texto sem match → abre a busca por nome
     add.addEventListener('keydown', e => {
-      if (e.key === 'ArrowDown') { e.preventDefault(); if (achados.length) { idx = (idx + 1) % achados.length; render(); } }
-      else if (e.key === 'ArrowUp') { e.preventDefault(); if (achados.length) { idx = (idx - 1 + achados.length) % achados.length; render(); } }
-      else if (e.key === 'Enter') {
+      if (e.key === 'Enter') {
         e.preventDefault();
-        const exato = acharPorCodigo(add.value.trim());
-        const prod = exato || achados[idx];
-        if (prod) { ciAddProduto(prod, qtd.value); add.value = ''; achados = []; render(); add.focus(); }
+        const raw = add.value.trim(); if (!raw) return;
+        const m = raw.match(/^\s*(\d+(?:[.,]\d+)?)\s*\*\s*(.+)$/);   // 3*código
+        const q = m ? (parseFloat(m[1].replace(',', '.')) || 1) : qtdCampo();
+        const cod = m ? m[2].trim() : raw;
+        const prod = acharPorCodigo(cod);
+        if (prod) { ciAddProduto(prod, q); add.value = ''; add.focus(); }
+        else { ciQtdPendente = q; abrirBuscaProduto('consumo'); const bi = $('busca-input'); if (bi) { bi.value = cod; renderBusca(cod); } }
+        return;
+      }
+      // duplo-espaço → busca por nome (funciona com campo vazio ou só com "3*")
+      const mQtd = add.value.match(/^\s*(\d+(?:[.,]\d+)?)\s*\*\s*$/);
+      if (e.key === ' ' && (add.value.trim() === '' || mQtd)) {
+        e.preventDefault();
+        const agora = Date.now();
+        if (agora - ultimoEspacoCi < 450) { ultimoEspacoCi = 0; abrirBuscaConsumo(mQtd ? (parseFloat(mQtd[1].replace(',', '.')) || 0) : 0); }
+        else ultimoEspacoCi = agora;
       }
     });
-    $('ci-add-btn').addEventListener('click', () => {
-      const exato = acharPorCodigo(add.value.trim());
-      const prod = exato || achados[idx];
-      if (prod) { ciAddProduto(prod, qtd.value); add.value = ''; achados = []; render(); add.focus(); }
-      else toast('⚠ Busque e selecione um produto');
-    });
+    $('ci-add-btn').addEventListener('click', () => abrirBuscaConsumo(0));
     ciRenderLista();
   }
   setTimeout(() => { const alvo = temCupom ? document.querySelector('.op-ci-funcbtn') : $('ci-add'); (alvo || inp).focus(); }, 60);
