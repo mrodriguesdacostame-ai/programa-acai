@@ -4042,11 +4042,11 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .modal-erp.erp-ci .op-ci { display: flex; flex-direction: column; gap: 12px; }
 /* busca de produto (sem cupom) — card amarelo de ENTRADA/foco */
 .erp-ci .op-ci-addwrap { background: #fdf3ac; border: 2px solid #e6cb46; border-radius: 14px; padding: 12px 14px; }
-.erp-ci .op-ci-add { display: grid; grid-template-columns: 1fr 96px auto; gap: 8px; }
-.erp-ci .op-ci-add input { background: #fffdf2; border: 2px solid #e2c84a; border-radius: 10px; padding: 11px 13px; font-size: 16px; font-weight: 700; color: #3a2f00; outline: none; }
-.erp-ci .op-ci-addinp::placeholder { color: #b6a250; font-weight: 700; }
-.erp-ci .op-ci-add input:focus { border-color: #d9a400; background: #fffbea; box-shadow: 0 0 0 3px rgba(255, 200, 0, 0.5); }
-.erp-ci .op-ci-addbtn { background: var(--verde); color: #fff; border: 1px solid var(--verde); border-radius: 10px; padding: 0 16px; font-weight: 800; cursor: pointer; }
+.erp-ci .op-ci-add { display: grid; grid-template-columns: 120px 1fr; gap: 8px; align-items: stretch; }
+.erp-ci .op-ci-qtdlbl { display: flex; align-items: center; gap: 8px; background: #fffdf2; border: 2px solid #e2c84a; border-radius: 10px; padding: 6px 11px; font-size: 13px; font-weight: 800; color: #6b5600; }
+.erp-ci .op-ci-add input { flex: 1; min-width: 0; width: 100%; background: transparent; border: 0; padding: 5px 2px; font-size: 18px; font-weight: 800; color: #3a2f00; outline: none; }
+.erp-ci .op-ci-qtdlbl:focus-within { border-color: #d9a400; background: #fffbea; box-shadow: 0 0 0 3px rgba(255, 200, 0, 0.5); }
+.erp-ci .op-ci-addbtn { background: var(--verde); color: #fff; border: 1px solid var(--verde); border-radius: 10px; padding: 12px 16px; font-size: 15px; font-weight: 800; cursor: pointer; }
 .erp-ci .op-ci-addbtn:hover { background: #087a3b; }
 .erp-ci .op-ci-addhint { margin-top: 9px; font-size: 12.5px; color: #7a6a1e; }
 .erp-ci .op-ci-addhint kbd { background: #fff; border: 1px solid #e2c84a; border-bottom-width: 2px; border-radius: 6px; padding: 1px 7px; font-weight: 800; color: #6b5600; font-family: inherit; }
