@@ -1426,6 +1426,16 @@
           <div class="campo"><label>Valor unitário (R$) *</label><input type="number" id="rend-valor-unit" step="0.01" min="0" placeholder="250,00"></div>
           <div class="campo"><label>Total pago (R$)</label><input type="number" id="rend-total" step="0.01" min="0" placeholder="0,00" readonly title="Calculado automaticamente: quantidade × valor unitário"></div>
         </div>
+        <div class="rend-latas-multi">
+          <label class="rend-latas-chk"><input type="checkbox" id="rend-latas-var"> 🧾 Latas com valores diferentes <small>(lança cada uma e soma)</small></label>
+          <div class="rend-latas-box" id="rend-latas-box" style="display:none">
+            <div class="rend-latas-rows" id="rend-latas-rows"></div>
+            <div class="rend-latas-acoes">
+              <button type="button" class="btn-rend-add" id="rend-latas-add">+ adicionar lata</button>
+              <div class="rend-latas-tot"><span id="rend-latas-qt">0</span> lata(s) · total <b id="rend-latas-total">R$ 0,00</b></div>
+            </div>
+          </div>
+        </div>
         <div class="rend-topo rend-topo-3">
           <div class="campo"><label>Departamento</label><input id="rend-departamento" list="lista-departamentos" placeholder="Ex: Açaí"></div>
           <div class="campo"><label>Fornecedor</label><input id="rend-fornecedor" placeholder="opcional"></div>

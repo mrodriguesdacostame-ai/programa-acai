@@ -1777,6 +1777,20 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 .ltr-latas-varpreco { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6d28d9; font-weight: 700; margin: 2px 0 8px; cursor: pointer; }
 .ltr-latas-varpreco small { color: rgba(15, 47, 77, .78); font-weight: 700; }
 .ltr-latas-varpreco input { accent-color: #7c3aed; width: 16px; height: 16px; }
+/* rendimento: latas com valores diferentes (soma) */
+.rend-latas-chk { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; color: #6d28d9; cursor: pointer; }
+.rend-latas-chk small { color: rgba(15, 47, 77, .7); font-weight: 600; }
+.rend-latas-chk input { accent-color: #7c3aed; width: 16px; height: 16px; }
+.rend-latas-box { margin-top: 10px; background: #f4f1fd; border: 1px solid #d9cff5; border-radius: 12px; padding: 12px; }
+.rend-latas-rows { display: flex; flex-direction: column; gap: 8px; }
+.rend-lata-row { display: grid; grid-template-columns: 1fr 1.4fr 34px; gap: 8px; align-items: center; }
+.rend-lata-row input { width: 100%; background: #fff; border: 1.5px solid rgba(124, 58, 237, .35); border-radius: 8px; padding: 9px 10px; font-size: 14px; color: var(--branco); outline: none; }
+.rend-lata-row input:focus { border-color: #e0a800; background: #fffbea; box-shadow: 0 0 0 3px rgba(255, 200, 0, .45); }
+.rl-mdel { width: 34px; height: 34px; border: 1px solid #f3caca; border-radius: 8px; background: #fdecec; color: #c0392b; cursor: pointer; font-size: 14px; }
+.rl-mdel:hover { background: #f7d5d5; }
+.rend-latas-acoes { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+.rend-latas-tot { font-size: 14px; color: #4c2a92; font-weight: 700; }
+.rend-latas-tot b { color: #0a9b4b; }
 
 .prod-lista { display: flex; flex-direction: column; min-height: 0; gap: 10px; }
 .prod-tabela-wrap {

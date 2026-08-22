@@ -3926,6 +3926,11 @@ function abrirRendimento() {
   if (!$('rend-nota').value.trim() && $('pf-nota').value.trim()) $('rend-nota').value = $('pf-nota').value.trim();
   { const ab = $('rend-r-aloc-box'); if (ab) ab.style.display = ''; }       // "Custo alocado" no uso normal
   consumoInternoDia = 0; consumoInternoCustoDia = 0;                        // rendimento manual não desconta consumo interno
+  // reseta o modo "latas de valores diferentes"
+  { const c = $('rend-latas-var'); if (c) c.checked = false; }
+  { const b = $('rend-latas-box'); if (b) b.style.display = 'none'; }
+  { const r = $('rend-latas-rows'); if (r) r.innerHTML = ''; }
+  ['rend-qtd-materia', 'rend-valor-unit'].forEach(id => { const el = $(id); if (el) el.readOnly = false; });
   $('rend-linhas').innerHTML = '';
   addLinhaRendimento(); addLinhaRendimento(); addLinhaRendimento();   // começa com 3 linhas (ex.: 10/15/20)
   recalcularRendimento();
@@ -4184,6 +4189,49 @@ async function confirmarRendimento() {
   toast(`✅ ${saidas.length} produto(s) gerados de ${materia || 'matéria-prima'} · ${fmt(total)}`, 'sucesso');
 }
 $('btn-confirmar-rend').addEventListener('click', confirmarRendimento);
+
+// ── Matéria de LATAS com VALORES DIFERENTES: lança cada (qtd × valor) e SOMA → preenche a matéria ──
+function rendLataRow(qtd, valor) {
+  const div = document.createElement('div'); div.className = 'rend-lata-row';
+  div.innerHTML = `<input type="number" step="0.01" min="0" class="rl-mq" inputmode="decimal" placeholder="qtd" value="${qtd || ''}">`
+    + `<input type="number" step="0.01" min="0" class="rl-mv" inputmode="decimal" placeholder="valor un. (R$)" value="${valor || ''}">`
+    + `<button type="button" class="rl-mdel" title="Remover">🗑</button>`;
+  return div;
+}
+function recalcularLatasMulti() {
+  const rows = [...$('rend-latas-rows').querySelectorAll('.rend-lata-row')];
+  let qt = 0, tot = 0;
+  rows.forEach(r => { const q = +r.querySelector('.rl-mq').value || 0, v = +r.querySelector('.rl-mv').value || 0; qt += q; tot += q * v; });
+  qt = r2loc(qt); tot = r2loc(tot);
+  $('rend-latas-qt').textContent = biNum(qt);
+  $('rend-latas-total').textContent = fmt(tot);
+  $('rend-qtd-materia').value = qt || '';
+  $('rend-valor-unit').value = qt > 0 ? r2loc(tot / qt) : '';   // valor unitário = média ponderada
+  $('rend-total').value = tot ? tot.toFixed(2) : '';
+  recalcularRendimento();
+}
+{
+  const cb = $('rend-latas-var');
+  if (cb) cb.addEventListener('change', () => {
+    const box = $('rend-latas-box'); if (box) box.style.display = cb.checked ? '' : 'none';
+    ['rend-qtd-materia', 'rend-valor-unit'].forEach(id => { const el = $(id); if (el) el.readOnly = cb.checked; });   // no modo soma, os campos vêm das latas
+    const rows = $('rend-latas-rows');
+    if (cb.checked) { if (!rows.children.length) rows.appendChild(rendLataRow()); recalcularLatasMulti(); setTimeout(() => { const f = rows.querySelector('.rl-mq'); if (f) f.focus(); }, 40); }
+    else { rows.innerHTML = ''; }
+  });
+  const addb = $('rend-latas-add');
+  if (addb) addb.addEventListener('click', () => { const rows = $('rend-latas-rows'); rows.appendChild(rendLataRow()); const qs = rows.querySelectorAll('.rl-mq'); const last = qs[qs.length - 1]; if (last) last.focus(); });
+  const rowsBox = $('rend-latas-rows');
+  if (rowsBox) {
+    rowsBox.addEventListener('input', recalcularLatasMulti);
+    rowsBox.addEventListener('click', e => { if (!e.target.classList.contains('rl-mdel')) return; e.target.closest('.rend-lata-row').remove(); if (!rowsBox.children.length) rowsBox.appendChild(rendLataRow()); recalcularLatasMulti(); });
+    rowsBox.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return; e.preventDefault();
+      if (e.target.classList.contains('rl-mq')) { const v = e.target.closest('.rend-lata-row').querySelector('.rl-mv'); if (v) v.focus(); }
+      else if (e.target.classList.contains('rl-mv')) $('rend-latas-add').click();
+    });
+  }
+}
 
 // Estoque em conjunto (caixas) / unidades soltas / total, a partir do estoque e das unid. por caixa.
 function atualizarEstoqueCards(p) {
