@@ -4033,6 +4033,52 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .op-ci-vazio { padding: 22px; text-align: center; opacity: 0.55; font-size: 13px; }
 .op-ci-rodape { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .op-ci-op { font-size: 12px; opacity: 0.7; }
+
+/* ═══════════ CONSUMO INTERNO — paleta CLARA padrão (classe .erp-ci) ═══════════ */
+/* fundo claro, foco amarelo, funcionários em azul, itens em lavanda, confirmar verde */
+.modal-erp.erp-ci { background: #ffffff !important; color: var(--branco) !important; border: 1px solid #e3d9f5 !important; box-shadow: 0 30px 80px rgba(20, 10, 40, 0.28) !important; width: min(720px, 96vw); }
+.modal-erp.erp-ci .erp-modal-tit { color: #4c2a92 !important; }
+.modal-erp.erp-ci .op-ci-sub { color: #6d28d9 !important; opacity: 0.85; }
+.modal-erp.erp-ci .op-ci { display: flex; flex-direction: column; gap: 12px; }
+/* busca de produto (sem cupom) — card amarelo de ENTRADA/foco */
+.erp-ci .op-ci-addwrap { background: #fdf3ac; border: 2px solid #e6cb46; border-radius: 14px; padding: 12px 14px; }
+.erp-ci .op-ci-add { display: grid; grid-template-columns: 1fr 96px auto; gap: 8px; }
+.erp-ci .op-ci-add input { background: #fffdf2; border: 2px solid #e2c84a; border-radius: 10px; padding: 11px 13px; font-size: 16px; font-weight: 700; color: #3a2f00; outline: none; }
+.erp-ci .op-ci-addinp::placeholder { color: #b6a250; font-weight: 700; }
+.erp-ci .op-ci-add input:focus { border-color: #d9a400; background: #fffbea; box-shadow: 0 0 0 3px rgba(255, 200, 0, 0.5); }
+.erp-ci .op-ci-addbtn { background: var(--verde); color: #fff; border: 1px solid var(--verde); border-radius: 10px; padding: 0 16px; font-weight: 800; cursor: pointer; }
+.erp-ci .op-ci-addbtn:hover { background: #087a3b; }
+.erp-ci .op-ci-sug { margin-top: 8px; display: none; max-height: 200px; overflow-y: auto; background: #fff; border: 1px solid #e2c84a; border-radius: 10px; }
+.erp-ci .op-ci-sug.aberta { display: block; }
+.erp-ci .op-ci-sugit { display: flex; align-items: center; gap: 10px; padding: 9px 12px; cursor: pointer; border-bottom: 1px solid #f2ead0; }
+.erp-ci .op-ci-sugit:last-child { border-bottom: 0; }
+.erp-ci .op-ci-sugit.sel, .erp-ci .op-ci-sugit:hover { background: #fdf3ac; }
+.erp-ci .op-ci-sugit .bi-cod { font-size: 12px; font-weight: 800; color: #0d6ea9; min-width: 54px; }
+.erp-ci .op-ci-sugit .bi-nome { font-weight: 700; color: var(--branco); text-transform: uppercase; font-size: 13px; }
+/* lista de itens escolhidos — verde (produzido/consumo) */
+.erp-ci .op-ci-lista { max-height: 190px; overflow-y: auto; border: 1px solid #e3d9f5; border-radius: 12px; padding: 6px; background: #faf8ff; }
+.erp-ci .op-ci-item { background: #d7ebca; border: 1px solid #a4d18e; border-radius: 9px; padding: 8px 11px; margin-bottom: 5px; display: flex; align-items: center; gap: 10px; }
+.erp-ci .op-ci-item:last-child { margin-bottom: 0; }
+.erp-ci .op-ci-nome { flex: 1; font-weight: 700; text-transform: uppercase; font-size: 13px; color: #14532d; }
+.erp-ci .op-ci-q { font-variant-numeric: tabular-nums; font-weight: 800; color: #15803d; }
+.erp-ci .op-ci-del { border: 0; background: #fdecec; color: #c0392b; border-radius: 7px; padding: 3px 10px; font-weight: 800; cursor: pointer; }
+.erp-ci .op-ci-vazio { padding: 18px; text-align: center; color: #8a7fb0; font-size: 13px; }
+/* rótulo + funcionários (azul) */
+.erp-ci .op-ci-labelfunc { font-size: 13px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: #0d6ea9; margin-top: 2px; }
+.erp-ci .op-ci-funcbtn { background: #eef5fd; border: 1.5px solid #bcdcf6; color: #16467c; border-radius: 10px; padding: 11px 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 700; }
+.erp-ci .op-ci-funcbtn:hover { background: #dcecfb; border-color: #7db6ec; }
+.erp-ci .op-ci-funcbtn.sel { background: var(--acai-claro); border-color: var(--acai-claro); color: #fff; }
+.erp-ci .op-ci-funcbtn .num { background: #cfe2fb; color: #16467c; border-radius: 6px; min-width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
+.erp-ci .op-ci-funcbtn.sel .num { background: rgba(255,255,255,0.3); color: #fff; }
+.erp-ci .op-ci-funcoutro { background: #fff; border: 1.5px solid #bcdcf6; border-radius: 10px; padding: 11px 13px; color: var(--branco); font-size: 15px; outline: none; }
+.erp-ci .op-ci-funcoutro::placeholder { color: #9aa7bd; }
+.erp-ci .op-ci-funcoutro:focus { border-color: #e0a800; background: #fffbea; box-shadow: 0 0 0 3px rgba(255, 200, 0, 0.5); }
+.erp-ci .op-ci-op { color: #6b6685; opacity: 1; }
+.erp-ci .crm-btn { background: #f4f1fd; border: 1px solid #d9cff5; color: #6d28d9; border-radius: 10px; padding: 9px 14px; font-weight: 700; cursor: pointer; }
+.erp-ci .crm-btn:hover { background: #ece5fd; }
+.erp-ci .fin-btn-salvar { background: var(--verde); color: #fff; border: 1px solid var(--verde); border-radius: 10px; padding: 12px 20px; font-weight: 800; cursor: pointer; }
+.erp-ci .fin-btn-salvar:hover:not(:disabled) { background: #087a3b; }
+.erp-ci .fin-btn-salvar:disabled { opacity: 0.5; cursor: not-allowed; }
 /* Litros produzidos (F8) e fechamento do dia (F10) */
 .ltr { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; }
 .ltr-lbl { display: block; font-size: 13px; font-weight: 700; color: rgba(15, 47, 77, 0.85); margin-bottom: 6px; }
@@ -4100,6 +4146,7 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 /* botao FINALIZAR — no rodapé, VERMELHO, largura total */
 .ltr-btn-finalizar { display: block; width: 100%; margin-top: 16px; padding: 15px 18px; border-radius: 12px; border: 1px solid #b02a1c; background: #c0392b; color: #fff; font-size: 16px; font-weight: 800; cursor: pointer; transition: 0.15s; }
 .ltr-btn-finalizar:hover { background: #a5281c; }
+.ltr-kbd-alt { display: inline-block; margin-left: 8px; background: rgba(255,255,255,0.22); border: 1px solid rgba(255,255,255,0.55); border-radius: 7px; padding: 2px 9px; font-size: 12px; font-weight: 800; letter-spacing: .5px; vertical-align: middle; }
 /* linha das latas: quantidade + valor + botao (o valor entra no fluxo por Enter) */
 .ltr-latas-add { gap: 6px; }
 .ltr-latas-add .ltr-input { flex: 1; min-width: 0; }

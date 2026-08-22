@@ -1,6 +1,6 @@
 {
   "name": "programa-acai",
-  "version": "1.0.83",
+  "version": "1.0.84",
   "description": "Sistema de Vendas - Açaí",
   "main": "server.js",
   "scripts": {

@@ -1532,28 +1532,58 @@ const abrirSangria = () => abrirCaixaMov('sangria');
 const abrirSuprimento = () => abrirCaixaMov('suprimento');
 
 // Consumo Interno — baixa de estoque (não é venda). Reusa POST /api/movimentacoes.
-// FLUXO ÚNICO (pedido do Melque): registra os itens NORMALMENTE no cupom do PDV e
-// aperta C → tela enxuta SÓ com os funcionários + confirmação. Os itens do cupom
-// viram o consumo e saem do cupom ao confirmar. Sem cupom → nada a consumir (avisa).
+// C abre SEMPRE (pedido do Melque): se houver itens no cupom do PDV eles viram o consumo
+// (fluxo rápido, saem do cupom ao confirmar); se NÃO houver, a tela deixa buscar os produtos
+// ali mesmo (código/nome + quantidade). Sempre escolhe o funcionário e confirma.
+// Paleta padrão (claro) via classe .erp-ci. Ver [[feedback_paleta_padrao]].
 let ciItens = [];
 let ciVeioDoCupom = false;
+function ciRenderLista() {
+  const el = $('ci-lista'); if (!el) return;
+  if (!ciItens.length) { el.innerHTML = '<div class="op-ci-vazio">Nenhum item ainda — busque um produto acima</div>'; }
+  else el.innerHTML = ciItens.map((it, i) => `<div class="op-ci-item">
+      <span class="op-ci-nome">${crmEsc(it.nome)}</span>
+      <span class="op-ci-q">${biNum(it.qtd)} un</span>
+      <button type="button" class="op-ci-del" data-i="${i}" title="Remover">✕</button>
+    </div>`).join('');
+  el.querySelectorAll('.op-ci-del').forEach(b => b.addEventListener('click', () => { ciItens.splice(+b.dataset.i, 1); ciRenderLista(); ciAtualizarBtn(); }));
+  const cabec = $('ci-cabec'); if (cabec) cabec.textContent = ciItens.length ? `${ciItens.length} ${ciItens.length > 1 ? 'itens' : 'item'} — pra quem?` : 'o que foi consumido e por quem';
+}
+function ciAtualizarBtn() {
+  const inp = $('ci-func'), btnOk = $('ci-confirmar'); if (!btnOk) return;
+  btnOk.disabled = !(inp && inp.value.trim() !== '' && ciItens.length > 0);
+}
+function ciAddProduto(prod, qtd) {
+  if (!prod) return;
+  qtd = Math.round((+qtd || 1) * 1000) / 1000; if (qtd <= 0) qtd = 1;
+  const ex = ciItens.find(x => x.codigo === prod.codigo);
+  if (ex) ex.qtd = Math.round((ex.qtd + qtd) * 1000) / 1000;
+  else ciItens.push({ codigo: prod.codigo, nome: prod.nome, qtd, unidade: 'un' });
+  ciRenderLista(); ciAtualizarBtn();
+}
 async function abrirConsumoInterno() {
-  ciItens = [];
+  ciItens = []; ciVeioDoCupom = false;
   const naPdv = $('tela-pdv').classList.contains('ativa');
-  if (!naPdv || itensCupom.length === 0) {
-    toast('🧑‍🍳 Registre os itens no cupom e aperte C pra lançar como consumo');
-    if (naPdv) focusCodigoMercadoria();
-    return;
+  const temCupom = naPdv && itensCupom.length > 0;
+  if (temCupom) {   // itens do cupom viram o consumo (pacote conta em unidades)
+    ciVeioDoCupom = true;
+    ciItens = itensCupom.map(it => ({ codigo: it.cod, nome: it.desc, qtd: it.qtd * (it.pacote ? (it.unidConsumo || 1) : 1), unidade: 'un' }));
   }
-  // itens já registrados na tela de vendas viram o consumo (pacote conta em unidades)
-  ciVeioDoCupom = true;
-  ciItens = itensCupom.map(it => ({ codigo: it.cod, nome: it.desc, qtd: it.qtd * (it.pacote ? (it.unidConsumo || 1) : 1), unidade: 'un' }));
   let funcs = []; try { funcs = (await (await fetch('/api/movimentacoes/funcionarios', { cache: 'no-store' })).json()).funcionarios || []; } catch {}
-
-  // Tela enxuta — SÓ a escolha do funcionário + confirmação (1 clique / 1 tecla)
   const n = ciItens.length;
-  abrirErpModal(`<h3 class="erp-modal-tit">🧑‍🍳 CONSUMO INTERNO <small class="op-ci-sub">(${n} ${n > 1 ? 'itens' : 'item'} do cupom — pra quem?)</small></h3>
+  const sub = temCupom ? `${n} ${n > 1 ? 'itens' : 'item'} do cupom — pra quem?` : 'o que foi consumido e por quem';
+  abrirErpModal(`<h3 class="erp-modal-tit">🧑‍🍳 CONSUMO INTERNO <small class="op-ci-sub" id="ci-cabec">${sub}</small></h3>
     <div class="op-ci">
+      ${temCupom ? '' : `<div class="op-ci-addwrap">
+        <div class="op-ci-add">
+          <input id="ci-add" class="op-ci-addinp" autocomplete="off" placeholder="🔎 produto — código ou nome (Enter adiciona)">
+          <input id="ci-add-qtd" class="op-ci-addqtd" type="number" min="0" step="any" value="1" title="quantidade">
+          <button type="button" class="op-ci-addbtn" id="ci-add-btn">＋ Adicionar</button>
+        </div>
+        <div class="op-ci-sug" id="ci-sug"></div>
+      </div>
+      <div class="op-ci-lista" id="ci-lista"></div>`}
+      <div class="op-ci-labelfunc">👤 Pra quem?</div>
       <div class="op-ci-funcs" id="ci-funcs">
         ${funcs.map((f, i) => `<button type="button" class="op-ci-funcbtn" data-f="${crmEsc(f)}">${i < 9 ? `<span class="num">${i + 1}</span>` : ''}<span class="lbl">${crmEsc(f)}</span></button>`).join('')}
       </div>
@@ -1562,26 +1592,63 @@ async function abrirConsumoInterno() {
         <button type="button" class="crm-btn" id="ci-pesquisa" title="Ver o que já foi consumido e por quem">📊 Ver consumo</button>
         <button class="fin-btn-salvar" id="ci-confirmar" disabled>✅ Confirmar consumo</button></div>
     </div>`);
+  $('modal-erp-box').classList.add('erp-ci');   // paleta clara padrão
   $('ci-pesquisa').addEventListener('click', abrirConsumoPesquisa);
   const inp = $('ci-func'), btnOk = $('ci-confirmar');
-  const habilitar = () => { btnOk.disabled = inp.value.trim() === ''; };
   const escolher = (nome) => {
-    inp.value = nome; habilitar();
+    inp.value = nome; ciAtualizarBtn();
     document.querySelectorAll('.op-ci-funcbtn').forEach(b => b.classList.toggle('sel', b.dataset.f === nome));
-    btnOk.focus(); // Enter confirma
+    if (!btnOk.disabled) btnOk.focus(); // Enter confirma
   };
   document.querySelectorAll('.op-ci-funcbtn').forEach(b => b.addEventListener('click', () => escolher(b.dataset.f)));
-  inp.addEventListener('input', () => { habilitar(); document.querySelectorAll('.op-ci-funcbtn').forEach(b => b.classList.remove('sel')); });
+  inp.addEventListener('input', () => { ciAtualizarBtn(); document.querySelectorAll('.op-ci-funcbtn').forEach(b => b.classList.remove('sel')); });
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); if (!btnOk.disabled) confirmarConsumoInterno(); } });
-  // teclas 1..9 escolhem o funcionário (fora do campo de digitação com texto)
+  // teclas 1..9 escolhem o funcionário (fora de qualquer campo de digitação com texto)
   $('overlay-erp').addEventListener('keydown', function tecla(e) {
     if (!/^[1-9]$/.test(e.key)) return;
-    if (document.activeElement === inp && inp.value.trim() !== '') return;
+    const a = document.activeElement;
+    if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.value.trim() !== '') return;
     const alvo = document.querySelectorAll('.op-ci-funcbtn')[+e.key - 1];
     if (alvo) { e.preventDefault(); escolher(alvo.dataset.f); }
   });
   btnOk.addEventListener('click', confirmarConsumoInterno);
-  setTimeout(() => { const p = document.querySelector('.op-ci-funcbtn'); (p || inp).focus(); }, 60);
+
+  // Busca de produto (só quando NÃO veio do cupom) — código/nome, Enter ou clique adiciona
+  if (!temCupom) {
+    const add = $('ci-add'), qtd = $('ci-add-qtd'), sug = $('ci-sug');
+    let achados = [], idx = 0;
+    const acharPorCodigo = t => PRODUTOS.find(p => p.codigo.toLowerCase() === t.toLowerCase());
+    const render = () => {
+      if (!achados.length) { sug.innerHTML = ''; sug.classList.remove('aberta'); return; }
+      sug.classList.add('aberta');
+      sug.innerHTML = achados.map((p, i) => `<div class="op-ci-sugit ${i === idx ? 'sel' : ''}" data-i="${i}">
+          <span class="bi-cod">${crmEsc(p.codigo)}</span><span class="bi-nome">${crmEsc(p.nome)}</span></div>`).join('');
+      sug.querySelectorAll('.op-ci-sugit').forEach(it => it.addEventListener('click', () => { ciAddProduto(achados[+it.dataset.i], qtd.value); add.value = ''; achados = []; render(); add.focus(); }));
+    };
+    add.addEventListener('input', () => {
+      const t = add.value.trim().toLowerCase();
+      achados = t ? PRODUTOS.filter(p => p.nome.toLowerCase().includes(t) || p.codigo.toLowerCase().includes(t)).slice(0, 8) : [];
+      idx = 0; render();
+    });
+    add.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); if (achados.length) { idx = (idx + 1) % achados.length; render(); } }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); if (achados.length) { idx = (idx - 1 + achados.length) % achados.length; render(); } }
+      else if (e.key === 'Enter') {
+        e.preventDefault();
+        const exato = acharPorCodigo(add.value.trim());
+        const prod = exato || achados[idx];
+        if (prod) { ciAddProduto(prod, qtd.value); add.value = ''; achados = []; render(); add.focus(); }
+      }
+    });
+    $('ci-add-btn').addEventListener('click', () => {
+      const exato = acharPorCodigo(add.value.trim());
+      const prod = exato || achados[idx];
+      if (prod) { ciAddProduto(prod, qtd.value); add.value = ''; achados = []; render(); add.focus(); }
+      else toast('⚠ Busque e selecione um produto');
+    });
+    ciRenderLista();
+  }
+  setTimeout(() => { const alvo = temCupom ? document.querySelector('.op-ci-funcbtn') : $('ci-add'); (alvo || inp).focus(); }, 60);
 }
 async function confirmarConsumoInterno() {
   if (!ciItens.length) return;
@@ -1693,7 +1760,7 @@ async function abrirLitros() {
         </div>
       </div>
     </div>
-    <button class="ltr-btn-finalizar" id="ltr-fx-ok">🏁 Finalizar e dar entrada</button>`);
+    <button class="ltr-btn-finalizar" id="ltr-fx-ok">🏁 Finalizar e dar entrada <span class="ltr-kbd-alt">Alt+F</span></button>`);
 
   try { const mb = $('modal-erp-box'); if (mb) { mb.classList.add('ltr-modal'); observarFitModal(mb); } } catch {}   // tela AMPLIADA que cabe no viewport (auto-encolhe)
   // Fluxo guiado em 3 passos: (1) litros → Enter · (2) valor por número · (3) confirma (registrar/editar).
@@ -2029,6 +2096,14 @@ function preencherRendimentoDeLitros() {
 // Atalhos operacionais: F9 abre Vendas (de qualquer tela) · F8 Litros · F10 Fecha dia · C Consumo · S Sangria/Suprimento.
 document.addEventListener('keydown', e => {
   if ($('app-principal').classList.contains('oculto')) return;
+  // Alt+F → Finalizar / dar entrada: no rendimento ("Processar e dar entrada") ou na tela Açaí do dia (Finalizar)
+  if (e.altKey && (e.key === 'f' || e.key === 'F')) {
+    const rendAberto = $('overlay-rendimento') && $('overlay-rendimento').classList.contains('aberto');
+    if (rendAberto) { const b = $('btn-confirmar-rend'); if (b && !b.disabled) { e.preventDefault(); b.click(); } return; }
+    const litrosAberto = $('overlay-erp') && $('overlay-erp').classList.contains('aberto') && $('ltr-fx-ok');
+    if (litrosAberto) { e.preventDefault(); $('ltr-fx-ok').click(); return; }
+    return;
+  }
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   // F9 → abrir a tela de VENDAS de qualquer lugar (não fica preso em modal aberto)
   if (e.key === 'F9') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); irPara('pdv'); focusCodigoMercadoria(); return; }
