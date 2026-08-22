@@ -623,7 +623,7 @@ const BUSCA_PLACEHOLDER = {
   pdv: '🔍 Buscar produto pelo nome...', produtos: '🔍 Buscar produto pelo nome...',
   rendimento: '🔍 Buscar produto pelo nome...', materia: '🔍 Buscar matéria-prima já processada...',
   clientes: '🔍 Buscar cliente pelo nome...', 'recebimento-fiado': '🔍 Buscar cliente pelo nome...',
-  'receber-conta': '💰 Cliente que vai pagar a conta...', consumo: '🔍 Buscar produto pelo nome...',
+  'receber-conta': '💰 Cliente que vai pagar a conta...',
 };
 
 function abrirBuscaProduto(contexto = 'pdv') {
@@ -643,7 +643,6 @@ function fecharBusca() {
   else if (buscaContexto === 'clientes') $('cl-nome').focus();
   else if (buscaContexto === 'recebimento-fiado') $('receb-fiado-cliente').focus();
   else if (buscaContexto === 'movimentacoes') { const e = $('movnc-produto'); if (e) e.focus(); }
-  else if (buscaContexto === 'consumo') { const e = $('ci-add-btn'); if (e) e.focus(); }
 }
 function renderBusca(termo) {
   termo = termo.trim().toLowerCase();
@@ -744,14 +743,6 @@ function selecionarBusca(i) {
     const p = buscaResultados[i]; if (!p) return;
     fecharBusca();
     movncSelecionarProduto(p.codigo);
-    return;
-  }
-  if (buscaContexto === 'consumo') {
-    const p = buscaResultados[i]; if (!p) return;
-    const q = ciQtdPendente > 0 ? ciQtdPendente : (parseFloat(($('ci-add-qtd') || {}).value) || 1);
-    ciQtdPendente = 0;
-    fecharBusca();
-    ciAddProduto(p, q);
     return;
   }
   const p = buscaResultados[i];
@@ -1541,35 +1532,15 @@ const abrirSangria = () => abrirCaixaMov('sangria');
 const abrirSuprimento = () => abrirCaixaMov('suprimento');
 
 // Consumo Interno — baixa de estoque (não é venda). Reusa POST /api/movimentacoes.
-// C abre SEMPRE (pedido do Melque): se houver itens no cupom do PDV eles viram o consumo
-// (fluxo rápido, saem do cupom ao confirmar); se NÃO houver, a tela deixa buscar os produtos
-// ali mesmo (código/nome + quantidade). Sempre escolhe o funcionário e confirma.
+// O REGISTRO dos itens é feito na TELA DE VENDAS (cupom); aqui só se escolhe pra quem.
+// C abre SEMPRE: com itens no cupom eles viram o consumo (saem do cupom ao confirmar);
+// sem itens, a tela abre avisando pra registrar em Vendas (Confirmar fica travado).
 // Paleta padrão (claro) via classe .erp-ci. Ver [[feedback_paleta_padrao]].
 let ciItens = [];
 let ciVeioDoCupom = false;
-let ciQtdPendente = 0;   // quantidade do "3*" pendente ao abrir a busca por nome (igual PDV)
-function ciRenderLista() {
-  const el = $('ci-lista'); if (!el) return;
-  if (!ciItens.length) { el.innerHTML = '<div class="op-ci-vazio">Nenhum item ainda — busque um produto acima</div>'; }
-  else el.innerHTML = ciItens.map((it, i) => `<div class="op-ci-item">
-      <span class="op-ci-nome">${crmEsc(it.nome)}</span>
-      <span class="op-ci-q">${biNum(it.qtd)} un</span>
-      <button type="button" class="op-ci-del" data-i="${i}" title="Remover">✕</button>
-    </div>`).join('');
-  el.querySelectorAll('.op-ci-del').forEach(b => b.addEventListener('click', () => { ciItens.splice(+b.dataset.i, 1); ciRenderLista(); ciAtualizarBtn(); }));
-  const cabec = $('ci-cabec'); if (cabec) cabec.textContent = ciItens.length ? `${ciItens.length} ${ciItens.length > 1 ? 'itens' : 'item'} — pra quem?` : 'o que foi consumido e por quem';
-}
 function ciAtualizarBtn() {
   const inp = $('ci-func'), btnOk = $('ci-confirmar'); if (!btnOk) return;
   btnOk.disabled = !(inp && inp.value.trim() !== '' && ciItens.length > 0);
-}
-function ciAddProduto(prod, qtd) {
-  if (!prod) return;
-  qtd = Math.round((+qtd || 1) * 1000) / 1000; if (qtd <= 0) qtd = 1;
-  const ex = ciItens.find(x => x.codigo === prod.codigo);
-  if (ex) ex.qtd = Math.round((ex.qtd + qtd) * 1000) / 1000;
-  else ciItens.push({ codigo: prod.codigo, nome: prod.nome, qtd, unidade: 'un' });
-  ciRenderLista(); ciAtualizarBtn();
 }
 async function abrirConsumoInterno() {
   ciItens = []; ciVeioDoCupom = false;
@@ -1581,17 +1552,10 @@ async function abrirConsumoInterno() {
   }
   let funcs = []; try { funcs = (await (await fetch('/api/movimentacoes/funcionarios', { cache: 'no-store' })).json()).funcionarios || []; } catch {}
   const n = ciItens.length;
-  const sub = temCupom ? `${n} ${n > 1 ? 'itens' : 'item'} do cupom — pra quem?` : 'o que foi consumido e por quem';
+  const sub = temCupom ? `${n} ${n > 1 ? 'itens' : 'item'} do cupom — pra quem?` : 'registre os itens na tela de Vendas (F9) e aperte C';
   abrirErpModal(`<h3 class="erp-modal-tit">🧑‍🍳 CONSUMO INTERNO <small class="op-ci-sub" id="ci-cabec">${sub}</small></h3>
     <div class="op-ci">
-      ${temCupom ? '' : `<div class="op-ci-addwrap">
-        <div class="op-ci-add">
-          <label class="op-ci-qtdlbl">Qtd <input id="ci-add-qtd" class="op-ci-addqtd" type="number" min="0" step="any" value="1" title="quantidade"></label>
-          <button type="button" class="op-ci-addbtn" id="ci-add-btn">🔎 Buscar produto pelo nome</button>
-        </div>
-        <div class="op-ci-addhint">Informe a quantidade e clique em <kbd>Buscar produto</kbd> (ou aperte <kbd>Enter</kbd> na quantidade)</div>
-      </div>
-      <div class="op-ci-lista" id="ci-lista"></div>`}
+      ${temCupom ? '' : `<div class="op-ci-aviso">🛒 Nenhum item no cupom. O consumo é registrado na <b>tela de Vendas</b>: lance os produtos lá e aperte <kbd>C</kbd>.</div>`}
       <div class="op-ci-labelfunc">👤 Pra quem?</div>
       <div class="op-ci-funcs" id="ci-funcs">
         ${funcs.map((f, i) => `<button type="button" class="op-ci-funcbtn" data-f="${crmEsc(f)}">${i < 9 ? `<span class="num">${i + 1}</span>` : ''}<span class="lbl">${crmEsc(f)}</span></button>`).join('')}
@@ -1621,18 +1585,7 @@ async function abrirConsumoInterno() {
     if (alvo) { e.preventDefault(); escolher(alvo.dataset.f); }
   });
   btnOk.addEventListener('click', confirmarConsumoInterno);
-
-  // Adicionar produto (só quando NÃO veio do cupom): busca SEMPRE pelo nome no overlay
-  // padrão do app (sem campo de código). A quantidade digitada vai junto pra escolha.
-  if (!temCupom) {
-    const qtd = $('ci-add-qtd');
-    const qtdCampo = () => { const v = parseFloat((qtd.value || '').replace(',', '.')); return v > 0 ? v : 1; };
-    const abrirBuscaConsumo = () => { ciQtdPendente = qtdCampo(); abrirBuscaProduto('consumo'); };
-    $('ci-add-btn').addEventListener('click', abrirBuscaConsumo);
-    qtd.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); abrirBuscaConsumo(); } });
-    ciRenderLista();
-  }
-  setTimeout(() => { const alvo = temCupom ? document.querySelector('.op-ci-funcbtn') : $('ci-add-btn'); (alvo || inp).focus(); }, 60);
+  setTimeout(() => { const alvo = document.querySelector('.op-ci-funcbtn'); (alvo || inp).focus(); }, 60);
 }
 async function confirmarConsumoInterno() {
   if (!ciItens.length) return;
