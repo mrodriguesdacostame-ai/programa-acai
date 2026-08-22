@@ -2093,17 +2093,20 @@ function preencherRendimentoDeLitros() {
   toast(`🫐 ${biNum(sacas)} lata(s) → ${porValor.length} saída(s) preenchida(s). Confira e grave.`);
   litrosFechamentoPendente = null;
 }
+// Alt+F → Finalizar / dar entrada. Fica em CAPTURA no window (roda antes de qualquer outro
+// handler e antes do navegador tratar o Alt) e checa e.code (com Alt o e.key pode variar).
+window.addEventListener('keydown', e => {
+  if (!e.altKey || e.ctrlKey || e.metaKey) return;
+  if (!(e.code === 'KeyF' || e.key === 'f' || e.key === 'F' || e.key === 'ƒ')) return;
+  if ($('app-principal') && $('app-principal').classList.contains('oculto')) return;
+  const rendAberto = $('overlay-rendimento') && $('overlay-rendimento').classList.contains('aberto');
+  if (rendAberto) { const b = $('btn-confirmar-rend'); e.preventDefault(); e.stopPropagation(); if (b && !b.disabled) b.click(); return; }
+  const btnFin = $('overlay-erp') && $('overlay-erp').classList.contains('aberto') && $('ltr-fx-ok');
+  if (btnFin) { e.preventDefault(); e.stopPropagation(); btnFin.click(); return; }
+}, true);
 // Atalhos operacionais: F9 abre Vendas (de qualquer tela) · F8 Litros · F10 Fecha dia · C Consumo · S Sangria/Suprimento.
 document.addEventListener('keydown', e => {
   if ($('app-principal').classList.contains('oculto')) return;
-  // Alt+F → Finalizar / dar entrada: no rendimento ("Processar e dar entrada") ou na tela Açaí do dia (Finalizar)
-  if (e.altKey && (e.key === 'f' || e.key === 'F')) {
-    const rendAberto = $('overlay-rendimento') && $('overlay-rendimento').classList.contains('aberto');
-    if (rendAberto) { const b = $('btn-confirmar-rend'); if (b && !b.disabled) { e.preventDefault(); b.click(); } return; }
-    const litrosAberto = $('overlay-erp') && $('overlay-erp').classList.contains('aberto') && $('ltr-fx-ok');
-    if (litrosAberto) { e.preventDefault(); $('ltr-fx-ok').click(); return; }
-    return;
-  }
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   // F9 → abrir a tela de VENDAS de qualquer lugar (não fica preso em modal aberto)
   if (e.key === 'F9') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); irPara('pdv'); focusCodigoMercadoria(); return; }

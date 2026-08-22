@@ -4037,8 +4037,8 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 /* ═══════════ CONSUMO INTERNO — paleta CLARA padrão (classe .erp-ci) ═══════════ */
 /* fundo claro, foco amarelo, funcionários em azul, itens em lavanda, confirmar verde */
 .modal-erp.erp-ci { background: #ffffff !important; color: var(--branco) !important; border: 1px solid #e3d9f5 !important; box-shadow: 0 30px 80px rgba(20, 10, 40, 0.28) !important; width: min(720px, 96vw); }
-.modal-erp.erp-ci .erp-modal-tit { color: #4c2a92 !important; }
-.modal-erp.erp-ci .op-ci-sub { color: #6d28d9 !important; opacity: 0.85; }
+.modal-erp.erp-ci .erp-modal-tit { background: #f4f1fd !important; color: #4c2a92 !important; border-bottom: 1px solid #e3d9f5 !important; }
+.modal-erp.erp-ci .op-ci-sub { color: #6d28d9 !important; opacity: 0.9; }
 .modal-erp.erp-ci .op-ci { display: flex; flex-direction: column; gap: 12px; }
 /* busca de produto (sem cupom) — card amarelo de ENTRADA/foco */
 .erp-ci .op-ci-addwrap { background: #fdf3ac; border: 2px solid #e6cb46; border-radius: 14px; padding: 12px 14px; }
