@@ -1630,7 +1630,7 @@ async function abrirConsumoPesquisa() {
       </div>
       <div id="cpq-conteudo">${biLoading()}</div>
     </div>`);
-  $('modal-erp-box').classList.add('erp-ci', 'erp-ci-wide');   // paleta clara padrão + largo p/ as tabelas
+  $('modal-erp-box').classList.add('erp-ci', 'erp-ci-wide', 'erp-cpq');   // paleta clara + tela ampla (aproveita o espaço)
   const carregar = async () => {
     consumoPesqPeriodo = { de: $('cpq-de').value, ate: $('cpq-ate').value };
     const base = new URLSearchParams();

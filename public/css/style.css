@@ -4355,6 +4355,34 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .erp-ci .prod-tabela td { color: var(--branco); border-bottom: 1px solid #eef2f7; }
 .erp-ci .prod-tabela tbody tr:nth-child(even) td { background: #f7fafd; }
 .erp-ci .cpq .ac-vazio { color: #8a93a5; }
+
+/* ═══ "Ver consumo" AMPLA (.erp-cpq): usa a tela toda, nomes GRANDES, cores fortes ═══ */
+.modal-erp.erp-ci.erp-cpq { width: min(1400px, 97vw); max-height: calc(100dvh - 16px); padding: 16px 22px; }
+.erp-cpq .cpq { gap: 14px; }
+/* filtros maiores */
+.erp-cpq .cpq-filtros label { font-size: 13px; }
+.erp-cpq .cpq-filtros input { font-size: 15px; padding: 10px 12px; }
+/* KPIs bem visíveis */
+.erp-cpq .cpq-kpis { gap: 14px; }
+.erp-cpq .cpq-kpi { padding: 14px 18px; }
+.erp-cpq .cpq-kpi span { font-size: 12px; }
+.erp-cpq .cpq-kpi b { font-size: 23px; }
+.erp-cpq .cpq-kpi small { font-size: 12.5px; }
+/* colunas ocupam a largura toda; painel de funcionário em 2 colunas de botões grandes */
+.erp-cpq .cpq-cols { gap: 18px; }
+.erp-cpq .fin-box-tit { font-size: 17px; margin-bottom: 8px; }
+.erp-cpq .cpq-funcbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-height: 46vh; }
+.erp-cpq .cpq-funcbtn { padding: 14px 16px; border-radius: 12px; border-width: 2px; }
+.erp-cpq .cpq-fb-nome { font-size: 19px; }
+.erp-cpq .cpq-fb-vals b { font-size: 17px; }
+.erp-cpq .cpq-fb-vals small { font-size: 12px; }
+/* tabelas maiores e listagem mais alta (aproveita a altura) */
+.erp-cpq .prod-tabela th { font-size: 14px; padding: 11px 12px; }
+.erp-cpq .prod-tabela td { font-size: 15px; padding: 10px 12px; }
+.erp-cpq .cpq-lista { max-height: 34vh; }
+.erp-cpq .cpq-chip { font-size: 15px; padding: 8px 10px 8px 16px; }
+.erp-cpq .cpq-dica { font-size: 12.5px; }
+@media (max-width: 900px) { .erp-cpq .cpq-funcbtns { grid-template-columns: 1fr; } }
 /* Etapa 2 (regra 6): barra operacional fixa REMOVIDA — PDV limpo; ações via atalhos/sidebar. */
 /* Abas do Atendimento */
 .at-tabs { display: flex; gap: 6px; padding: 8px 14px 0; flex-shrink: 0; }
