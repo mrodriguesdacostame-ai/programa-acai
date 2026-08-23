@@ -1618,7 +1618,9 @@ async function confirmarConsumoInterno() {
 /* Pesquisa inteligente do CONSUMO INTERNO — o que foi consumido e por quem. Abre por cima
    do card de consumo (o cupom fica intacto; é só apertar C de novo pra registrar). */
 let consumoPesqPeriodo = { de: '', ate: '' };
+let consumoPesqFunc = '';   // funcionário selecionado (botão) — filtra o relatório inteiro pra ele
 async function abrirConsumoPesquisa() {
+  consumoPesqFunc = '';
   abrirErpModal(`<h3 class="erp-modal-tit">📊 Consumo interno — o que foi consumido e por quem</h3>
     <div class="cpq">
       <div class="cpq-filtros">
@@ -1631,33 +1633,56 @@ async function abrirConsumoPesquisa() {
   $('modal-erp-box').classList.add('erp-ci', 'erp-ci-wide');   // paleta clara padrão + largo p/ as tabelas
   const carregar = async () => {
     consumoPesqPeriodo = { de: $('cpq-de').value, ate: $('cpq-ate').value };
-    const p = new URLSearchParams();
-    if (consumoPesqPeriodo.de) p.set('de', consumoPesqPeriodo.de);
-    if (consumoPesqPeriodo.ate) p.set('ate', consumoPesqPeriodo.ate);
-    if ($('cpq-q').value.trim()) p.set('q', $('cpq-q').value.trim());
-    let d; try { d = await (await fetch('/api/consumo/inteligente?' + p, { cache: 'no-store' })).json(); } catch { $('cpq-conteudo').innerHTML = biErro(); return; }
-    $('cpq-conteudo').innerHTML = consumoPesqHTML(d);
+    const base = new URLSearchParams();
+    if (consumoPesqPeriodo.de) base.set('de', consumoPesqPeriodo.de);
+    if (consumoPesqPeriodo.ate) base.set('ate', consumoPesqPeriodo.ate);
+    if ($('cpq-q').value.trim()) base.set('q', $('cpq-q').value.trim());
+    // dFull = todos os funcionários (pros botões); dDet = só o selecionado (pro resto do relatório)
+    let dFull; try { dFull = await (await fetch('/api/consumo/inteligente?' + base, { cache: 'no-store' })).json(); } catch { $('cpq-conteudo').innerHTML = biErro(); return; }
+    let dDet = dFull;
+    if (consumoPesqFunc) {
+      const p2 = new URLSearchParams(base); p2.set('funcionario', consumoPesqFunc);
+      try { dDet = await (await fetch('/api/consumo/inteligente?' + p2, { cache: 'no-store' })).json(); } catch { dDet = dFull; }
+    }
+    $('cpq-conteudo').innerHTML = consumoPesqHTML(dFull, dDet);
+    // botões de funcionário → clicar filtra o relatório pra ele (clicar de novo volta a todos)
+    $('cpq-conteudo').querySelectorAll('.cpq-funcbtn').forEach(b => b.addEventListener('click', () => {
+      consumoPesqFunc = (consumoPesqFunc === b.dataset.f) ? '' : b.dataset.f;
+      carregar();
+    }));
+    const lim = $('cpq-func-limpar'); if (lim) lim.addEventListener('click', () => { consumoPesqFunc = ''; carregar(); });
   };
   ['cpq-de', 'cpq-ate'].forEach(id => $(id).addEventListener('change', carregar));
   let t; $('cpq-q').addEventListener('input', () => { clearTimeout(t); t = setTimeout(carregar, 250); });
   carregar();
 }
-function consumoPesqHTML(d) {
-  const i = d.insights || {};
+function consumoPesqHTML(dFull, dDet) {
+  dDet = dDet || dFull;
+  const i = dDet.insights || {};
+  const sel = consumoPesqFunc;
+  const kpiPessoa = sel
+    ? `<div class="cpq-kpi cpq-kpi--pessoa"><span>Funcionário</span><b>${crmEsc(sel)}</b><small>${i.nRegistros || 0} lançamentos</small></div>`
+    : `<div class="cpq-kpi cpq-kpi--pessoa"><span>Quem mais consome</span><b>${i.quemMais ? crmEsc(i.quemMais.nome) : '—'}</b><small>${i.quemMais ? fmt(i.quemMais.valor) : ''}</small></div>`;
   const kpis = `<div class="cpq-kpis">
-      <div class="cpq-kpi cpq-kpi--money"><span>Consumido (custo)</span><b>${fmt(i.totalValor || 0)}</b><small>${i.nRegistros || 0} lançamentos</small></div>
-      <div class="cpq-kpi cpq-kpi--pessoa"><span>Quem mais consome</span><b>${i.quemMais ? crmEsc(i.quemMais.nome) : '—'}</b><small>${i.quemMais ? fmt(i.quemMais.valor) : ''}</small></div>
-      <div class="cpq-kpi cpq-kpi--produto"><span>Mais consumido</span><b>${i.produtoMais ? crmEsc(i.produtoMais.nome) : '—'}</b><small>${i.produtoMais ? biNum(i.produtoMais.qtd) + ' un' : ''}</small></div>
+      <div class="cpq-kpi cpq-kpi--money"><span>Consumido (custo)${sel ? ' — ' + crmEsc(sel) : ''}</span><b>${fmt(i.totalValor || 0)}</b><small>${i.nRegistros || 0} lançamentos</small></div>
+      ${kpiPessoa}
+      <div class="cpq-kpi cpq-kpi--produto"><span>Mais consumido${sel ? ' por ' + crmEsc(sel) : ''}</span><b>${i.produtoMais ? crmEsc(i.produtoMais.nome) : '—'}</b><small>${i.produtoMais ? biNum(i.produtoMais.qtd) + ' un' : ''}</small></div>
     </div>`;
-  const func = (d.porFuncionario || []).map(f => `<tr><td>${crmEsc(f.nome)}</td><td class="col-num">${biNum(f.qtd)}</td><td class="col-num">${fmt(f.valor)}</td><td class="col-num">${f.n}</td></tr>`).join('') || '<tr><td colspan="4" class="ac-vazio">Nada no período.</td></tr>';
-  const prod = (d.porProduto || []).map(p => `<tr><td>${crmEsc(p.nome)}</td><td class="col-num">${biNum(p.qtd)} ${crmEsc(p.unidade || '')}</td><td class="col-num">${fmt(p.valor)}</td></tr>`).join('') || '<tr><td colspan="3" class="ac-vazio">Nada no período.</td></tr>';
-  const lista = (d.lista || []).slice(0, 60).map(m => `<tr><td>${fmtDataHora(m.criado_em)}</td><td>${crmEsc(m.produto_nome || m.produto_codigo)}</td><td class="col-num">${biNum(m.quantidade)}</td><td>${crmEsc(m.funcionario || '—')}</td></tr>`).join('') || '<tr><td colspan="4" class="ac-vazio">Nada.</td></tr>';
-  return kpis + `
+  // Painel "Por funcionário" = BOTÕES (nome + qtd + valor). Clicar mostra só o respectivo.
+  const botoes = (dFull.porFuncionario || []).map(f => `
+      <button type="button" class="cpq-funcbtn ${f.nome === sel ? 'sel' : ''}" data-f="${crmEsc(f.nome)}">
+        <span class="cpq-fb-nome">${crmEsc(f.nome)}</span>
+        <span class="cpq-fb-vals"><b>${fmt(f.valor)}</b><small>${biNum(f.qtd)} un · ${f.n}×</small></span>
+      </button>`).join('') || '<div class="ac-vazio">Nada no período.</div>';
+  const chip = sel ? `<div class="cpq-chip">📌 Mostrando só: <b>${crmEsc(sel)}</b><button type="button" id="cpq-func-limpar" title="Ver todos">✕ todos</button></div>` : '';
+  const prod = (dDet.porProduto || []).map(p => `<tr><td>${crmEsc(p.nome)}</td><td class="col-num">${biNum(p.qtd)} ${crmEsc(p.unidade || '')}</td><td class="col-num">${fmt(p.valor)}</td></tr>`).join('') || '<tr><td colspan="3" class="ac-vazio">Nada no período.</td></tr>';
+  const lista = (dDet.lista || []).slice(0, 60).map(m => `<tr><td>${fmtDataHora(m.criado_em)}</td><td>${crmEsc(m.produto_nome || m.produto_codigo)}</td><td class="col-num">${biNum(m.quantidade)}</td><td>${crmEsc(m.funcionario || '—')}</td></tr>`).join('') || '<tr><td colspan="4" class="ac-vazio">Nada.</td></tr>';
+  return kpis + chip + `
     <div class="cpq-cols">
-      <div><div class="fin-box-tit">👤 Por funcionário</div><div class="prod-tabela-wrap"><table class="prod-tabela"><thead><tr><th>Funcionário</th><th class="col-num">Qtd</th><th class="col-num">Valor</th><th class="col-num">Nº</th></tr></thead><tbody>${func}</tbody></table></div></div>
-      <div><div class="fin-box-tit">🍧 Por produto</div><div class="prod-tabela-wrap"><table class="prod-tabela"><thead><tr><th>Produto</th><th class="col-num">Qtd</th><th class="col-num">Valor</th></tr></thead><tbody>${prod}</tbody></table></div></div>
+      <div><div class="fin-box-tit">👤 Por funcionário <small class="cpq-dica">(clique num nome pra ver só ele)</small></div><div class="cpq-funcbtns">${botoes}</div></div>
+      <div><div class="fin-box-tit">🍧 Por produto${sel ? ' — ' + crmEsc(sel) : ''}</div><div class="prod-tabela-wrap"><table class="prod-tabela"><thead><tr><th>Produto</th><th class="col-num">Qtd</th><th class="col-num">Valor</th></tr></thead><tbody>${prod}</tbody></table></div></div>
     </div>
-    <div class="fin-box-tit" style="margin-top:6px">🕒 Últimos lançamentos</div>
+    <div class="fin-box-tit" style="margin-top:6px">🕒 Últimos lançamentos${sel ? ' — ' + crmEsc(sel) : ''}</div>
     <div class="prod-tabela-wrap cpq-lista"><table class="prod-tabela"><thead><tr><th>Quando</th><th>Produto</th><th class="col-num">Qtd</th><th>Quem</th></tr></thead><tbody>${lista}</tbody></table></div>`;
 }
 

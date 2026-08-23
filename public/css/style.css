@@ -4333,6 +4333,21 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .erp-ci .cpq-kpi--produto span { color: #6d28d9; }
 .erp-ci .cpq-kpi--produto b { color: #5b21b6; }
 .erp-ci .cpq-kpi--produto small { color: #7c4bc7; }
+/* "Por funcionário" = botões clicáveis (azul); selecionado = azul cheio */
+.erp-ci .cpq-funcbtns { display: flex; flex-direction: column; gap: 7px; max-height: 30vh; overflow-y: auto; }
+.erp-ci .cpq-funcbtn { display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: left; background: #d7e9fb; border: 1.5px solid #86baec; color: #123a63; border-radius: 10px; padding: 9px 13px; cursor: pointer; font-weight: 800; transition: .12s; }
+.erp-ci .cpq-funcbtn:hover { background: #c2ddf8; border-color: #4b96db; }
+.erp-ci .cpq-funcbtn.sel { background: var(--acai-claro); border-color: var(--acai-claro); color: #fff; box-shadow: 0 3px 10px rgba(30,136,200,.35); }
+.erp-ci .cpq-fb-nome { font-size: 14px; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.erp-ci .cpq-fb-vals { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.15; flex: 0 0 auto; }
+.erp-ci .cpq-fb-vals b { font-size: 14px; color: #0a9b4b; }
+.erp-ci .cpq-funcbtn.sel .cpq-fb-vals b { color: #eafff2; }
+.erp-ci .cpq-fb-vals small { font-size: 11px; opacity: .8; font-weight: 700; }
+.erp-ci .cpq-dica { font-weight: 600; font-size: 11.5px; color: #6b7688; text-transform: none; }
+.erp-ci .cpq-chip { display: inline-flex; align-items: center; gap: 8px; background: #dcecfb; border: 1.5px solid #86baec; color: #14467c; border-radius: 999px; padding: 6px 8px 6px 14px; font-size: 13px; font-weight: 700; align-self: flex-start; }
+.erp-ci .cpq-chip b { color: #0d6ea9; }
+.erp-ci .cpq-chip button { border: 0; background: #fdecec; color: #c0392b; border-radius: 999px; padding: 4px 11px; font-weight: 800; cursor: pointer; }
+.erp-ci .cpq-chip button:hover { background: #f9d7d7; }
 /* títulos de seção + tabelas na paleta clara */
 .erp-ci .fin-box-tit { color: #0d6ea9; font-weight: 800; }
 .erp-ci .prod-tabela-wrap { border: 1px solid #d9e6f4; border-radius: 12px; background: #fff; }
