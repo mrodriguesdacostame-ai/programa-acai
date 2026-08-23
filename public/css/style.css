@@ -2362,6 +2362,66 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .cxd-mini b { font-size: 16px; font-weight: 800; color: var(--branco); font-variant-numeric: tabular-nums; }
 .cxd-fechar { align-self: flex-start; }
 @media (max-width: 760px) { .cxd-cols { grid-template-columns: 1fr; } }
+
+/* ═══════════════ FINANCEIRO — REPAGINADA (fontes maiores + padrão de cores) ═══════════════ */
+/* Escopo #tela-financeiro: o ID faz estes estilos vencerem TUDO (inclusive a regra global de
+   borda de input com !important). Vale pra TODAS as abas — elas compartilham as classes fin-*. */
+/* — Sidebar (menu das abas): itens maiores/legíveis, grupo com título azul forte — */
+#tela-financeiro .fin-menu-grupo-tit { font-size: 12px; color: #0d6ea9; letter-spacing: .5px; padding: 6px 6px 3px; }
+#tela-financeiro .fin-menu-item { font-size: 15px; padding: 13px 15px; background: #eaf3fc; border: 1.5px solid #cfe3f7; color: #14467c; font-weight: 700; }
+#tela-financeiro .fin-menu-item:hover { background: #d7e9fb; border-color: #86baec; color: #0d3a63; }
+#tela-financeiro .fin-menu-item.ativo { background: var(--acai-claro); border-color: var(--acai-claro); color: #fff; box-shadow: 0 3px 10px rgba(30,136,200,.3); }
+/* — Caixas brancas com borda firme + título azul grande — */
+#tela-financeiro .fin-box { background: #fff; border: 1.5px solid #d9e6f4; border-radius: 14px; padding: 16px 18px; }
+#tela-financeiro .fin-box-tit { font-size: 17px; color: #0d6ea9; margin-bottom: 12px; }
+/* — Formulários: rótulos e campos maiores; branco, borda azul, foco AMARELO (padrão) — */
+#tela-financeiro .fin-form label, #tela-financeiro .fin-form-inline label { font-size: 13.5px; color: #33475b; font-weight: 700; }
+#tela-financeiro .fin-form input, #tela-financeiro .fin-form select,
+#tela-financeiro .fin-form-inline input, #tela-financeiro .fin-form-inline select {
+  font-size: 15.5px; padding: 11px 13px; background: #fff !important; border: 1.5px solid #86baec !important; border-radius: 10px; color: var(--branco); }
+#tela-financeiro .fin-form input:focus, #tela-financeiro .fin-form select:focus,
+#tela-financeiro .fin-form-inline input:focus, #tela-financeiro .fin-form-inline select:focus {
+  border-color: #e0a800 !important; background: #fffbea !important; box-shadow: 0 0 0 3px rgba(255,200,0,.45); outline: none; }
+/* — Botões FORTES (nada apagado) — */
+#tela-financeiro .fin-btn-salvar { font-size: 15px; padding: 12px 20px; background: var(--verde); border: 1px solid var(--verde); color: #fff; }
+#tela-financeiro .fin-btn-salvar:hover { background: #087a3b; color: #fff; }
+#tela-financeiro .fin-btn-filtrar { font-size: 14px; padding: 11px 18px; background: var(--acai-claro); border: 1px solid var(--acai-claro); color: #fff; font-weight: 800; }
+#tela-financeiro .fin-btn-filtrar:hover { background: #1668a8; color: #fff; }
+#tela-financeiro .crm-btn { font-size: 14px; padding: 10px 15px; background: #eaf3fc; border: 1.5px solid #86baec; color: #0d6ea9; font-weight: 800; border-radius: 10px; }
+#tela-financeiro .crm-btn:hover { background: #d7e9fb; }
+/* — KPIs (fin-card) maiores e coloridos — */
+#tela-financeiro .fin-cards { gap: 14px; }
+#tela-financeiro .fin-card { background: #f4f9ff; border: 1.5px solid #cfe3f7; border-radius: 14px; padding: 16px; }
+#tela-financeiro .fin-card-top { font-size: 24px; }
+#tela-financeiro .fin-card-num { font-size: 24px; }
+#tela-financeiro .fin-card-lbl { font-size: 12.5px; color: #4a5a6b; }
+#tela-financeiro .fin-card.pos { border-color: #a4d5b6; background: #f0faf3; }
+#tela-financeiro .fin-card.neg { border-color: #f0b6c0; background: #fdf3f5; }
+/* — Caixa do dia: números/textos maiores, cards mais fortes — */
+#tela-financeiro .cxd-tit { font-size: 24px; }
+#tela-financeiro .cxd-data { font-size: 15px; color: #4a5a6b; }
+#tela-financeiro .cxd-saldo { background: #f4f9ff; border: 1.5px solid #cfe3f7; padding: 20px; }
+#tela-financeiro .cxd-saldo span { font-size: 14px; color: #4a5a6b; }
+#tela-financeiro .cxd-saldo b { font-size: 46px; }
+#tela-financeiro .cxd-col { background: #fff; border-width: 1.5px; }
+#tela-financeiro .cxd-col.entrou { border-color: #a4d5b6; background: #f4fbf6; }
+#tela-financeiro .cxd-col.saiu { border-color: #f0b6c0; background: #fdf5f6; }
+#tela-financeiro .cxd-col-h { font-size: 15px; }
+#tela-financeiro .cxd-col-h b { font-size: 20px; }
+#tela-financeiro .cxd-lin { font-size: 15px; color: #24313f; }
+#tela-financeiro .cxd-lin b { font-size: 15.5px; color: #123a63; }
+#tela-financeiro .cxd-mini { font-size: 14px; background: #fff; border: 1.5px solid #cfe3f7; padding: 14px 16px; color: #24313f; }
+#tela-financeiro .cxd-mini b { font-size: 19px; color: #123a63; }
+#tela-financeiro .cxd-mini.info { background: #f4f9ff; }
+#tela-financeiro .cxd-vazio { font-size: 13.5px; }
+/* — Tabelas do módulo: fonte maior + cabeçalho azul + zebra — */
+#tela-financeiro .prod-tabela th { font-size: 14px; background: #eef4fb; color: #14467c; }
+#tela-financeiro .prod-tabela td { font-size: 14.5px; color: var(--branco); }
+#tela-financeiro .prod-tabela tbody tr:nth-child(even) td { background: #f7fafd; }
+/* — Textos auxiliares/chips maiores — */
+#tela-financeiro .fin-hint { font-size: 13px; color: #5a6b7c; }
+#tela-financeiro .fin-forma-chip { font-size: 13.5px; padding: 8px 15px; }
+#tela-financeiro .fin-forma-chip.ativo { background: #dcecfb; border-color: #86baec; color: #0d6ea9; }
 /* COMPRA DE AÇAÍ (latas) */
 .acai { display: flex; flex-direction: column; gap: 14px; }
 .acai-resumo { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
