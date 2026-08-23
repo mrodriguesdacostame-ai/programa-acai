@@ -1628,6 +1628,7 @@ async function abrirConsumoPesquisa() {
       </div>
       <div id="cpq-conteudo">${biLoading()}</div>
     </div>`);
+  $('modal-erp-box').classList.add('erp-ci', 'erp-ci-wide');   // paleta clara padrão + largo p/ as tabelas
   const carregar = async () => {
     consumoPesqPeriodo = { de: $('cpq-de').value, ate: $('cpq-ate').value };
     const p = new URLSearchParams();
@@ -1644,9 +1645,9 @@ async function abrirConsumoPesquisa() {
 function consumoPesqHTML(d) {
   const i = d.insights || {};
   const kpis = `<div class="cpq-kpis">
-      <div class="cpq-kpi"><span>Consumido (custo)</span><b>${fmt(i.totalValor || 0)}</b><small>${i.nRegistros || 0} lançamentos</small></div>
-      <div class="cpq-kpi"><span>Quem mais consome</span><b>${i.quemMais ? crmEsc(i.quemMais.nome) : '—'}</b><small>${i.quemMais ? fmt(i.quemMais.valor) : ''}</small></div>
-      <div class="cpq-kpi"><span>Mais consumido</span><b>${i.produtoMais ? crmEsc(i.produtoMais.nome) : '—'}</b><small>${i.produtoMais ? biNum(i.produtoMais.qtd) + ' un' : ''}</small></div>
+      <div class="cpq-kpi cpq-kpi--money"><span>Consumido (custo)</span><b>${fmt(i.totalValor || 0)}</b><small>${i.nRegistros || 0} lançamentos</small></div>
+      <div class="cpq-kpi cpq-kpi--pessoa"><span>Quem mais consome</span><b>${i.quemMais ? crmEsc(i.quemMais.nome) : '—'}</b><small>${i.quemMais ? fmt(i.quemMais.valor) : ''}</small></div>
+      <div class="cpq-kpi cpq-kpi--produto"><span>Mais consumido</span><b>${i.produtoMais ? crmEsc(i.produtoMais.nome) : '—'}</b><small>${i.produtoMais ? biNum(i.produtoMais.qtd) + ' un' : ''}</small></div>
     </div>`;
   const func = (d.porFuncionario || []).map(f => `<tr><td>${crmEsc(f.nome)}</td><td class="col-num">${biNum(f.qtd)}</td><td class="col-num">${fmt(f.valor)}</td><td class="col-num">${f.n}</td></tr>`).join('') || '<tr><td colspan="4" class="ac-vazio">Nada no período.</td></tr>';
   const prod = (d.porProduto || []).map(p => `<tr><td>${crmEsc(p.nome)}</td><td class="col-num">${biNum(p.qtd)} ${crmEsc(p.unidade || '')}</td><td class="col-num">${fmt(p.valor)}</td></tr>`).join('') || '<tr><td colspan="3" class="ac-vazio">Nada no período.</td></tr>';

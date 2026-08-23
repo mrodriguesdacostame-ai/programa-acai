@@ -4051,9 +4051,9 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .erp-ci .op-ci-funcbtn.sel { background: var(--acai-claro); border-color: var(--acai-claro); color: #fff; }
 .erp-ci .op-ci-funcbtn .num { background: var(--acai-claro); color: #fff; border-radius: 6px; min-width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; }
 .erp-ci .op-ci-funcbtn.sel .num { background: rgba(255,255,255,0.32); color: #fff; }
-.erp-ci .op-ci-funcoutro { background: #fff; border: 1.5px solid #86baec; border-radius: 10px; padding: 11px 13px; color: var(--branco); font-size: 15px; outline: none; }
-.erp-ci .op-ci-funcoutro::placeholder { color: #7386a1; }
-.erp-ci .op-ci-funcoutro:focus { border-color: #e0a800; background: #fffbea; box-shadow: 0 0 0 3px rgba(255, 200, 0, 0.5); }
+.modal-erp.erp-ci .op-ci .op-ci-funcoutro { background: #fff; border: 1.5px solid #86baec !important; border-radius: 10px; padding: 11px 13px; color: var(--branco); font-size: 15px; outline: none; }
+.modal-erp.erp-ci .op-ci .op-ci-funcoutro::placeholder { color: #7386a1; }
+.modal-erp.erp-ci .op-ci .op-ci-funcoutro:focus { border-color: #e0a800 !important; background: #fffbea; box-shadow: 0 0 0 3px rgba(255, 200, 0, 0.5); }
 .erp-ci .op-ci-op { color: #453f5e; opacity: 1; }
 .erp-ci .crm-btn { background: #e6dbfb; border: 1.5px solid #b699ee; color: #5b21b6; border-radius: 10px; padding: 9px 14px; font-weight: 800; cursor: pointer; }
 .erp-ci .crm-btn:hover { background: #d7c4f7; border-color: #9a72e6; }
@@ -4310,6 +4310,36 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .cpq-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
 .cpq-lista { max-height: 26vh; overflow: auto; }
 @media (max-width: 760px) { .cpq-kpis { grid-template-columns: 1fr; } .cpq-cols { grid-template-columns: 1fr; } }
+
+/* ═══ "Ver consumo" (relatório) no PADRÃO DE CORES (modal claro .erp-ci) ═══ */
+.modal-erp.erp-ci.erp-ci-wide { width: min(920px, 96vw); }
+/* filtros: brancos, borda azul firme, foco amarelo (padrão) */
+.erp-ci .cpq-filtros label { color: #0d6ea9; font-weight: 800; text-transform: uppercase; letter-spacing: .3px; }
+.modal-erp.erp-ci .cpq .cpq-filtros input { background: #fff; border: 1.5px solid #86baec !important; color: var(--branco); border-radius: 10px; }
+.modal-erp.erp-ci .cpq .cpq-filtros input:focus { border-color: #e0a800 !important; background: #fffbea; box-shadow: 0 0 0 3px rgba(255, 200, 0, .5); outline: none; }
+.erp-ci .cpq-filtros input::placeholder { color: #7386a1; }
+/* KPIs coloridos por papel: verde=R$ · azul=pessoa · roxo=produto */
+.erp-ci .cpq-kpi { border-radius: 12px; padding: 11px 14px; border: 1.5px solid; }
+.erp-ci .cpq-kpi span { font-weight: 800; opacity: 1; }
+.erp-ci .cpq-kpi--money { background: #dff1e4; border-color: #a4d5b6; }
+.erp-ci .cpq-kpi--money span { color: #157a44; }
+.erp-ci .cpq-kpi--money b { color: #0a9b4b; }
+.erp-ci .cpq-kpi--money small { color: #2f7d52; }
+.erp-ci .cpq-kpi--pessoa { background: #dcecfb; border-color: #93c2ee; }
+.erp-ci .cpq-kpi--pessoa span { color: #0d6ea9; }
+.erp-ci .cpq-kpi--pessoa b { color: #14467c; }
+.erp-ci .cpq-kpi--pessoa small { color: #2b6aa3; }
+.erp-ci .cpq-kpi--produto { background: #efe7fd; border-color: #cbb8f2; }
+.erp-ci .cpq-kpi--produto span { color: #6d28d9; }
+.erp-ci .cpq-kpi--produto b { color: #5b21b6; }
+.erp-ci .cpq-kpi--produto small { color: #7c4bc7; }
+/* títulos de seção + tabelas na paleta clara */
+.erp-ci .fin-box-tit { color: #0d6ea9; font-weight: 800; }
+.erp-ci .prod-tabela-wrap { border: 1px solid #d9e6f4; border-radius: 12px; background: #fff; }
+.erp-ci .prod-tabela thead th { background: #eef4fb; color: #14467c; border-bottom: 1.5px solid #cfe0f2; }
+.erp-ci .prod-tabela td { color: var(--branco); border-bottom: 1px solid #eef2f7; }
+.erp-ci .prod-tabela tbody tr:nth-child(even) td { background: #f7fafd; }
+.erp-ci .cpq .ac-vazio { color: #8a93a5; }
 /* Etapa 2 (regra 6): barra operacional fixa REMOVIDA — PDV limpo; ações via atalhos/sidebar. */
 /* Abas do Atendimento */
 .at-tabs { display: flex; gap: 6px; padding: 8px 14px 0; flex-shrink: 0; }
