@@ -7,8 +7,11 @@
   <title>Açaí do Centro</title>
   <script>
     /* Mata qualquer service worker antigo do Chrome que possa estar servindo o app VELHO
-       (causa de "abre mas não pega comando"). Roda antes de tudo, sem quebrar se falhar. */
+       (causa de "atualizei e ficou velho" / "abre mas não pega comando"). Desregistra o SW
+       E apaga os caches que ele guardou — senão o app.js/style.css velhos continuam vindo do
+       Cache Storage mesmo com ?v novo. Roda antes de tudo, sem quebrar se falhar. */
     try { if ('serviceWorker' in navigator) navigator.serviceWorker.getRegistrations().then(function(rs){ rs.forEach(function(r){ r.unregister(); }); }).catch(function(){}); } catch (e) {}
+    try { if (window.caches && caches.keys) caches.keys().then(function(ks){ ks.forEach(function(k){ caches.delete(k); }); }).catch(function(){}); } catch (e) {}
   </script>
   <link rel="icon" type="image/png" href="icone-acai.png">
   <link rel="stylesheet" href="css/style.css">
