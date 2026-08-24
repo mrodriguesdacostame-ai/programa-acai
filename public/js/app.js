@@ -7010,7 +7010,7 @@ async function renderFinCaixaDia() {
         </div>
       </div>
       <div class="cxd-extra">
-        <button class="cxd-mini" data-cxd-goto="receber"><span>📒 Fiado em aberto (a receber)</span><b>${fmt(+fin.fiadoEmAberto || 0)}</b></button>
+        <div class="cxd-mini info"><span>📒 Fiado em aberto (a receber)</span><b>${fmt(+fin.fiadoEmAberto || 0)}</b></div>
         ${(+fin.acaiAPagar || 0) > 0 ? `<button class="cxd-mini" data-cxd-goto="acai"><span>🫐 Açaí a pagar (fornecedores)</span><b>${fmt(+fin.acaiAPagar || 0)}</b></button>` : ''}
         <div class="cxd-mini info"><span>🛒 Vendas do dia (${dia.qtdVendas || 0})</span><b>${fmt(+dia.faturamento || 0)}</b></div>
         ${vendaFiadoHoje > 0 ? `<div class="cxd-mini info"><span>📝 Vendido no fiado hoje</span><b>${fmt(vendaFiadoHoje)}</b></div>` : ''}
@@ -8397,7 +8397,7 @@ async function renderFinContasPagar() {
   if (!erpFornecedoresCache.length) { try { erpFornecedoresCache = await erpGet('fornecedores'); } catch {} }
   let alertas = {}; try { alertas = await erpGet('alertas'); } catch {}
   el.innerHTML = `
-    <div class="erp-topo"><h2 class="erp-h2">📌 Contas a Pagar</h2><span class="fin-flex"></span>${finPodeLancar() ? '<button class="fin-mini" data-erp-acao="cp-nova">➕ Conta avulsa</button>' : ''}</div>
+    <div class="erp-topo"><h2 class="erp-h2">📌 Contas a serem pagas</h2><span class="fin-flex"></span>${finPodeLancar() ? '<button class="fin-mini" data-erp-acao="cp-nova">➕ Nova conta</button>' : ''}</div>
     ${renderAlertasBanner(alertas)}
     <div class="fin-filtros">
       <label>Fornecedor<select id="pf-forn"><option value="">Todos</option>${erpOptFornecedores()}</select></label>
@@ -8447,20 +8447,54 @@ function abrirPagarModal(contaId, restante) {
     toast(`✅ Pago ${fmt(valor)} · ${({ aberto: 'em aberto', parcial: 'parcial', pago: 'quitado' }[r.status] || r.status)}`); fecharErpModal(); await finCarregarBase(); finRefreshAtual();
   });
 }
+// Soma i intervalos (mes/quinzena/semana) a uma data 'yyyy-mm-dd' e devolve 'yyyy-mm-dd'.
+function cpAddIntervalo(base, tipo, i) {
+  if (!base) return null;
+  const [y, m, d] = base.split('-').map(Number);
+  let dt;
+  if (tipo === 'mes') dt = new Date(y, (m - 1) + i, d);
+  else if (tipo === 'quinzena') dt = new Date(y, m - 1, d + 15 * i);
+  else if (tipo === 'semana') dt = new Date(y, m - 1, d + 7 * i);
+  else dt = new Date(y, m - 1, d);
+  const p = n => String(n).padStart(2, '0');
+  return `${dt.getFullYear()}-${p(dt.getMonth() + 1)}-${p(dt.getDate())}`;
+}
 function abrirContaAvulsaForm() {
-  abrirErpModal(`<h3 class="erp-modal-tit">➕ Conta a pagar avulsa</h3>
+  abrirErpModal(`<h3 class="erp-modal-tit">➕ Nova conta a pagar</h3>
     <form id="erp-form-cp" class="fin-form">
       <label>Descrição<input id="ecp-desc" placeholder="ex.: Aluguel, energia, internet..."></label>
-      <div class="fin-frow"><label>Fornecedor (opcional)<select id="ecp-forn"><option value="">—</option>${erpOptFornecedores()}</select></label><label>Valor<input type="number" step="0.01" id="ecp-valor"></label></div>
-      <label>Vencimento<input type="date" id="ecp-venc"></label>
-      <button type="submit" class="fin-btn-salvar">💾 Criar conta a pagar</button></form>`);
+      <div class="fin-frow"><label>Fornecedor (opcional)<select id="ecp-forn"><option value="">—</option>${erpOptFornecedores()}</select></label><label>Valor de cada<input type="number" step="0.01" id="ecp-valor" placeholder="0,00"></label></div>
+      <label>1º vencimento<input type="date" id="ecp-venc"></label>
+      <div class="fin-frow"><label>Parcelas (repetir o valor)<input type="number" min="1" step="1" id="ecp-parcelas" value="1"></label><label>Intervalo<select id="ecp-intervalo"><option value="mes" selected>Mensal</option><option value="quinzena">Quinzenal</option><option value="semana">Semanal</option></select></label></div>
+      <div class="fin-hint" id="ecp-resumo">1 parcela.</div>
+      <button type="submit" class="fin-btn-salvar">💾 Criar</button></form>`);
+  const resumo = () => {
+    const v = parseFloat($('ecp-valor').value) || 0;
+    const n = Math.max(1, parseInt($('ecp-parcelas').value) || 1);
+    const it = $('ecp-intervalo').value, base = $('ecp-venc').value;
+    const rot = { mes: 'mês', quinzena: 'quinzena', semana: 'semana' }[it] || 'mês';
+    let txt = n > 1 ? `${n} parcelas de ${fmt(v)} = <b>${fmt(v * n)}</b> (uma por ${rot})` : `1 parcela de ${fmt(v)}.`;
+    if (n > 1 && base) txt += ` · 1º venc.: ${erpFmtData(cpAddIntervalo(base, it, 0))} · último: ${erpFmtData(cpAddIntervalo(base, it, n - 1))}`;
+    $('ecp-resumo').innerHTML = txt;
+  };
+  ['ecp-valor', 'ecp-parcelas', 'ecp-intervalo', 'ecp-venc'].forEach(id => { const e = $(id); if (e) { e.addEventListener('input', resumo); e.addEventListener('change', resumo); } });
   $('erp-form-cp').addEventListener('submit', async e => {
     e.preventDefault();
     const valor = parseFloat($('ecp-valor').value) || 0; if (valor <= 0) { toast('⚠ Informe o valor'); return; }
-    const body = { descricao: $('ecp-desc').value.trim() || 'Conta a pagar', fornecedor_id: +$('ecp-forn').value || null, valor_total: valor, data_vencimento: $('ecp-venc').value || null };
-    const r = await (await fetch('/api/erp/contas-pagar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
-    if (r.erro) { toast('⚠ ' + r.erro); return; }
-    toast('✅ Conta a pagar criada'); fecharErpModal(); renderFinContasPagar();
+    const n = Math.max(1, parseInt($('ecp-parcelas').value) || 1);
+    const it = $('ecp-intervalo').value, base = $('ecp-venc').value || null;
+    const descBase = $('ecp-desc').value.trim() || 'Conta a pagar';
+    const forn = +$('ecp-forn').value || null;
+    let criadas = 0, erros = 0;
+    for (let i = 0; i < n; i++) {
+      const desc = n > 1 ? `${descBase} (${i + 1}/${n})` : descBase;
+      const body = { descricao: desc, fornecedor_id: forn, valor_total: valor, data_vencimento: cpAddIntervalo(base, it, i) };
+      const r = await (await fetch('/api/erp/contas-pagar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
+      if (r && r.erro) erros++; else criadas++;
+    }
+    if (criadas) toast(`✅ ${criadas > 1 ? criadas + ' parcelas criadas' : 'Conta criada'}${erros ? ` (${erros} falharam)` : ''}`);
+    else toast('⚠ Não foi possível criar');
+    fecharErpModal(); renderFinContasPagar();
   });
 }
 
