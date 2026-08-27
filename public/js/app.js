@@ -1705,6 +1705,24 @@ const LTR_PALETA = [
   { bg: '#f6d7d2', bd: '#f0a597', tx: '#8a2c1c' }, // vermelho suave
   { bg: '#dbe4f7', bd: '#a9bce8', tx: '#2b3a7a' }, // azul-índigo
 ];
+// CONVENÇÃO GLOBAL: Shift+Enter = VOLTAR em todo o programa (passo anterior / fechar / ESC).
+// Captura no window (antes de tudo). O F8 registra sua própria função de "voltar um passo".
+let f8VoltarAtual = null;
+(function instalarShiftEnterVoltar() {
+  const ehEnter = e => e.key === 'Enter' || e.code === 'Enter' || e.code === 'NumpadEnter' || e.keyCode === 13;
+  window.addEventListener('keydown', e => {
+    if (!e.shiftKey || e.ctrlKey || e.altKey || e.metaKey || !ehEnter(e)) return;
+    e.preventDefault(); e.stopPropagation();
+    // 1) F8 "Açaí do dia" tem passos → volta um passo
+    const f8Aberto = document.querySelector('#overlay-erp.aberto .ltr');
+    if (f8Aberto && typeof f8VoltarAtual === 'function') { f8VoltarAtual(); return; }
+    // 2) botão de voltar visível na tela/modal atual (‹ editar, voltar…)
+    const back = [...document.querySelectorAll('.ltr-voltar, [data-voltar]')].find(b => b.offsetParent !== null);
+    if (back) { back.click(); return; }
+    // 3) resto do programa: age como ESC (fecha/volta o que estiver aberto)
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true }));
+  }, true);
+})();
 /* F8 — LITROS produzidos, em 3 passos guiados: (1) digita os litros → Enter · (2) escolhe o
    PRODUTO/valor por número (cada botão é um produto) · (3) confirma (registrar ou editar).
    Os lançamentos ficam PENDENTES até o F10 (fechar o dia → rendimento). */
@@ -1757,8 +1775,7 @@ async function abrirLitros() {
     else if (passo === 'confF') { formulaPendente = null; passo = 1; render(); }
     else if (passo === 'confL') { latasPendente = null; passo = 1; render(); setTimeout(() => { const e = $('ltr-lata-qtd'); if (e) e.focus(); }, 50); }
   };
-  const ehEnter = e => e.key === 'Enter' || e.code === 'Enter' || e.code === 'NumpadEnter' || e.keyCode === 13;
-  wrap.addEventListener('keydown', e => { if (e.shiftKey && ehEnter(e)) { e.preventDefault(); e.stopPropagation(); voltarSelecao(); } }, true);
+  f8VoltarAtual = voltarSelecao;   // o Shift+Enter global usa esta função quando o F8 está aberto
 
   function renderPasso1() {
     stepBox.innerHTML = `
@@ -1794,7 +1811,10 @@ async function abrirLitros() {
       if (!(v > 0)) { toast('⚠ Informe os litros'); inp.focus(); return; }
       litros = r2loc(v); passo = 2; render();
     };
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); avancar(); } });   // Enter adiciona (sem botão)
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); avancar(); }   // Enter adiciona (sem botão)
+      else if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); const t = $('ltr-gelado-qtd'); if (t) t.focus(); }   // Tab: registro → gelado
+    });
   }
 
   function renderPasso2() {
@@ -1962,7 +1982,11 @@ async function abrirLitros() {
     $('ltr-gelado-qtd').value = ''; $('ltr-gelado-qtd').focus(); carregarDia();
   }
   // gelado: Enter no campo → FOCA o botão "registrar" (aí Enter/clique registra)
-  $('ltr-gelado-qtd').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); $('ltr-gelado-add').focus(); } });
+  $('ltr-gelado-qtd').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); $('ltr-gelado-add').focus(); }
+    else if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); const t = $('ltr-lata-qtd'); if (t) t.focus(); }   // Tab: gelado → latas
+    else if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); const t = $('ltr-litros'); if (t) t.focus(); }       // Shift+Tab: gelado → registro
+  });
   $('ltr-gelado-add').addEventListener('click', registrarGelado);
 
   // 🥫 LATAS — fluxo por Enter: quantidade → Enter vai pro VALOR → Enter registra. Soma no dia.
@@ -2010,7 +2034,10 @@ async function abrirLitros() {
     $('ltr-cl-editar').addEventListener('click', volta);
     $('ltr-cl-volta').addEventListener('click', volta);
   }
-  $('ltr-lata-qtd').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); if (latasVarPreco()) $('ltr-lata-valor').focus(); else adicionarLata(); } });
+  $('ltr-lata-qtd').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); if (latasVarPreco()) $('ltr-lata-valor').focus(); else adicionarLata(); }
+    else if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); const t = $('ltr-gelado-qtd'); if (t) t.focus(); }   // Shift+Tab: latas → gelado
+  });
   $('ltr-lata-valor').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); adicionarLata(); } });
   $('ltr-lata-add').addEventListener('click', adicionarLata);
   { const cb = $('ltr-lata-varpreco'); if (cb) cb.addEventListener('change', () => { const v = $('ltr-lata-valor'); if (v) { v.style.display = cb.checked ? '' : 'none'; if (!cb.checked) v.value = ''; } }); }
@@ -2175,6 +2202,10 @@ function preencherRendimentoDeLitros() {
   const porValor = (resumo && resumo.porValor) || [];
   if (porValor.length) {
     $('rend-linhas').innerHTML = '';
+    // MESMA cor de cada valor/tipo do F8 (identidade visual continua no rendimento)
+    const chaveCorChip = p => p.codigo ? ('c' + p.codigo) : ('v' + (r2loc(+p.valor || 0)));
+    const distintasR = [...new Set(porValor.map(chaveCorChip))].sort();
+    const corDeR = k => LTR_PALETA[distintasR.indexOf(k) % LTR_PALETA.length] || LTR_PALETA[0];
     porValor.forEach(pv => {
       addLinhaRendimento();
       const linha = $('rend-linhas').lastElementChild;
@@ -2185,6 +2216,10 @@ function preencherRendimentoDeLitros() {
       if (prod) { linha.querySelector('.rl-cod').value = prod.codigo; linha.querySelector('.rl-desc').value = prod.nome; }
       linha.querySelector('.rl-preco').value = pv.valor;
       linha.querySelector('.rl-qtd').value = pv.litros;
+      const c = corDeR(chaveCorChip(pv));   // faixa lateral + fundo tênue (não mexe no layout)
+      linha.classList.add('rend-linha-cor');
+      linha.style.background = c.bg;
+      linha.style.boxShadow = 'inset 6px 0 0 ' + c.tx;
     });
     recalcularRendimento();
   }

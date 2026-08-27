@@ -1731,6 +1731,11 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
   padding: 8px 9px; color: var(--branco); outline: none; font-family: inherit; font-size: 13px;
 }
 .rend-linha input:focus { border-color: #e0a800; background: #fffbea; box-shadow: 0 0 0 2px rgba(255, 200, 0, 0.5); }
+/* linha do rendimento com a COR do valor de açaí (faixa lateral + fundo tênue) */
+.rend-head-row { padding: 0 8px; }
+.rend-linha-cor { padding: 5px 8px; border-radius: 10px; }
+.rend-linha-cor input { background: rgba(255,255,255,0.72); }
+.rend-linha-cor input:focus { background: #fffbea; }
 .rend-linha input.rl-custo.manual { border-color: var(--amarelo); color: var(--amarelo); }
 .rl-margem { font-size: 13px; font-weight: 700; text-align: center; color: var(--verde); font-variant-numeric: tabular-nums; }
 .rl-margem.neg { color: var(--vermelho); }
