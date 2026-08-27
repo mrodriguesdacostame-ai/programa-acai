@@ -1727,17 +1727,26 @@ async function abrirLitros() {
 
   try { const mb = $('modal-erp-box'); if (mb) { mb.classList.add('ltr-modal'); observarFitModal(mb); } } catch {}   // tela AMPLIADA que cabe no viewport (auto-encolhe)
   // Fluxo guiado em 3 passos: (1) litros → Enter · (2) valor por número · (3) confirma (registrar/editar).
-  let passo = 1, litros = 0, valorSel = null, codigoSel = '', nomeSel = '', formulaPendente = null;
+  let passo = 1, litros = 0, valorSel = null, codigoSel = '', nomeSel = '', formulaPendente = null, latasPendente = null;
   let diaResumo = null;   // resumo do dia (setado por carregarDia) — usado pelo "Finalizar"
   let latasTotal = 0, latasValorMedio = 0;   // latas do dia (soma) + valor médio por lata — setado por carregarLatas
   const stepBox = $('ltr-steps');
   const wrap = document.querySelector('.ltr');
 
   function render() {
-    const box = $('modal-erp-box'); if (box) box.classList.toggle('erp-conf-grande', passo === 3 || passo === 'confF'); // tela grande na confirmação
+    const box = $('modal-erp-box'); if (box) box.classList.toggle('erp-conf-grande', passo === 3 || passo === 'confF' || passo === 'confL'); // tela grande na confirmação
     if (passo === 'confF') { renderConfirmFormula(); return; }
+    if (passo === 'confL') { renderConfirmLatas(); return; }
     passo === 1 ? renderPasso1() : passo === 2 ? renderPasso2() : renderPasso3();
   }
+  // Shift+Enter volta as seleções em qualquer passo (captura: antes dos campos/botões)
+  const voltarSelecao = () => {
+    if (passo === 3) { passo = 2; render(); }
+    else if (passo === 2) { passo = 1; render(); }
+    else if (passo === 'confF') { formulaPendente = null; passo = 1; render(); }
+    else if (passo === 'confL') { latasPendente = null; passo = 1; render(); setTimeout(() => { const e = $('ltr-lata-qtd'); if (e) e.focus(); }, 50); }
+  };
+  wrap.addEventListener('keydown', e => { if (e.shiftKey && e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); voltarSelecao(); } }, true);
 
   function renderPasso1() {
     stepBox.innerHTML = `
@@ -1780,7 +1789,7 @@ async function abrirLitros() {
     const ehAdmin = usuarioAtual && usuarioAtual.perfil === 'admin';
     stepBox.innerHTML = `
       <div class="ltr-passo">
-        <div class="ltr-passo-n">Passo 2 de 3 · <button class="ltr-voltar" id="ltr-volta2">‹ editar litros</button></div>
+        <div class="ltr-passo-n">Passo 2 de 3 · <button class="ltr-voltar" id="ltr-volta2">‹ editar litros (Shift+Enter)</button></div>
         <div class="ltr-resumo-mini">🫐 <b>${biNum(litros)} litros</b></div>
         <div class="ltr-val-cab"><label class="ltr-lbl">Açaí de qual valor?</label>${ehAdmin ? '<button class="ltr-edit-val" id="ltr-editar-valores">✏️ editar valores</button>' : ''}</div>
         <div class="ltr-valores-lbl"><small>clique ou tecle 1–9</small></div>
@@ -1889,7 +1898,7 @@ async function abrirLitros() {
     }).join('');
     stepBox.innerHTML = `
       <div class="ltr-passo ltr-passo-conf">
-        <div class="ltr-passo-n">Confirmação · <button class="ltr-voltar" id="ltr-cf-volta">‹ editar</button></div>
+        <div class="ltr-passo-n">Confirmação · <button class="ltr-voltar" id="ltr-cf-volta">‹ editar (Shift+Enter)</button></div>
         <div class="ltr-conf-grande">
           <div class="ltr-conf-q">?</div>
           <div class="ltr-conf-intro">Você está dando entrada de</div>
@@ -1914,8 +1923,9 @@ async function abrirLitros() {
     if (passo === 2 && /^[1-9]$/.test(e.key)) {
       if (ae && ae.tagName === 'INPUT') return; // digitando num campo (outro valor / editor) — não sequestra
       const btn = stepBox.querySelectorAll('.ltr-valbtn')[+e.key - 1]; if (btn) { e.preventDefault(); btn.click(); }
-    } else if (passo === 3 && e.key === 'Enter') { e.preventDefault(); registrar(); }
-    else if (passo === 'confF' && e.key === 'Enter') { e.preventDefault(); confirmarFormulaPost(); }
+    } else if (passo === 3 && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); registrar(); }
+    else if (passo === 'confF' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmarFormulaPost(); }
+    else if (passo === 'confL' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmarLataPost(); }
   });
 
   // 🧊 SOBROU GELADO — mesma lógica de digitar dos litros: tecla os litros e Enter (ou litros*código).
@@ -1950,9 +1960,43 @@ async function abrirLitros() {
     const qtd = parseFloat(raw.replace(',', '.'));
     if (!(qtd > 0)) { toast('⚠ Informe quantas latas'); $('ltr-lata-qtd').focus(); return; }
     const valor = latasVarPreco() ? (parseFloat(($('ltr-lata-valor').value || '').replace(',', '.')) || 0) : 0;   // preço só quando "preço variado"; senão o custo é no processamento
-    const r = await (await fetch('/api/latas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ qtd, valor }) })).json();
+    // pedido do Melque: as latas também passam pela tela de confirmação antes de gravar
+    latasPendente = { qtd, valor }; passo = 'confL'; render();
+  }
+  let clPosting = false;
+  async function confirmarLataPost() {
+    if (clPosting) return; clPosting = true;
+    const p = latasPendente || {};
+    const r = await (await fetch('/api/latas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ qtd: p.qtd, valor: p.valor || 0 }) })).json();
+    clPosting = false;
     if (r && r.erro) { toast('⚠ ' + r.erro); return; }
-    $('ltr-lata-qtd').value = ''; $('ltr-lata-valor').value = ''; $('ltr-lata-qtd').focus(); carregarLatas();
+    toast(`🥫 ${biNum(p.qtd)} lata(s) registrada(s)`);
+    latasPendente = null; { const a = $('ltr-lata-qtd'), b = $('ltr-lata-valor'); if (a) a.value = ''; if (b) b.value = ''; }
+    passo = 1; render(); carregarLatas();
+    setTimeout(() => { const e = $('ltr-lata-qtd'); if (e) e.focus(); }, 60);
+  }
+  function renderConfirmLatas() {
+    const p = latasPendente || {};
+    const vtxt = (+p.valor > 0) ? ` <span class="ltr-conf-bullet">•</span> <b class="ltr-conf-valor">${fmt(p.valor)} cada</b>` : '';
+    stepBox.innerHTML = `
+      <div class="ltr-passo ltr-passo-conf">
+        <div class="ltr-passo-n">Confirmação · <button class="ltr-voltar" id="ltr-cl-volta">‹ editar (Shift+Enter)</button></div>
+        <div class="ltr-conf-grande">
+          <div class="ltr-conf-q">🥫</div>
+          <div class="ltr-conf-intro">Você está dando entrada de</div>
+          <div class="ltr-conf-frase"><b class="ltr-conf-litros">${biNum(p.qtd)} lata(s)</b>${vtxt}</div>
+          <div class="ltr-conf-pergunta">Posso registrar?</div>
+        </div>
+        <div class="ltr-conf-acoes">
+          <button class="fin-btn-salvar ltr-btn-registrar" id="ltr-cl-ok">✅ Registrar (Enter)</button>
+          <button class="crm-btn ltr-btn-editar" id="ltr-cl-editar">✏️ Editar</button>
+        </div>
+      </div>`;
+    setTimeout(() => { const b = $('ltr-cl-ok'); if (b) b.focus(); }, 40);
+    $('ltr-cl-ok').addEventListener('click', confirmarLataPost);
+    const volta = () => { latasPendente = null; passo = 1; render(); setTimeout(() => { const e = $('ltr-lata-qtd'); if (e) e.focus(); }, 50); };
+    $('ltr-cl-editar').addEventListener('click', volta);
+    $('ltr-cl-volta').addEventListener('click', volta);
   }
   $('ltr-lata-qtd').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); if (latasVarPreco()) $('ltr-lata-valor').focus(); else adicionarLata(); } });
   $('ltr-lata-valor').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); adicionarLata(); } });
