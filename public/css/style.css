@@ -4250,6 +4250,13 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .ltr-modal .ltr-ver-todas.recolher { background: #eef4fb; border-color: #cfe0f2; color: #0d6ea9; }
 .ltr-modal .ltr-ver-todas.recolher:hover { background: #dcecfb; border-color: #86baec; }
 .ltr-modal .ltr-vt-tag { background: #7c3aed; color: #fff; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 800; }
+/* lista expandida ROLA por dentro (não corta nem some fora da tela) */
+.ltr-modal .ltr-rows.expandida { max-height: 42vh; overflow-y: auto; padding-right: 4px; border: 1px solid #e6e0f5; border-radius: 12px; background: #faf8ff; }
+.ltr-modal .ltr-rows.expandida .ltr-item { margin: 4px 6px; }
+/* itens da confirmação da entrada direta (fórmula) */
+.ltr-conf-itens { display: flex; flex-direction: column; gap: 6px; margin: 8px auto; max-height: 38vh; overflow-y: auto; max-width: 480px; }
+.ltr-conf-linha { background: #d7ebca; border: 1px solid #a4d18e; border-radius: 10px; padding: 9px 13px; color: #14532d; font-size: 15px; font-weight: 700; }
+.ltr-conf-linha b { color: #15803d; }
 /* cards LAVANDA/ROXO da direita (gelado + latas) — mesma largura (bloco cheio) */
 .ltr-modal .ltr-gelado-inline { background: #f4f1fd; border: 1px solid #ddd4f5; border-radius: 14px; padding: 12px 14px; color: #0d6ea9; font-size: 14px; }
 .ltr-modal .ltr-gelado-inline .ltr-input-mini { flex: 1; min-width: 0; }

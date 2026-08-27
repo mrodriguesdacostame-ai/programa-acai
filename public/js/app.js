@@ -1727,14 +1727,15 @@ async function abrirLitros() {
 
   try { const mb = $('modal-erp-box'); if (mb) { mb.classList.add('ltr-modal'); observarFitModal(mb); } } catch {}   // tela AMPLIADA que cabe no viewport (auto-encolhe)
   // Fluxo guiado em 3 passos: (1) litros → Enter · (2) valor por número · (3) confirma (registrar/editar).
-  let passo = 1, litros = 0, valorSel = null, codigoSel = '', nomeSel = '';
+  let passo = 1, litros = 0, valorSel = null, codigoSel = '', nomeSel = '', formulaPendente = null;
   let diaResumo = null;   // resumo do dia (setado por carregarDia) — usado pelo "Finalizar"
   let latasTotal = 0, latasValorMedio = 0;   // latas do dia (soma) + valor médio por lata — setado por carregarLatas
   const stepBox = $('ltr-steps');
   const wrap = document.querySelector('.ltr');
 
   function render() {
-    const box = $('modal-erp-box'); if (box) box.classList.toggle('erp-conf-grande', passo === 3); // passo 3 = tela grande (metade do monitor)
+    const box = $('modal-erp-box'); if (box) box.classList.toggle('erp-conf-grande', passo === 3 || passo === 'confF'); // tela grande na confirmação
+    if (passo === 'confF') { renderConfirmFormula(); return; }
     passo === 1 ? renderPasso1() : passo === 2 ? renderPasso2() : renderPasso3();
   }
 
@@ -1757,12 +1758,11 @@ async function abrirLitros() {
         let obj = valores.find(v => v.codigo && String(v.codigo).toLowerCase() === cod.toLowerCase());
         if (!obj) { const p = (typeof buscarPorCodigo === 'function') ? buscarPorCodigo(cod) : null; if (p) obj = { valor: r2loc(+p.precoVenda || +p.preco || 0), codigo: p.codigo, nome: p.nome }; }
         if (!obj || !(obj.valor > 0)) { toast('❌ Código não encontrado ou sem preço: ' + cod); inp.focus(); return; }
-        itens.push({ litros: r2loc(qn), valor: obj.valor, produto_codigo: obj.codigo || cod });
+        itens.push({ litros: r2loc(qn), valor: obj.valor, produto_codigo: obj.codigo || cod, nome: obj.nome || '' });
       }
-      let totalL = 0;
-      for (const it of itens) { const r = await (await fetch('/api/litros', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ litros: it.litros, valor: it.valor, produto_codigo: it.produto_codigo, gelado: 0 }) })).json(); if (r && r.erro) { toast('⚠ ' + r.erro); return; } totalL += it.litros; }
-      toast(`🫐 ${biNum(totalL)} L registrados`);
-      litros = 0; passo = 1; render(); carregarDia();
+      if (!itens.length) return;
+      // pedido do Melque: digitar direto (fórmula) também passa pela tela de confirmação
+      formulaPendente = itens; passo = 'confF'; render();
     }
     const avancar = () => {
       const raw = (inp.value || '').trim();
@@ -1866,6 +1866,48 @@ async function abrirLitros() {
     fecharErpModal(); // fecha a tela inteira após confirmar — reabre no próximo F8
   }
 
+  // Confirmação da ENTRADA DIRETA (fórmula digitada). Mostra os itens e só grava ao confirmar.
+  let cfPosting = false;
+  async function confirmarFormulaPost() {
+    if (cfPosting) return; cfPosting = true;
+    const itens = formulaPendente || [];
+    let totalL = 0;
+    for (const it of itens) {
+      const r = await (await fetch('/api/litros', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ litros: it.litros, valor: it.valor, produto_codigo: it.produto_codigo, gelado: 0 }) })).json();
+      if (r && r.erro) { toast('⚠ ' + r.erro); cfPosting = false; return; }
+      totalL += it.litros;
+    }
+    toast(`🫐 ${biNum(totalL)} L registrados`);
+    formulaPendente = null; cfPosting = false; litros = 0; passo = 1; render(); carregarDia();
+  }
+  function renderConfirmFormula() {
+    const itens = formulaPendente || [];
+    const totalL = itens.reduce((s, it) => s + (+it.litros || 0), 0);
+    const linhas = itens.map(it => {
+      const nome = it.nome || (valores.find(v => v.codigo === it.produto_codigo) || {}).nome || it.produto_codigo || 'produto';
+      return `<div class="ltr-conf-linha"><b>${biNum(it.litros)} L</b> · ${crmEsc(nome)} · ${fmt(it.valor)}</div>`;
+    }).join('');
+    stepBox.innerHTML = `
+      <div class="ltr-passo ltr-passo-conf">
+        <div class="ltr-passo-n">Confirmação · <button class="ltr-voltar" id="ltr-cf-volta">‹ editar</button></div>
+        <div class="ltr-conf-grande">
+          <div class="ltr-conf-q">?</div>
+          <div class="ltr-conf-intro">Você está dando entrada de</div>
+          <div class="ltr-conf-itens">${linhas}</div>
+          <div class="ltr-conf-frase">Total: <b class="ltr-conf-litros">${biNum(totalL)} L</b></div>
+          <div class="ltr-conf-pergunta">Posso registrar?</div>
+        </div>
+        <div class="ltr-conf-acoes">
+          <button class="fin-btn-salvar ltr-btn-registrar" id="ltr-cf-ok">✅ Registrar (Enter)</button>
+          <button class="crm-btn ltr-btn-editar" id="ltr-cf-editar">✏️ Editar</button>
+        </div>
+      </div>`;
+    setTimeout(() => { const b = $('ltr-cf-ok'); if (b) b.focus(); }, 40);
+    $('ltr-cf-ok').addEventListener('click', confirmarFormulaPost);
+    $('ltr-cf-editar').addEventListener('click', () => { passo = 1; render(); });
+    $('ltr-cf-volta').addEventListener('click', () => { passo = 1; render(); });
+  }
+
   // Teclado do fluxo: no passo 2, teclas 1–9 escolhem o valor; no passo 3, Enter registra.
   wrap.addEventListener('keydown', e => {
     const ae = document.activeElement;
@@ -1873,6 +1915,7 @@ async function abrirLitros() {
       if (ae && ae.tagName === 'INPUT') return; // digitando num campo (outro valor / editor) — não sequestra
       const btn = stepBox.querySelectorAll('.ltr-valbtn')[+e.key - 1]; if (btn) { e.preventDefault(); btn.click(); }
     } else if (passo === 3 && e.key === 'Enter') { e.preventDefault(); registrar(); }
+    else if (passo === 'confF' && e.key === 'Enter') { e.preventDefault(); confirmarFormulaPost(); }
   });
 
   // 🧊 SOBROU GELADO — mesma lógica de digitar dos litros: tecla os litros e Enter (ou litros*código).
@@ -1979,18 +2022,20 @@ async function abrirLitros() {
     // Só o ÚLTIMO lançamento aparece; o resto fica somado no total acima, com botão pra ver tudo.
     const porData = (d.lista || []).slice().sort((a, b) => new Date(b.criado_em || 0) - new Date(a.criado_em || 0));
     const n = porData.length;
-    let corpo;
-    if (n === 0) corpo = '<div class="ac-vazio">Nada ainda hoje.</div>';
+    let labelHtml = '', rowsHtml = '', btnHtml = '';
+    if (n === 0) rowsHtml = '<div class="ac-vazio">Nada ainda hoje.</div>';
     else if (!ltrExpandido && n > 1) {
       const resto = porData.slice(1);
       const somaResto = resto.reduce((s, x) => s + (x.gelado ? 0 : (+x.litros || 0)), 0);
-      corpo = `<div class="ltr-ultimo-lbl">🆕 Último lançamento</div>${rowHtml(porData[0])}
-        <button type="button" class="ltr-ver-todas" id="ltr-ver-todas">📋 Ver todas as entradas do dia <span class="ltr-vt-tag">+${resto.length} · ${biNum(somaResto)} L</span></button>`;
+      labelHtml = '<div class="ltr-ultimo-lbl">🆕 Último lançamento</div>';
+      rowsHtml = rowHtml(porData[0]);
+      btnHtml = `<button type="button" class="ltr-ver-todas" id="ltr-ver-todas">📋 Ver todas as entradas do dia <span class="ltr-vt-tag">+${resto.length} · ${biNum(somaResto)} L</span></button>`;
     } else {
-      corpo = porData.map(rowHtml).join('');
-      if (n > 1) corpo += `<button type="button" class="ltr-ver-todas recolher" id="ltr-recolher">▲ Recolher (mostrar só o último)</button>`;
+      rowsHtml = porData.map(rowHtml).join('');
+      if (n > 1) btnHtml = `<button type="button" class="ltr-ver-todas recolher" id="ltr-recolher">▲ Recolher (mostrar só o último)</button>`;
     }
-    $('ltr-lista').innerHTML = `<div class="ltr-total">${totalTxt}</div><div class="ltr-porvalor">${porValor}</div>${corpo}`;
+    // as LINHAS ficam num container que ROLA quando expandido (não corta nada)
+    $('ltr-lista').innerHTML = `<div class="ltr-total">${totalTxt}</div><div class="ltr-porvalor">${porValor}</div>${labelHtml}<div class="ltr-rows${ltrExpandido ? ' expandida' : ''}">${rowsHtml}</div>${btnHtml}`;
     $('ltr-lista').querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => { await fetch('/api/litros/' + b.dataset.del, { method: 'DELETE' }); carregarDia(); }));
     { const vt = $('ltr-ver-todas'); if (vt) vt.addEventListener('click', () => { ltrExpandido = true; carregarDia(); }); }
     { const rc = $('ltr-recolher'); if (rc) rc.addEventListener('click', () => { ltrExpandido = false; carregarDia(); }); }
