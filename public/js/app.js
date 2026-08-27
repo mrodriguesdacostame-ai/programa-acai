@@ -1954,6 +1954,7 @@ async function abrirLitros() {
     irPara('produtos');
     setTimeout(() => { try { abrirRendimento(); preencherRendimentoDeLitros(); } catch (e) { toast('Abra "Processar em vários produtos" pra concluir.'); } }, 400);
   });
+  let ltrExpandido = false;   // por padrão mostra só o último lançamento; botão expande a lista toda
   render();
   carregarDia();
   async function carregarDia() {
@@ -1962,9 +1963,7 @@ async function abrirLitros() {
     diaResumo = rz;   // deixa o "Fechar o dia" saber quanto foi produzido
     { const box = $('ltr-fechar-box'); if (box) box.classList.toggle('ltr-fechar-vazio', !(rz.totalLitros > 0)); }
     const porValor = (rz.porValor || []).map(p => `<span class="ltr-chip">${p.nome ? p.nome + ' · ' : ''}${fmt(p.valor)}: <b>${biNum(p.litros)} L</b></span>`).join('');
-    // os GELADOS vão pro FIM da lista (produção do dia primeiro, sobra gelada depois)
-    const listaOrd = (d.lista || []).slice().sort((a, b) => (a.gelado ? 1 : 0) - (b.gelado ? 1 : 0));
-    const linhas = listaOrd.map(x => {
+    const rowHtml = x => {
       const hora = x.criado_em ? new Date(x.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
       const prod = x.produto_codigo ? PRODUTOS.find(p => p.codigo === x.produto_codigo) : null;
       const nome = prod ? prod.nome : '';
@@ -1972,14 +1971,29 @@ async function abrirLitros() {
         ? `<b>${biNum(x.litros)} L</b> · 🧊 gelado (não conta)${nome ? ' · ' + nome : ''}`
         : `<b>${biNum(x.litros)} L</b> · ${nome ? nome + ' · ' : ''}${fmt(x.valor_unit)}`;
       return `<div class="ltr-item${x.gelado ? ' ltr-item-gelado' : ''}"><span class="ltr-item-hora">🕒 ${hora}</span><span class="ltr-item-desc">${desc}</span><button class="ac-mini del" data-del="${x.id}" title="Remover">🗑</button></div>`;
-    }).join('') || '<div class="ac-vazio">Nada ainda hoje.</div>';
-    const geladoTag = (+rz.geladoLitros > 0) ? `<span class="ltr-gelado-tag">🧊 sobrou gelado (não conta): <b>${biNum(rz.geladoLitros)} L</b></span>` : '';
+    };
     const bruto = +rz.totalBruto || +rz.totalLitros || 0, gel = +rz.geladoLitros || 0, net = +rz.totalLitros || 0;
     const totalTxt = gel > 0
       ? `Produzido: <b>${biNum(bruto)} L</b> · 🧊 gelado: <b>${biNum(gel)} L</b> · ✅ a processar: <b>${biNum(net)} L</b>`
       : `Total: <b>${biNum(net)} litros</b>`;
-    $('ltr-lista').innerHTML = `<div class="ltr-total">${totalTxt}</div><div class="ltr-porvalor">${porValor}</div>${linhas}`;
+    // Só o ÚLTIMO lançamento aparece; o resto fica somado no total acima, com botão pra ver tudo.
+    const porData = (d.lista || []).slice().sort((a, b) => new Date(b.criado_em || 0) - new Date(a.criado_em || 0));
+    const n = porData.length;
+    let corpo;
+    if (n === 0) corpo = '<div class="ac-vazio">Nada ainda hoje.</div>';
+    else if (!ltrExpandido && n > 1) {
+      const resto = porData.slice(1);
+      const somaResto = resto.reduce((s, x) => s + (x.gelado ? 0 : (+x.litros || 0)), 0);
+      corpo = `<div class="ltr-ultimo-lbl">🆕 Último lançamento</div>${rowHtml(porData[0])}
+        <button type="button" class="ltr-ver-todas" id="ltr-ver-todas">📋 Ver todas as entradas do dia <span class="ltr-vt-tag">+${resto.length} · ${biNum(somaResto)} L</span></button>`;
+    } else {
+      corpo = porData.map(rowHtml).join('');
+      if (n > 1) corpo += `<button type="button" class="ltr-ver-todas recolher" id="ltr-recolher">▲ Recolher (mostrar só o último)</button>`;
+    }
+    $('ltr-lista').innerHTML = `<div class="ltr-total">${totalTxt}</div><div class="ltr-porvalor">${porValor}</div>${corpo}`;
     $('ltr-lista').querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => { await fetch('/api/litros/' + b.dataset.del, { method: 'DELETE' }); carregarDia(); }));
+    { const vt = $('ltr-ver-todas'); if (vt) vt.addEventListener('click', () => { ltrExpandido = true; carregarDia(); }); }
+    { const rc = $('ltr-recolher'); if (rc) rc.addEventListener('click', () => { ltrExpandido = false; carregarDia(); }); }
   }
 }
 /* 🧊 Açaí que sobrou GELADO: registra a sobra pra controle, mas NÃO entra na contagem do dia

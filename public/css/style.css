@@ -4243,6 +4243,13 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .ltr-modal .ltr-item-gelado .ltr-item-desc b { color: #16467c; }
 .ltr-modal .ltr-item-lata { background: #e8e0fc; border-color: #cfc0f2; }
 .ltr-modal .ltr-item-lata .ltr-item-desc, .ltr-modal .ltr-item-lata .ltr-item-desc b { color: #4c2a92; }
+/* "só o último lançamento" + botão pra ver todas as entradas do dia */
+.ltr-modal .ltr-ultimo-lbl { font-size: 12px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: #0d6ea9; margin: 4px 0 6px; }
+.ltr-modal .ltr-ver-todas { width: 100%; margin-top: 8px; padding: 11px 14px; border-radius: 12px; border: 1.5px solid #cbb8f2; background: #efe7fd; color: #5b21b6; font-family: inherit; font-size: 14px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: .12s; }
+.ltr-modal .ltr-ver-todas:hover { background: #e3d5fb; border-color: #a985ec; }
+.ltr-modal .ltr-ver-todas.recolher { background: #eef4fb; border-color: #cfe0f2; color: #0d6ea9; }
+.ltr-modal .ltr-ver-todas.recolher:hover { background: #dcecfb; border-color: #86baec; }
+.ltr-modal .ltr-vt-tag { background: #7c3aed; color: #fff; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 800; }
 /* cards LAVANDA/ROXO da direita (gelado + latas) — mesma largura (bloco cheio) */
 .ltr-modal .ltr-gelado-inline { background: #f4f1fd; border: 1px solid #ddd4f5; border-radius: 14px; padding: 12px 14px; color: #0d6ea9; font-size: 14px; }
 .ltr-modal .ltr-gelado-inline .ltr-input-mini { flex: 1; min-width: 0; }
