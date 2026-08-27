@@ -1694,6 +1694,17 @@ function normalizarValoresLitros(arr) {
     ? { valor: r2loc(+v.valor || 0), codigo: v.codigo || '', nome: v.nome || '' }
     : { valor: r2loc(+v || 0), codigo: '', nome: '' }).filter(v => v.valor > 0);
 }
+// Paleta de cores predominantes por VALOR/TIPO de açaí na lista do F8 (o gelado tem o azul próprio).
+const LTR_PALETA = [
+  { bg: '#d7ebca', bd: '#a4d18e', tx: '#14532d' }, // verde
+  { bg: '#efe3fd', bd: '#cbb8f2', tx: '#5b21b6' }, // roxo
+  { bg: '#fdeeb8', bd: '#e6cb46', tx: '#6b5600' }, // amarelo
+  { bg: '#ffe0c7', bd: '#f2b877', tx: '#8a4b12' }, // laranja
+  { bg: '#fcd6e5', bd: '#f2a9c4', tx: '#8a2b52' }, // rosa
+  { bg: '#cdeee7', bd: '#8fd6c7', tx: '#0f5e50' }, // verde-água
+  { bg: '#f6d7d2', bd: '#f0a597', tx: '#8a2c1c' }, // vermelho suave
+  { bg: '#dbe4f7', bd: '#a9bce8', tx: '#2b3a7a' }, // azul-índigo
+];
 /* F8 — LITROS produzidos, em 3 passos guiados: (1) digita os litros → Enter · (2) escolhe o
    PRODUTO/valor por número (cada botão é um produto) · (3) confirma (registrar ou editar).
    Os lançamentos ficam PENDENTES até o F10 (fechar o dia → rendimento). */
@@ -2067,15 +2078,24 @@ async function abrirLitros() {
     const rz = d.resumo || {};
     diaResumo = rz;   // deixa o "Fechar o dia" saber quanto foi produzido
     { const box = $('ltr-fechar-box'); if (box) box.classList.toggle('ltr-fechar-vazio', !(rz.totalLitros > 0)); }
-    const porValor = (rz.porValor || []).map(p => `<span class="ltr-chip">${p.nome ? p.nome + ' · ' : ''}${fmt(p.valor)}: <b>${biNum(p.litros)} L</b></span>`).join('');
+    // CADA valor/tipo de açaí ganha uma COR predominante própria (o gelado mantém o azul dele)
+    const chaveCor = x => x.produto_codigo ? ('c' + x.produto_codigo) : ('v' + (r2loc(+x.valor_unit || 0)));
+    const chaveCorChip = p => p.codigo ? ('c' + p.codigo) : ('v' + (r2loc(+p.valor || 0)));
+    const distintas = [...new Set((d.lista || []).filter(x => !x.gelado).map(chaveCor))].sort();
+    const corDe = k => LTR_PALETA[distintas.indexOf(k) % LTR_PALETA.length] || LTR_PALETA[0];
+    // chips do resumo com a MESMA cor de cada tipo (viram legenda)
+    const porValor = (rz.porValor || []).map(p => { const c = corDe(chaveCorChip(p)); return `<span class="ltr-chip" style="background:${c.bg};border-color:${c.bd};color:${c.tx}">${p.nome ? p.nome + ' · ' : ''}${fmt(p.valor)}: <b>${biNum(p.litros)} L</b></span>`; }).join('');
     const rowHtml = x => {
       const hora = x.criado_em ? new Date(x.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
       const prod = x.produto_codigo ? PRODUTOS.find(p => p.codigo === x.produto_codigo) : null;
       const nome = prod ? prod.nome : '';
-      const desc = x.gelado
-        ? `<b>${biNum(x.litros)} L</b> · 🧊 gelado (não conta)${nome ? ' · ' + nome : ''}`
-        : `<b>${biNum(x.litros)} L</b> · ${nome ? nome + ' · ' : ''}${fmt(x.valor_unit)}`;
-      return `<div class="ltr-item${x.gelado ? ' ltr-item-gelado' : ''}"><span class="ltr-item-hora">🕒 ${hora}</span><span class="ltr-item-desc">${desc}</span><button class="ac-mini del" data-del="${x.id}" title="Remover">🗑</button></div>`;
+      if (x.gelado) {
+        const desc = `<b>${biNum(x.litros)} L</b> · 🧊 gelado (não conta)${nome ? ' · ' + nome : ''}`;
+        return `<div class="ltr-item ltr-item-gelado"><span class="ltr-item-hora">🕒 ${hora}</span><span class="ltr-item-desc">${desc}</span><button class="ac-mini del" data-del="${x.id}" title="Remover">🗑</button></div>`;
+      }
+      const desc = `<b>${biNum(x.litros)} L</b> · ${nome ? nome + ' · ' : ''}${fmt(x.valor_unit)}`;
+      const c = corDe(chaveCor(x));
+      return `<div class="ltr-item ltr-item-cor" style="background:${c.bg};border-color:${c.bd};color:${c.tx}"><span class="ltr-item-hora">🕒 ${hora}</span><span class="ltr-item-desc">${desc}</span><button class="ac-mini del" data-del="${x.id}" title="Remover">🗑</button></div>`;
     };
     const bruto = +rz.totalBruto || +rz.totalLitros || 0, gel = +rz.geladoLitros || 0, net = +rz.totalLitros || 0;
     const totalTxt = gel > 0

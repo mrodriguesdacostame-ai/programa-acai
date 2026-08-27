@@ -4243,6 +4243,12 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .ltr-modal .ltr-item-gelado .ltr-item-desc b { color: #16467c; }
 .ltr-modal .ltr-item-lata { background: #e8e0fc; border-color: #cfc0f2; }
 .ltr-modal .ltr-item-lata .ltr-item-desc, .ltr-modal .ltr-item-lata .ltr-item-desc b { color: #4c2a92; }
+/* cor predominante por VALOR/TIPO de açaí: hora, descrição e <b> herdam a cor da linha */
+.ltr-modal .ltr-item-cor .ltr-item-hora,
+.ltr-modal .ltr-item-cor .ltr-item-desc,
+.ltr-modal .ltr-item-cor .ltr-item-desc b { color: inherit; }
+/* chips do resumo coloridos (legenda) — o <b> herda a cor do chip */
+.ltr-modal .ltr-chip[style] b { color: inherit; }
 /* "só o último lançamento" + botão pra ver todas as entradas do dia */
 .ltr-modal .ltr-ultimo-lbl { font-size: 12px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: #0d6ea9; margin: 4px 0 6px; }
 .ltr-modal .ltr-ver-todas { width: 100%; margin-top: 8px; padding: 11px 14px; border-radius: 12px; border: 1.5px solid #cbb8f2; background: #efe7fd; color: #5b21b6; font-family: inherit; font-size: 14px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: .12s; }
