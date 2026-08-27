@@ -62,10 +62,23 @@ function criarJanela() {
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
   win.maximize();
-  win.loadURL(`http://localhost:${PORT}/`);
+  // FIM do "atualizei e ficou velho": a cada abertura, limpa cache HTTP + service workers +
+  // cache storage e carrega uma URL NOVA (?nc). Assim o app.js/style.css vem sempre atualizado.
+  const ses = win.webContents.session;
+  const carregar = () => win.loadURL(`http://localhost:${PORT}/?nc=${Date.now()}`);
+  Promise.allSettled([
+    ses.clearCache(),
+    ses.clearStorageData({ storages: ['serviceworkers', 'cachestorage'] }),
+  ]).then(carregar, carregar);
   win.once('ready-to-show', () => win.show());
   // links externos (ex.: algo que tente abrir fora) vao pro navegador padrao, nao dentro do app
   win.webContents.setWindowOpenHandler(({ url }) => { try { shell.openExternal(url); } catch {} return { action: 'deny' }; });
+  // atalho pra forçar recarga limpa (Ctrl+R / F5) — recarrega ignorando cache
+  win.webContents.on('before-input-event', (e, input) => {
+    if (input.type === 'keyDown' && (input.key === 'F5' || (input.control && (input.key === 'r' || input.key === 'R')))) {
+      e.preventDefault(); win.webContents.reloadIgnoringCache();
+    }
+  });
   win.on('closed', () => { win = null; });
 }
 

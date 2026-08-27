@@ -1746,7 +1746,8 @@ async function abrirLitros() {
     else if (passo === 'confF') { formulaPendente = null; passo = 1; render(); }
     else if (passo === 'confL') { latasPendente = null; passo = 1; render(); setTimeout(() => { const e = $('ltr-lata-qtd'); if (e) e.focus(); }, 50); }
   };
-  wrap.addEventListener('keydown', e => { if (e.shiftKey && e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); voltarSelecao(); } }, true);
+  const ehEnter = e => e.key === 'Enter' || e.code === 'Enter' || e.code === 'NumpadEnter' || e.keyCode === 13;
+  wrap.addEventListener('keydown', e => { if (e.shiftKey && ehEnter(e)) { e.preventDefault(); e.stopPropagation(); voltarSelecao(); } }, true);
 
   function renderPasso1() {
     stepBox.innerHTML = `
@@ -2010,20 +2011,36 @@ async function abrirLitros() {
     for (const x of lista) { const v = +x.valor_unit || 0; if (v > 0) { somaValor += v * (+x.qtd || 0); somaQtd += (+x.qtd || 0); } }
     latasValorMedio = somaQtd > 0 ? r2loc(somaValor / somaQtd) : 0;
     if (!lista.length) { $('ltr-latas-lista').innerHTML = `<div class="ltr-latas-vazio">Nenhuma lata ainda hoje — adicione acima.</div>`; return; }
-    // LISTA (cada entrada, não agrupa) + a SOMA no card do topo
-    const linhas = lista.map(x => {
+    // Só a ÚLTIMA entrada aparece (a SOMA fica no card do topo); botão "ver todas" (não amontoa)
+    const rowHtml = x => {
       const hora = x.criado_em ? new Date(x.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
       const v = +x.valor_unit || 0; const vtxt = v > 0 ? ' · ' + fmt(v) : '';
       return `<div class="ltr-item ltr-item-lata"><span class="ltr-item-hora">🕒 ${hora}</span><span class="ltr-item-desc">🥫 <b>${biNum(x.qtd)}</b> lata(s)${vtxt}</span><button class="ac-mini del" data-dellata="${x.id}" title="Remover">🗑</button></div>`;
-    }).join('');
+    };
+    const porData = lista.slice().sort((a, b) => new Date(b.criado_em || 0) - new Date(a.criado_em || 0));
+    const n = porData.length;
+    let labelHtml = '', rowsHtml = '', btnHtml = '';
+    if (n === 1) rowsHtml = rowHtml(porData[0]);
+    else if (!latasExpandido) {
+      const resto = porData.slice(1);
+      const somaResto = resto.reduce((s, x) => s + (+x.qtd || 0), 0);
+      labelHtml = '<div class="ltr-ultimo-lbl">🆕 Última entrada</div>';
+      rowsHtml = rowHtml(porData[0]);
+      btnHtml = `<button type="button" class="ltr-ver-todas" id="ltr-latas-vertodas">📋 Ver todas as latas do dia <span class="ltr-vt-tag">+${resto.length} · ${biNum(somaResto)} lata(s)</span></button>`;
+    } else {
+      rowsHtml = porData.map(rowHtml).join('');
+      btnHtml = `<button type="button" class="ltr-ver-todas recolher" id="ltr-latas-recolher">▲ Recolher (mostrar só a última)</button>`;
+    }
     $('ltr-latas-lista').innerHTML = `
       <div class="ltr-latas-card">
         <div class="ltr-latas-ico">🥫</div>
         <div style="flex:1"><div class="ltr-latas-lbl">Total do dia</div><div class="ltr-latas-big"><b>${biNum(latasTotal)}</b> lata(s)</div></div>
         ${somaValor > 0 ? `<div class="ltr-latas-valor">${fmt(somaValor)}</div>` : ''}
       </div>
-      <div class="ltr-latas-itens">${linhas}</div>`;
+      ${labelHtml}<div class="ltr-latas-itens ltr-rows${latasExpandido ? ' expandida' : ''}">${rowsHtml}</div>${btnHtml}`;
     $('ltr-latas-lista').querySelectorAll('[data-dellata]').forEach(b => b.addEventListener('click', async () => { await fetch('/api/latas/' + b.dataset.dellata, { method: 'DELETE' }); carregarLatas(); }));
+    { const vt = $('ltr-latas-vertodas'); if (vt) vt.addEventListener('click', () => { latasExpandido = true; carregarLatas(); }); }
+    { const rc = $('ltr-latas-recolher'); if (rc) rc.addEventListener('click', () => { latasExpandido = false; carregarLatas(); }); }
   }
   carregarLatas();
 
@@ -2042,6 +2059,7 @@ async function abrirLitros() {
     setTimeout(() => { try { abrirRendimento(); preencherRendimentoDeLitros(); } catch (e) { toast('Abra "Processar em vários produtos" pra concluir.'); } }, 400);
   });
   let ltrExpandido = false;   // por padrão mostra só o último lançamento; botão expande a lista toda
+  let latasExpandido = false; // idem pra lista de latas do dia (não amontoar)
   render();
   carregarDia();
   async function carregarDia() {
