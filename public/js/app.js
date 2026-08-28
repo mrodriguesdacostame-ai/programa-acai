@@ -561,7 +561,7 @@ let itemEditIndex = -1;
 $('espelho-itens').addEventListener('click', e => {
   if (!modoCancelarItens) return;                     // clique só age no MODO CANCELAR
   const linha = e.target.closest('.item-linha'); if (!linha) return;
-  toggleCancelItem(+linha.dataset.idx); linha.focus();
+  toggleCancelItem(+linha.dataset.idx);               // já re-renderiza e re-foca a linha
 });
 $('espelho-itens').addEventListener('dblclick', e => {
   if (modoCancelarItens) return;                      // no modo cancelar, 2× clique não abre edição
@@ -604,6 +604,9 @@ function sairModoCancelarItens() {
 function toggleCancelItem(idx) {
   if (itensCancelSel.has(idx)) itensCancelSel.delete(idx); else itensCancelSel.add(idx);
   renderCupom();
+  // renderCupom recria as linhas → re-foca a mesma linha pra o Enter continuar funcionando
+  const linha = $('espelho-itens').querySelector(`.item-linha[data-idx="${idx}"]`);
+  if (linha) linha.focus();
 }
 function cancelarItensSelecionados() {
   if (!itensCancelSel.size) { toast('⚠ Marque os itens que quer cancelar (Espaço/clique)'); return; }
@@ -912,15 +915,32 @@ async function anotarVendaDepois() {
       drop.innerHTML = lista.length
         ? lista.map(n => `<button type="button" class="rdn-item">${crmEsc(n)}</button>`).join('')
         : '<div class="rdn-vazio">Ninguém salvo ainda — digite o nome</div>';
-      drop.querySelectorAll('.rdn-item').forEach(b => b.addEventListener('mousedown', e => { e.preventDefault(); inp.value = b.textContent; esconder(); inp.focus(); }));
+      drop.querySelectorAll('.rdn-item').forEach(b => b.addEventListener('mousedown', e => { e.preventDefault(); inp.value = b.textContent; esconder(); inp.focus(); atualizarSaldoAnotado(); }));
     };
     const mostrar = () => { render(inp.value); drop.hidden = false; };
     inp.addEventListener('focus', mostrar);
-    inp.addEventListener('input', mostrar);
+    inp.addEventListener('input', () => { mostrar(); atualizarSaldoAnotado(); });
     inp.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); esconder(); } });
     if (btn) btn.addEventListener('click', () => { if (drop.hidden) { inp.focus(); mostrar(); } else esconder(); });
     document.addEventListener('click', e => { const w = inp.closest('.rdn-wrap'); if (w && !w.contains(e.target)) esconder(); });
   }
+}
+// Quanto a pessoa (por nome) JÁ deve nas anotações "pagar depois"
+function dividaAnotadaDe(nome) {
+  const n = (nome || '').trim().toLowerCase(); if (!n) return 0;
+  return (anotacoesCache || []).filter(a => (a.nome || '').trim().toLowerCase() === n).reduce((s, a) => s + (+a.valor || 0), 0);
+}
+// Mostra "já deve X · com esta compra fica devendo (X + novo)" ao digitar o nome no "pagar depois"
+function atualizarSaldoAnotado() {
+  const el = $('receb-depois-saldo'); if (!el) return;
+  const nome = ($('receb-depois-nome') ? $('receb-depois-nome').value : '').trim();
+  const novo = +$('val-fiado').value || 0;
+  const jaDeve = dividaAnotadaDe(nome);
+  if (!nome || (jaDeve <= 0 && novo <= 0)) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = '';
+  el.innerHTML = jaDeve > 0
+    ? `<span class="rds-nome">👤 ${crmEsc(nome)}</span> já deve <b>${fmt(jaDeve)}</b>${novo > 0 ? ` · com esta fica devendo <b class="rds-total">${fmt(jaDeve + novo)}</b>` : ''}`
+    : `<span class="rds-nome">👤 ${crmEsc(nome)}</span> vai ficar devendo <b class="rds-total">${fmt(novo)}</b>`;
 }
 $('btn-finalizar').addEventListener('click', finalizarVenda);
 
@@ -968,6 +988,7 @@ function atualizarResumo() {
 
   // "Anotar pra depois" agora anota só o RESTANTE (total − o que já foi pago em PIX/Dinheiro/Cartão)
   if ($('receb-depois-valor')) $('receb-depois-valor').textContent = fmt(valFiado);
+  atualizarSaldoAnotado();   // atualiza "já deve + esta compra = total" conforme o valor muda
 
   $('btn-confirmar-receb').disabled = !(totalReceber > 0 && fiadoOk);
   renderFiadoInfo();
@@ -2329,6 +2350,17 @@ window.addEventListener('keydown', e => {
 document.addEventListener('keydown', e => {
   if ($('app-principal').classList.contains('oculto')) return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
+  // MODO CANCELAR ITENS: Enter conclui, Esc sai — funciona mesmo que o foco tenha escapado das linhas
+  if (modoCancelarItens) {
+    const ativo = document.activeElement;
+    if (e.key === 'Enter') { e.preventDefault(); cancelarItensSelecionados(); return; }
+    if (e.key === 'Escape') { e.preventDefault(); sairModoCancelarItens(); return; }
+    if (e.key === ' ' && (!ativo || !ativo.classList || !ativo.classList.contains('item-linha'))) {
+      // Espaço fora das linhas marca o 1º item ainda não marcado (comodidade)
+      const prim = $('espelho-itens').querySelector('.item-linha:not(.cancel-sel)') || $('espelho-itens').querySelector('.item-linha');
+      if (prim) { e.preventDefault(); toggleCancelItem(+prim.dataset.idx); return; }
+    }
+  }
   // F9 → abrir a tela de VENDAS de qualquer lugar (não fica preso em modal aberto)
   if (e.key === 'F9') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); irPara('pdv'); focusCodigoMercadoria(); return; }
   // F3 → abrir a tela de PRODUTOS (entrada de mercadoria/estoque) de qualquer lugar
