@@ -530,6 +530,7 @@ $('tela-pdv').addEventListener('click', e => {
 
 let modoCancelarItens = false;      // "modo cancelar" (tecla I): seleciona itens do cupom pra cancelar
 let itensCancelSel = new Set();
+let cancelCursor = 0;               // item "sob o cursor" no modo cancelar (100% teclado, sem depender de foco)
 function renderCupom() {
   const el = $('espelho-itens');
   $('btn-limpar-venda').disabled = itensCupom.length === 0;
@@ -541,7 +542,7 @@ function renderCupom() {
     return;
   }
   el.innerHTML = itensCupom.map((it, i) => `
-    <div class="item-linha${modoCancelarItens ? ' modo-cancelar' : ''}${modoCancelarItens && itensCancelSel.has(i) ? ' cancel-sel' : ''}" tabindex="0" data-idx="${i}" title="${modoCancelarItens ? 'Espaço/clique marca pra cancelar' : '2× clique ou Enter para alterar'}">
+    <div class="item-linha${modoCancelarItens ? ' modo-cancelar' : ''}${modoCancelarItens && itensCancelSel.has(i) ? ' cancel-sel' : ''}${modoCancelarItens && i === cancelCursor ? ' cancel-cursor' : ''}" tabindex="0" data-idx="${i}" title="${modoCancelarItens ? 'Espaço/clique marca pra cancelar' : '2× clique ou Enter para alterar'}">
       <span class="cod">${it.cod}</span>
       <span class="desc">${it.desc}${it.pacote ? ' <small class="tag-pacote">caixa</small>' : ''}</span>
       <span class="qtd">${it.qtd}</span>
@@ -559,9 +560,9 @@ function renderCupom() {
 let itemEditIndex = -1;
 
 $('espelho-itens').addEventListener('click', e => {
-  if (!modoCancelarItens) return;                     // clique só age no MODO CANCELAR
+  if (!modoCancelarItens) return;                     // clique só age no MODO CANCELAR (mouse é opcional)
   const linha = e.target.closest('.item-linha'); if (!linha) return;
-  toggleCancelItem(+linha.dataset.idx);               // já re-renderiza e re-foca a linha
+  cancelCursor = +linha.dataset.idx; toggleCancelItem(cancelCursor);
 });
 $('espelho-itens').addEventListener('dblclick', e => {
   if (modoCancelarItens) return;                      // no modo cancelar, 2× clique não abre edição
@@ -569,31 +570,23 @@ $('espelho-itens').addEventListener('dblclick', e => {
   if (linha) abrirEditarItem(+linha.dataset.idx);
 });
 $('espelho-itens').addEventListener('keydown', e => {
+  if (modoCancelarItens) return;                      // no modo cancelar o teclado é tratado GLOBAL (independe de foco)
   const linha = e.target.closest('.item-linha');
   if (!linha) return;
   const idx = +linha.dataset.idx;
-  if (modoCancelarItens) {   // MODO CANCELAR: Espaço marca · Enter cancela os marcados · setas navegam · Esc sai
-    if (e.key === ' ')            { e.preventDefault(); toggleCancelItem(idx); }
-    else if (e.key === 'Enter')   { e.preventDefault(); cancelarItensSelecionados(); }
-    else if (e.key === 'Escape')  { e.preventDefault(); sairModoCancelarItens(); }
-    else if (e.key === 'Delete')  { e.preventDefault(); toggleCancelItem(idx); }
-    else if (e.key === 'ArrowDown') { e.preventDefault(); if (linha.nextElementSibling) linha.nextElementSibling.focus(); }
-    else if (e.key === 'ArrowUp')   { e.preventDefault(); linha.previousElementSibling ? linha.previousElementSibling.focus() : $('codigo').focus(); }
-    return;
-  }
   if (e.key === 'Enter')          { e.preventDefault(); abrirEditarItem(idx); }
   else if (e.key === 'ArrowDown') { e.preventDefault(); if (linha.nextElementSibling) linha.nextElementSibling.focus(); }
   else if (e.key === 'ArrowUp')   { e.preventDefault(); linha.previousElementSibling ? linha.previousElementSibling.focus() : $('codigo').focus(); }
   else if (e.key === 'Delete')    { e.preventDefault(); itensCupom.splice(idx, 1); renderCupom(); focusCodigoMercadoria(); }
 });
-/* ── MODO CANCELAR ITENS (tecla I no PDV): seleciona itens do cupom e cancela ── */
+/* ── MODO CANCELAR ITENS (tecla I no PDV): 100% teclado, com CURSOR próprio (não depende de foco) ── */
 function entrarModoCancelarItens() {
   if (!itensCupom.length) { toast('🛒 Não há itens no cupom pra cancelar'); focusCodigoMercadoria(); return; }
-  modoCancelarItens = true; itensCancelSel = new Set();
+  modoCancelarItens = true; itensCancelSel = new Set(); cancelCursor = 0;
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // tira o foco do código (senão setas iam pro campo)
   renderCupom();
   mostrarBarraCancelar();
-  const p = $('espelho-itens').querySelector('.item-linha'); if (p) p.focus();
-  toast('🗑 Modo cancelar: Espaço marca · Enter cancela · Esc sai');
+  toast('🗑 Cancelar itens: ↑↓ move · Espaço marca · Enter cancela · Esc sai');
 }
 function sairModoCancelarItens() {
   modoCancelarItens = false; itensCancelSel = new Set();
@@ -601,12 +594,15 @@ function sairModoCancelarItens() {
   if (itensCupom.length) renderCupom();
   focusCodigoMercadoria();
 }
+function moverCursorCancelar(delta) {
+  if (!itensCupom.length) return;
+  cancelCursor = Math.max(0, Math.min(itensCupom.length - 1, cancelCursor + delta));
+  renderCupom();
+  const l = $('espelho-itens').querySelector('.item-linha.cancel-cursor'); if (l && l.scrollIntoView) l.scrollIntoView({ block: 'nearest' });
+}
 function toggleCancelItem(idx) {
   if (itensCancelSel.has(idx)) itensCancelSel.delete(idx); else itensCancelSel.add(idx);
   renderCupom();
-  // renderCupom recria as linhas → re-foca a mesma linha pra o Enter continuar funcionando
-  const linha = $('espelho-itens').querySelector(`.item-linha[data-idx="${idx}"]`);
-  if (linha) linha.focus();
 }
 function cancelarItensSelecionados() {
   if (!itensCancelSel.size) { toast('⚠ Marque os itens que quer cancelar (Espaço/clique)'); return; }
@@ -2350,16 +2346,16 @@ window.addEventListener('keydown', e => {
 document.addEventListener('keydown', e => {
   if ($('app-principal').classList.contains('oculto')) return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
-  // MODO CANCELAR ITENS: Enter conclui, Esc sai — funciona mesmo que o foco tenha escapado das linhas
+  // MODO CANCELAR ITENS — 100% teclado (cursor próprio, não depende de foco):
+  // ↑↓ move o cursor · Espaço marca/desmarca · Enter cancela os marcados · Esc/I sai.
   if (modoCancelarItens) {
-    const ativo = document.activeElement;
-    if (e.key === 'Enter') { e.preventDefault(); cancelarItensSelecionados(); return; }
-    if (e.key === 'Escape') { e.preventDefault(); sairModoCancelarItens(); return; }
-    if (e.key === ' ' && (!ativo || !ativo.classList || !ativo.classList.contains('item-linha'))) {
-      // Espaço fora das linhas marca o 1º item ainda não marcado (comodidade)
-      const prim = $('espelho-itens').querySelector('.item-linha:not(.cancel-sel)') || $('espelho-itens').querySelector('.item-linha');
-      if (prim) { e.preventDefault(); toggleCancelItem(+prim.dataset.idx); return; }
-    }
+    if (e.key === 'ArrowDown') { e.preventDefault(); moverCursorCancelar(1); return; }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); moverCursorCancelar(-1); return; }
+    if (e.key === ' ')         { e.preventDefault(); toggleCancelItem(cancelCursor); return; }
+    if (e.key === 'Enter')     { e.preventDefault(); cancelarItensSelecionados(); return; }
+    if (e.key === 'Escape' || e.key === 'i' || e.key === 'I') { e.preventDefault(); sairModoCancelarItens(); return; }
+    if (e.key === 'Delete')    { e.preventDefault(); toggleCancelItem(cancelCursor); return; }
+    e.preventDefault(); return;   // no modo cancelar, ignora as demais teclas (não registra produto etc.)
   }
   // F9 → abrir a tela de VENDAS de qualquer lugar (não fica preso em modal aberto)
   if (e.key === 'F9') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); irPara('pdv'); focusCodigoMercadoria(); return; }

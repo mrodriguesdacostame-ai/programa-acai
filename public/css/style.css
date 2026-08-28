@@ -1836,7 +1836,9 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 
 /* Modo CANCELAR ITENS (tecla I no PDV): itens selecionáveis + barra de ação */
 .item-linha.modo-cancelar { cursor: pointer; }
+.item-linha.cancel-cursor { outline: 3px solid #1e88c8; outline-offset: -3px; background: #eaf3fc; }
 .item-linha.cancel-sel { background: #fdecec !important; box-shadow: inset 5px 0 0 #c0392b; }
+.item-linha.cancel-cursor.cancel-sel { outline-color: #c0392b; }
 .item-linha.cancel-sel .desc, .item-linha.cancel-sel .cod, .item-linha.cancel-sel .qtd, .item-linha.cancel-sel .total { text-decoration: line-through; color: #c0392b !important; }
 .cupom-cancel-bar { position: fixed; z-index: 99998; left: 50%; bottom: 18px; transform: translateX(-50%);
   display: flex; align-items: center; gap: 12px; background: #fff; border: 2px solid #c0392b; border-radius: 14px;
