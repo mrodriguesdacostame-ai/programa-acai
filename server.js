@@ -66,7 +66,11 @@ app.use((req, res, next) => {
 // pasta do sistema (compatibilidade). No app nativo vem apontado pra %APPDATA% (permanente),
 // entao reinstalar / trocar de maquina NAO perde os dados.
 const DADOS_DIR = process.env.DADOS_DIR || __dirname;
-const db = new DatabaseSync(process.env.ACAI_DB || path.join(DADOS_DIR, 'acai.db'));
+const DB_FILE = process.env.ACAI_DB || path.join(DADOS_DIR, 'acai.db');
+const db = new DatabaseSync(DB_FILE);
+// AMBIENTE: 'producao' = instalado (AppData) · 'dev' = pasta de desenvolvimento (Desktop) ou banco de teste.
+// Serve pra mostrar um aviso "MODO TESTE" e nunca confundir com a loja real.
+const AMBIENTE = (/[\\/](desktop|programa de caixa)[\\/]/i.test(DB_FILE) || /[\\/]desktop[\\/]/i.test(__dirname) || /_test\.db$|test\.db$/i.test(DB_FILE)) ? 'dev' : 'producao';
 
 /* ══ FASE 37 — HARDENING: pragmas de performance/robustez + migrations versionadas ══
    WAL deixa leitores e escritores conviverem sem travar (essencial p/ crescer);
@@ -7618,6 +7622,9 @@ function servirIndex(req, res) {
       try { v = Math.floor(fs.statSync(path.join(__dirname, 'public', file)).mtimeMs); } catch {}
       return `${attr}="${file}?v=${v}"`;
     });
+    // injeta o AMBIENTE (dev/producao) pro app.js mostrar o aviso "MODO TESTE" quando não for a loja
+    const flag = `<script>window.__ACAI_AMBIENTE=${JSON.stringify(AMBIENTE)};window.__ACAI_DB=${JSON.stringify(path.basename(DB_FILE))};</script>`;
+    html = html.includes('</head>') ? html.replace('</head>', flag + '</head>') : (flag + html);
     res.set('Cache-Control', 'no-store').type('html').send(html);
   } catch { res.sendFile(path.join(__dirname, 'public', 'index.html')); }
 }

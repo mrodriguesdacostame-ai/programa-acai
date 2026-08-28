@@ -1723,6 +1723,21 @@ let f8VoltarAtual = null;
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true }));
   }, true);
 })();
+// Aviso visível "MODO TESTE" quando o programa roda com o BANCO DE DESENVOLVIMENTO (não é a loja).
+(function marcarAmbienteTeste() {
+  try {
+    if (typeof window === 'undefined' || window.__ACAI_AMBIENTE !== 'dev') return;
+    const montar = () => {
+      if (!document.body || document.getElementById('ambiente-teste')) return;
+      const el = document.createElement('div');
+      el.id = 'ambiente-teste'; el.className = 'ambiente-teste';
+      el.innerHTML = `🧪 MODO TESTE<small>banco de desenvolvimento — NÃO é a loja${window.__ACAI_DB ? ' · ' + window.__ACAI_DB : ''}</small>`;
+      el.title = 'Você está numa cópia de desenvolvimento/teste. A loja real é o programa instalado.';
+      document.body.appendChild(el);
+    };
+    if (document.body) montar(); else document.addEventListener('DOMContentLoaded', montar);
+  } catch (e) {}
+})();
 /* F8 — LITROS produzidos, em 3 passos guiados: (1) digita os litros → Enter · (2) escolhe o
    PRODUTO/valor por número (cada botão é um produto) · (3) confirma (registrar ou editar).
    Os lançamentos ficam PENDENTES até o F10 (fechar o dia → rendimento). */
