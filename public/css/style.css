@@ -1838,6 +1838,26 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 .item-linha.modo-cancelar { cursor: pointer; }
 .item-linha.cancel-cursor { outline: 3px solid #1e88c8; outline-offset: -3px; background: #eaf3fc; }
 .item-linha.cancel-sel { background: #fdecec !important; box-shadow: inset 5px 0 0 #c0392b; }
+/* Tela do S (ações financeiras) no padrão claro: Sangria=vermelho(saída) · Suprimento=verde(entrada) */
+.modal-erp.erp-acaofin { width: min(560px, 94vw); }
+.erp-acaofin .op-acoes-fin { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 6px 0 4px; }
+.erp-acaofin .opaf { display: flex; align-items: center; gap: 12px; text-align: left; padding: 18px 18px; border-radius: 14px; border: 2px solid; cursor: pointer; font-family: inherit; background: #fff; transition: .12s; }
+.erp-acaofin .opaf .opaf-ic { font-size: 26px; }
+.erp-acaofin .opaf .opaf-tx { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.erp-acaofin .opaf .opaf-tx b { font-size: 18px; font-weight: 900; }
+.erp-acaofin .opaf .opaf-tx small { font-size: 12.5px; font-weight: 700; opacity: .9; }
+.erp-acaofin .opaf .opaf-kb { width: 26px; height: 26px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 900; color: #fff; }
+#opaf-sangria { border-color: #e6a6a0; background: #fdecec; color: #8a2c1c; }
+#opaf-sangria:hover { background: #fbdcdc; border-color: #d9776c; }
+#opaf-sangria .opaf-tx b { color: #c0392b; }
+#opaf-sangria .opaf-kb { background: #c0392b; }
+#opaf-supr { border-color: #a4d5b6; background: #e9f8ee; color: #14532d; }
+#opaf-supr:hover { background: #d6f2e0; border-color: #6fc492; }
+#opaf-supr .opaf-tx b { color: #0a9b4b; }
+#opaf-supr .opaf-kb { background: #0a9b4b; }
+.erp-acaofin .fin-hint { font-size: 13px; color: #5a6b7c; }
+.erp-acaofin .fin-hint b { color: #0d6ea9; }
+
 /* listinha "quanto cancelar" (Enter abre) */
 .cancel-qty-pop { position: fixed; z-index: 99999; left: 50%; bottom: 60px; transform: translateX(-50%); background: #fff; border: 2px solid #c0392b; border-radius: 14px; padding: 12px 14px; box-shadow: 0 14px 40px rgba(0,0,0,.3); min-width: 240px; max-width: 92vw; }
 .cancel-qty-pop .cqp-tit { font-weight: 800; color: #c0392b; font-size: 14.5px; margin-bottom: 8px; }

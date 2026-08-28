@@ -2435,6 +2435,7 @@ function abrirAcoesFinanceiras() {
       <button class="ds-btn opaf" id="opaf-supr"><span class="opaf-ic">➕</span><span class="opaf-tx"><b>Suprimento</b><small>entrada no caixa</small></span><span class="opaf-kb">2</span></button>
     </div>
     <p class="fin-hint">Atalhos: <b>1</b> Sangria · <b>2</b> Suprimento · <b>ESC</b> fecha. (F8/F9 continuam funcionando.)</p>`);
+  $('modal-erp-box').classList.add('erp-ci', 'erp-acaofin');   // paleta clara padrão
   $('opaf-sangria').addEventListener('click', () => { fecharErpModal(); abrirSangria(); });
   $('opaf-supr').addEventListener('click', () => { fecharErpModal(); abrirSuprimento(); });
   const teclas = e2 => {
