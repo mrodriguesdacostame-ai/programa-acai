@@ -5829,6 +5829,7 @@ function abrirReceberContaModal(clienteId) {
         ${CAMPOS_PGTO_CLIENTE.map(f => `<label class="rcc-forma-lin"><span class="rcc-forma-nome">${f.ico} ${f.nome}</span><input id="${f.id}" class="rcc-forma-val" type="number" step="0.01" min="0" placeholder="0,00" inputmode="decimal" autocomplete="off"></label>`).join('')}
       </div>
       <div class="rcc-total-lin"><span>Total recebido</span><b id="rcc-total">R$ 0,00</b>${saldo > 0 ? `<button type="button" class="rcc-tudo" id="rcc-tudo">Quitar tudo</button>` : ''}</div>
+      <div class="rcc-resultado" id="rcc-resultado" style="display:none"></div>
       <div class="campo" style="margin-top:10px"><label>Observação (opcional)</label><input id="rcc-desc" placeholder="ex.: pagou parcial"></div>
       <div class="op-ci-rodape"><span class="op-ci-op">👤 ${crmEsc((usuarioAtual && usuarioAtual.nome) || '—')} · ${new Date().toLocaleDateString('pt-BR')}</span>
         <button class="fin-btn-salvar" id="rcc-confirmar" disabled>✅ Registrar recebimento</button></div>
@@ -5839,7 +5840,17 @@ function abrirReceberContaModal(clienteId) {
   const ok = $('rcc-confirmar');
   const valorDe = f => parseFloat(String(($(f.id) || {}).value).replace(',', '.')) || 0;
   const totalDigitado = () => CAMPOS_PGTO_CLIENTE.reduce((s, f) => s + valorDe(f), 0);   // base (abate a conta)
-  const recalc = () => { const t = totalDigitado(); $('rcc-total').textContent = fmt(t); ok.disabled = t <= 0; };
+  const recalc = () => {
+    const t = totalDigitado(); $('rcc-total').textContent = fmt(t); ok.disabled = t <= 0;
+    // troco (pagou mais que a nota) OU saldo que fica devendo (pagou menos)
+    const res = $('rcc-resultado'); if (!res) return;
+    const diff = Math.round((t - saldo) * 100) / 100;
+    if (t <= 0) { res.style.display = 'none'; res.className = 'rcc-resultado'; res.innerHTML = ''; return; }
+    res.style.display = '';
+    if (diff > 0)       { res.className = 'rcc-resultado troco'; res.innerHTML = `💵 Troco <b>${fmt(diff)}</b> <small>(recebeu ${fmt(t)} de ${fmt(saldo)})</small>`; }
+    else if (diff < 0)  { res.className = 'rcc-resultado deve';  res.innerHTML = `📌 Fica devendo <b>${fmt(-diff)}</b> <small>(pagou ${fmt(t)} de ${fmt(saldo)})</small>`; }
+    else                { res.className = 'rcc-resultado quite'; res.innerHTML = `✅ Quitou a conta <small>(${fmt(saldo)})</small>`; }
+  };
   CAMPOS_PGTO_CLIENTE.forEach(f => $(f.id).addEventListener('input', recalc));
   const tudo = $('rcc-tudo'); if (tudo) tudo.addEventListener('click', () => { $('rcc-pix').value = saldo.toFixed(2); CAMPOS_PGTO_CLIENTE.slice(1).forEach(f => $(f.id).value = ''); recalc(); $('rcc-pix').focus(); });
   const confirmar = async () => {

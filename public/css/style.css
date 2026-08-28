@@ -1858,6 +1858,14 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 .erp-acaofin .fin-hint { font-size: 13px; color: #5a6b7c; }
 .erp-acaofin .fin-hint b { color: #0d6ea9; }
 
+/* Receber conta: troco (pagou mais) ou saldo que fica devendo (pagou menos) */
+.rcc-resultado { margin-top: 8px; padding: 11px 14px; border-radius: 12px; font-size: 16px; font-weight: 800; text-align: center; }
+.rcc-resultado b { font-size: 20px; }
+.rcc-resultado small { display: block; font-size: 12px; font-weight: 600; opacity: .9; margin-top: 2px; }
+.rcc-resultado.troco { background: #e9f8ee; color: #0a7a3b; border: 1.5px solid #9bd3ae; }
+.rcc-resultado.deve { background: #fdecec; color: #c0392b; border: 1.5px solid #e6a6a0; }
+.rcc-resultado.quite { background: #eaf3fc; color: #0d6ea9; border: 1.5px solid #a9cef0; }
+
 /* listinha "quanto cancelar" (Enter abre) */
 .cancel-qty-pop { position: fixed; z-index: 99999; left: 50%; bottom: 60px; transform: translateX(-50%); background: #fff; border: 2px solid #c0392b; border-radius: 14px; padding: 12px 14px; box-shadow: 0 14px 40px rgba(0,0,0,.3); min-width: 240px; max-width: 92vw; }
 .cancel-qty-pop .cqp-tit { font-weight: 800; color: #c0392b; font-size: 14.5px; margin-bottom: 8px; }
