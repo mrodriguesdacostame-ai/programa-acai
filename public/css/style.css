@@ -1821,6 +1821,41 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 .btn-mini-del { border: none; background: rgba(255, 83, 112, 0.15); color: var(--vermelho); border-radius: 6px; padding: 3px 8px; cursor: pointer; }
 .btn-mini-del:hover { background: var(--vermelho); color: #fff; }
 
+/* ═══════════ PRODUTOS (F3) — REPAGINADA (acende os apagados + fontes maiores) ═══════════ */
+/* Escopo #tela-produtos: o ID vence tudo (inclusive a regra global de borda de input). Só cores/fontes. */
+/* abas: azul mais forte e maiores */
+#tela-produtos .prod-tab { font-size: 15px; padding: 10px 20px; background: #eaf3fc; border: 1.5px solid #cfe3f7; color: #14467c; font-weight: 700; }
+#tela-produtos .prod-tab:hover { background: #d7e9fb; border-color: #86baec; color: #0d3a63; }
+#tela-produtos .prod-tab.ativo { background: var(--acai-claro); border-color: var(--acai-claro); color: #fff; }
+#tela-produtos .prod-tab .atalho { text-decoration: underline; opacity: .85; }
+/* form: branco, título e rótulos legíveis */
+#tela-produtos .prod-form { background: #f4f9ff; border: 1.5px solid #d9e6f4; }
+#tela-produtos .prod-form h3 { font-size: 18px; color: #0d6ea9; }
+#tela-produtos .campo label { font-size: 12.5px; color: #33475b; }
+#tela-produtos .pf-grupo-tit { color: #6d28d9; font-size: 12.5px; }
+#tela-produtos .prod-nota { font-size: 13px; color: #4a5a6b; }
+#tela-produtos .prod-nota strong { color: #6d28d9; }
+#tela-produtos .pf-hint { font-size: 12px; color: #c0392b; }
+/* campos: brancos, borda azul firme, foco AMARELO (padrão) — !important pra vencer a regra global */
+#tela-produtos .campo input, #tela-produtos .campo select, #tela-produtos .campo textarea {
+  font-size: 15px; background: #fff !important; border: 1.5px solid #86baec !important; color: var(--branco); }
+#tela-produtos .campo input:focus, #tela-produtos .campo select:focus, #tela-produtos .campo textarea:focus {
+  border-color: #e0a800 !important; background: #fffbea !important; box-shadow: 0 0 0 3px rgba(255, 200, 0, .45); }
+#tela-produtos .campo input::placeholder, #tela-produtos .campo textarea::placeholder { color: #8aa0b8; }
+/* cards de estoque: mais fortes */
+#tela-produtos .pf-est-card { background: #eef4fb; border: 1.5px solid #bcdcf6; }
+#tela-produtos .pf-est-card span { color: #0d6ea9; }
+#tela-produtos .pf-est-card b { color: #123a63; }
+#tela-produtos .pf-est-card.total { background: #eafaf0; border-color: #a4d5b6; }
+#tela-produtos .pf-est-card.total b { color: #0a9b4b; }
+/* TABELAS: cabeçalho azul CLARO com texto legível (era roxo escuro c/ texto escuro = invisível) */
+#tela-produtos .prod-tabela-wrap { background: #fff; border: 1.5px solid #d9e6f4; }
+#tela-produtos .prod-tabela { font-size: 14px; }
+#tela-produtos .prod-tabela th { background: #eef4fb !important; color: #14467c !important; font-size: 13px; border-bottom: 1.5px solid #cfe0f2; }
+#tela-produtos .prod-tabela td { font-size: 14px; color: var(--branco); border-top: 1px solid #eef2f7; }
+#tela-produtos .prod-tabela tbody tr:nth-child(even) td { background: #f7fafd; }
+#tela-produtos .prod-tabela tbody tr:hover { background: #dcecfb; }
+
 /* Painel de detalhes do produto (Mercadorias) — substitui a tabela fixa:
    só aparece ao localizar um produto por código ou pela busca */
 .prod-detalhe { display: flex; flex-direction: column; gap: 14px; min-height: 0; overflow-y: auto; }
