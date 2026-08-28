@@ -1838,6 +1838,15 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 .item-linha.modo-cancelar { cursor: pointer; }
 .item-linha.cancel-cursor { outline: 3px solid #1e88c8; outline-offset: -3px; background: #eaf3fc; }
 .item-linha.cancel-sel { background: #fdecec !important; box-shadow: inset 5px 0 0 #c0392b; }
+/* listinha "quanto cancelar" (Enter abre) */
+.cancel-qty-pop { position: fixed; z-index: 99999; left: 50%; bottom: 60px; transform: translateX(-50%); background: #fff; border: 2px solid #c0392b; border-radius: 14px; padding: 12px 14px; box-shadow: 0 14px 40px rgba(0,0,0,.3); min-width: 240px; max-width: 92vw; }
+.cancel-qty-pop .cqp-tit { font-weight: 800; color: #c0392b; font-size: 14.5px; margin-bottom: 8px; }
+.cancel-qty-pop .cqp-tit b { color: #7a1f13; }
+.cancel-qty-pop .cqp-tit small { color: #8a7f8f; font-weight: 700; }
+.cancel-qty-pop .cqp-list { display: flex; flex-wrap: wrap; gap: 6px; max-height: 40vh; overflow-y: auto; }
+.cancel-qty-pop .cqp-op { min-width: 44px; padding: 9px 12px; border-radius: 9px; border: 1.5px solid #e3c9c4; background: #fdf3f2; color: #7a2c1c; font-weight: 800; font-size: 15px; cursor: pointer; font-family: inherit; }
+.cancel-qty-pop .cqp-op.sel { background: #c0392b; border-color: #c0392b; color: #fff; box-shadow: 0 3px 10px rgba(192,57,43,.4); }
+.cancel-qty-pop .cqp-hint { margin-top: 8px; font-size: 12px; color: #6b7688; }
 .item-linha.cancel-cursor.cancel-sel { outline-color: #c0392b; }
 .item-linha.cancel-sel .desc, .item-linha.cancel-sel .cod, .item-linha.cancel-sel .qtd, .item-linha.cancel-sel .total { text-decoration: line-through; color: #c0392b !important; }
 .cupom-cancel-bar { position: fixed; z-index: 99998; left: 50%; bottom: 18px; transform: translateX(-50%);

@@ -528,9 +528,9 @@ $('tela-pdv').addEventListener('click', e => {
   if (!e.target.closest('input, button, select, a, label, .item-linha')) focusCodigoMercadoria();
 });
 
-let modoCancelarItens = false;      // "modo cancelar" (tecla I): seleciona itens do cupom pra cancelar
-let itensCancelSel = new Set();
-let cancelCursor = 0;               // item "sob o cursor" no modo cancelar (100% teclado, sem depender de foco)
+let modoCancelarItens = false;      // "modo cancelar" (tecla I): navega e escolhe QUANTO cancelar (teclado puro)
+let cancelCursor = 0;               // item "sob o cursor"
+let cancelQtyOpen = false, cancelQtyItem = -1, cancelQtyOps = [], cancelQtyIdx = 0;   // listinha de "quanto cancelar"
 function renderCupom() {
   const el = $('espelho-itens');
   $('btn-limpar-venda').disabled = itensCupom.length === 0;
@@ -542,13 +542,12 @@ function renderCupom() {
     return;
   }
   el.innerHTML = itensCupom.map((it, i) => `
-    <div class="item-linha${modoCancelarItens ? ' modo-cancelar' : ''}${modoCancelarItens && itensCancelSel.has(i) ? ' cancel-sel' : ''}${modoCancelarItens && i === cancelCursor ? ' cancel-cursor' : ''}" tabindex="0" data-idx="${i}" title="${modoCancelarItens ? 'Espaço/clique marca pra cancelar' : '2× clique ou Enter para alterar'}">
+    <div class="item-linha${modoCancelarItens ? ' modo-cancelar' : ''}${modoCancelarItens && i === cancelCursor ? ' cancel-cursor' : ''}" tabindex="0" data-idx="${i}" title="${modoCancelarItens ? 'Enter escolhe quanto cancelar' : '2× clique ou Enter para alterar'}">
       <span class="cod">${it.cod}</span>
       <span class="desc">${it.desc}${it.pacote ? ' <small class="tag-pacote">caixa</small>' : ''}</span>
       <span class="qtd">${it.qtd}</span>
       <span class="total">${fmt(it.qtd * it.preco)}</span>
     </div>`).join('');
-  if (modoCancelarItens) atualizarBarraCancelar();
   const total = itensCupom.reduce((s, it) => s + it.qtd * it.preco, 0);
   const q = itensCupom.reduce((s, it) => s + it.qtd, 0);
   $('contador').textContent = `${q} ${q === 1 ? 'item' : 'itens'}`;
@@ -562,7 +561,7 @@ let itemEditIndex = -1;
 $('espelho-itens').addEventListener('click', e => {
   if (!modoCancelarItens) return;                     // clique só age no MODO CANCELAR (mouse é opcional)
   const linha = e.target.closest('.item-linha'); if (!linha) return;
-  cancelCursor = +linha.dataset.idx; toggleCancelItem(cancelCursor);
+  cancelCursor = +linha.dataset.idx; renderCupom(); abrirEscolherQtdCancelar(cancelCursor);
 });
 $('espelho-itens').addEventListener('dblclick', e => {
   if (modoCancelarItens) return;                      // no modo cancelar, 2× clique não abre edição
@@ -579,18 +578,16 @@ $('espelho-itens').addEventListener('keydown', e => {
   else if (e.key === 'ArrowUp')   { e.preventDefault(); linha.previousElementSibling ? linha.previousElementSibling.focus() : $('codigo').focus(); }
   else if (e.key === 'Delete')    { e.preventDefault(); itensCupom.splice(idx, 1); renderCupom(); focusCodigoMercadoria(); }
 });
-/* ── MODO CANCELAR ITENS (tecla I no PDV): 100% teclado, com CURSOR próprio (não depende de foco) ── */
+/* ── MODO CANCELAR ITENS (tecla I no PDV): ↑↓ move o cursor · Enter abre a listinha de QUANTO cancelar ── */
 function entrarModoCancelarItens() {
   if (!itensCupom.length) { toast('🛒 Não há itens no cupom pra cancelar'); focusCodigoMercadoria(); return; }
-  modoCancelarItens = true; itensCancelSel = new Set(); cancelCursor = 0;
-  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // tira o foco do código (senão setas iam pro campo)
+  modoCancelarItens = true; cancelCursor = 0; fecharChooserQtd();
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // tira o foco do código
   renderCupom();
-  mostrarBarraCancelar();
-  toast('🗑 Cancelar itens: ↑↓ move · Espaço marca · Enter cancela · Esc sai');
+  toast('🗑 Cancelar: ↑↓ escolhe o item · Enter abre quanto cancelar · Esc sai');
 }
 function sairModoCancelarItens() {
-  modoCancelarItens = false; itensCancelSel = new Set();
-  const bar = $('cupom-cancel-bar'); if (bar) bar.remove();
+  modoCancelarItens = false; fecharChooserQtd();
   if (itensCupom.length) renderCupom();
   focusCodigoMercadoria();
 }
@@ -600,37 +597,52 @@ function moverCursorCancelar(delta) {
   renderCupom();
   const l = $('espelho-itens').querySelector('.item-linha.cancel-cursor'); if (l && l.scrollIntoView) l.scrollIntoView({ block: 'nearest' });
 }
-function toggleCancelItem(idx) {
-  if (itensCancelSel.has(idx)) itensCancelSel.delete(idx); else itensCancelSel.add(idx);
+// opções de quantidade a cancelar: 1, 2, … até o total (e a fração final, se houver)
+function opcoesQtdCancelar(q) {
+  const arr = []; const n = Math.floor(q + 1e-9);
+  for (let k = 1; k <= n; k++) arr.push(k);
+  if (q - n > 1e-9) arr.push(r2loc(q));
+  if (!arr.length && q > 0) arr.push(r2loc(q));
+  return arr;
+}
+function abrirEscolherQtdCancelar(idx) {
+  const it = itensCupom[idx]; if (!it) return;
+  cancelQtyItem = idx; cancelQtyOps = opcoesQtdCancelar(+it.qtd || 0);
+  cancelQtyIdx = cancelQtyOps.length - 1;   // começa em "tudo" (é o mais comum); ↑ diminui
+  cancelQtyOpen = true;
+  renderChooserQtd();
+}
+function fecharChooserQtd() {
+  cancelQtyOpen = false; cancelQtyItem = -1; cancelQtyOps = []; cancelQtyIdx = 0;
+  const p = $('cancel-qty-pop'); if (p) p.remove();
+}
+function moverChooserQtd(delta) {
+  if (!cancelQtyOps.length) return;
+  cancelQtyIdx = Math.max(0, Math.min(cancelQtyOps.length - 1, cancelQtyIdx + delta));
+  renderChooserQtd();
+}
+function renderChooserQtd() {
+  const it = itensCupom[cancelQtyItem]; if (!it) { fecharChooserQtd(); return; }
+  let pop = $('cancel-qty-pop');
+  if (!pop) { pop = document.createElement('div'); pop.id = 'cancel-qty-pop'; pop.className = 'cancel-qty-pop'; document.body.appendChild(pop); }
+  const q = +it.qtd || 0;
+  pop.innerHTML = `<div class="cqp-tit">🗑 Cancelar de <b>${crmEsc(it.desc || it.cod)}</b> <small>(tem ${biNum(q)})</small></div>
+    <div class="cqp-list">${cancelQtyOps.map((k, i) => `<button type="button" class="cqp-op${i === cancelQtyIdx ? ' sel' : ''}" data-i="${i}">${biNum(k)}${k >= q - 1e-9 ? ' · tudo' : ''}</button>`).join('')}</div>
+    <div class="cqp-hint">↑↓ escolhe · Enter cancela · Esc volta</div>`;
+  pop.querySelectorAll('.cqp-op').forEach(b => b.addEventListener('click', () => { cancelQtyIdx = +b.dataset.i; confirmarQtdCancelar(); }));
+  const sel = pop.querySelector('.cqp-op.sel'); if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: 'nearest' });
+}
+function confirmarQtdCancelar() {
+  const it = itensCupom[cancelQtyItem]; if (!it) { fecharChooserQtd(); return; }
+  const k = cancelQtyOps[cancelQtyIdx] || 0; if (k <= 0) return;
+  const q = +it.qtd || 0; const nome = it.desc || it.cod;
+  if (k >= q - 1e-9) itensCupom.splice(cancelQtyItem, 1);   // cancelou tudo → tira a linha
+  else it.qtd = r2loc(q - k);
+  fecharChooserQtd();
+  toast(`🗑 Cancelado ${biNum(k)} de ${nome}`);
+  if (!itensCupom.length) { sairModoCancelarItens(); return; }
+  cancelCursor = Math.max(0, Math.min(cancelCursor, itensCupom.length - 1));
   renderCupom();
-}
-function cancelarItensSelecionados() {
-  if (!itensCancelSel.size) { toast('⚠ Marque os itens que quer cancelar (Espaço/clique)'); return; }
-  const idxs = [...itensCancelSel].sort((a, b) => b - a);   // remove de trás pra frente
-  const n = idxs.length;
-  idxs.forEach(i => itensCupom.splice(i, 1));
-  modoCancelarItens = false; itensCancelSel = new Set();
-  const bar = $('cupom-cancel-bar'); if (bar) bar.remove();
-  renderCupom();
-  toast(`🗑 ${n} ${n === 1 ? 'item cancelado' : 'itens cancelados'}`);
-  focusCodigoMercadoria();
-}
-function mostrarBarraCancelar() {
-  let bar = $('cupom-cancel-bar');
-  if (!bar) {
-    bar = document.createElement('div'); bar.id = 'cupom-cancel-bar'; bar.className = 'cupom-cancel-bar';
-    bar.innerHTML = `<span class="ccb-tit">🗑 Cancelar itens</span><span class="ccb-cont" id="ccb-cont">0 marcados</span>
-      <button type="button" class="ccb-ok" id="ccb-ok">Cancelar marcados (Enter)</button>
-      <button type="button" class="ccb-sair" id="ccb-sair">Sair (Esc)</button>`;
-    document.body.appendChild(bar);
-    $('ccb-ok').addEventListener('click', cancelarItensSelecionados);
-    $('ccb-sair').addEventListener('click', sairModoCancelarItens);
-  }
-  atualizarBarraCancelar();
-}
-function atualizarBarraCancelar() {
-  const c = $('ccb-cont'); if (c) c.textContent = `${itensCancelSel.size} marcado(s)`;
-  const ok = $('ccb-ok'); if (ok) ok.disabled = itensCancelSel.size === 0;
 }
 
 function abrirEditarItem(idx) {
@@ -2346,16 +2358,21 @@ window.addEventListener('keydown', e => {
 document.addEventListener('keydown', e => {
   if ($('app-principal').classList.contains('oculto')) return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
-  // MODO CANCELAR ITENS — 100% teclado (cursor próprio, não depende de foco):
-  // ↑↓ move o cursor · Espaço marca/desmarca · Enter cancela os marcados · Esc/I sai.
+  // MODO CANCELAR ITENS — teclado puro. ↑↓ escolhe o item · Enter abre a listinha de QUANTO cancelar.
+  // Na listinha: ↑↓ escolhe a quantidade · Enter cancela · Esc volta. I/Esc saem do modo.
   if (modoCancelarItens) {
-    if (e.key === 'ArrowDown') { e.preventDefault(); moverCursorCancelar(1); return; }
+    if (cancelQtyOpen) {
+      if (e.key === 'ArrowUp')   { e.preventDefault(); moverChooserQtd(-1); return; }
+      if (e.key === 'ArrowDown') { e.preventDefault(); moverChooserQtd(1); return; }
+      if (e.key === 'Enter')     { e.preventDefault(); confirmarQtdCancelar(); return; }
+      if (e.key === 'Escape')    { e.preventDefault(); fecharChooserQtd(); return; }
+      e.preventDefault(); return;
+    }
     if (e.key === 'ArrowUp')   { e.preventDefault(); moverCursorCancelar(-1); return; }
-    if (e.key === ' ')         { e.preventDefault(); toggleCancelItem(cancelCursor); return; }
-    if (e.key === 'Enter')     { e.preventDefault(); cancelarItensSelecionados(); return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); moverCursorCancelar(1); return; }
+    if (e.key === 'Enter')     { e.preventDefault(); abrirEscolherQtdCancelar(cancelCursor); return; }
     if (e.key === 'Escape' || e.key === 'i' || e.key === 'I') { e.preventDefault(); sairModoCancelarItens(); return; }
-    if (e.key === 'Delete')    { e.preventDefault(); toggleCancelItem(cancelCursor); return; }
-    e.preventDefault(); return;   // no modo cancelar, ignora as demais teclas (não registra produto etc.)
+    e.preventDefault(); return;
   }
   // F9 → abrir a tela de VENDAS de qualquer lugar (não fica preso em modal aberto)
   if (e.key === 'F9') { if (algumOverlayAberto && algumOverlayAberto()) return; e.preventDefault(); irPara('pdv'); focusCodigoMercadoria(); return; }
