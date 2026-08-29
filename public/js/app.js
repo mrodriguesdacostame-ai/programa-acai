@@ -24,6 +24,8 @@ setInterval(() => {
 const SECOES = { home: 'Início', pdv: 'Vendas (PDV)', delivery: 'Delivery', producao: 'Produção', fechamento: 'Fechamento do Período', movimentacoes: 'Movimentações Não Comerciais', impressao: 'Central de Impressão', produtos: 'Produtos / Estoque', cadastro: 'Cadastro Mestre', clientes: 'Clientes', financeiro: 'Financeiro', custos: 'Custos & Rentabilidade', compras: 'Compras', bi: 'BI / Gestão', assistente: 'Assistente IA', atendimento: 'Atendimento', conectividade: 'Conectividade', administracao: 'Administração' };
 
 function irPara(tela) {
+  // ao SAIR do Clientes (F2): limpa TUDO (campos + detalhe) pra não deixar a última conta aberta na tela
+  if (tela !== 'clientes' && $('tela-clientes') && $('tela-clientes').classList.contains('ativa')) { try { limparFormCliente(); } catch {} }
   document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
   const alvo = $('tela-' + tela);
   if (!alvo) return;
@@ -37,7 +39,7 @@ function irPara(tela) {
     if (tela === 'pdv') { if (!document.fullscreenElement && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {}); }
     else if (document.fullscreenElement && document.exitFullscreen) { document.exitFullscreen().catch(() => {}); }
   } catch {}
-  if (tela === 'pdv') focusCodigoMercadoria();
+  if (tela === 'pdv') { if ($('codigo')) $('codigo').value = ''; focusCodigoMercadoria(); }   // campo de venda sempre limpo
   if (tela === 'delivery') { renderDelivery(); iniciarPollPedidos(); carregarEstadoLoja(); }
   else { pararPollPedidos(); }
   if (tela === 'produtos') { esconderDetalheProduto(); renderProdutos(); atualizarMargemForm(); atualizarEstoqueCards(null); { const dt = $('pf-data-entrada'); if (dt && !dt.value) dt.value = new Date().toISOString().slice(0, 10); } setTimeout(() => $('pf-nota').focus(), 60); }
