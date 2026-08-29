@@ -7170,7 +7170,9 @@ const finTipoConta = t => ({ caixa: '💵 Caixa', pix: '⚡ PIX', banco: '🏦 B
 const finTipoCat = t => ({ entrada: '⬆️ Entrada', saida: '⬇️ Saída', ambos: '↕️ Ambos' }[t] || t);
 const finSitLabel = s => ({ confirmado: '✅ Confirmado', pendente: '⏳ Pendente', estornado: '↩️ Estornado' }[s] || s);
 const finOrigemChip = o => `<span class="fin-origem fin-origem-${o || 'manual'}">${({ manual: '✍️ Manual', pdv: '🛒 PDV', delivery: '🛵 Delivery', fiado: '📒 Fiado' }[o] || o || '—')}</span>`;
-const finCard = (ico, valor, label, extra = '', cls = '') => `<div class="fin-card ${cls}"><div class="fin-card-top">${ico}</div><div class="fin-card-num">${valor}</div><div class="fin-card-lbl">${label}</div>${extra ? `<div class="fin-card-extra">${extra}</div>` : ''}</div>`;
+const finCard = (ico, valor, label, extra = '', cls = '', goto = '') => `<div class="fin-card ${cls}${goto ? ' fin-card-click' : ''}"${goto ? ` data-fin-goto="${goto}" tabindex="0" role="button" title="clique para ver de onde vem"` : ''}><div class="fin-card-top">${ico}</div><div class="fin-card-num">${valor}</div><div class="fin-card-lbl">${label}${goto ? ' <span class="fin-card-ver">🔎</span>' : ''}</div>${extra ? `<div class="fin-card-extra">${extra}</div>` : ''}</div>`;
+// clique num card da Visão geral → vai pra fonte da informação (fluxo, contas a pagar, análise…)
+function finGoto(v) { if (!v) return; if (v.indexOf(':') >= 0) { finPainelSub = v.split(':')[1]; finIr('painel'); } else { finIr(v); } }
 const finGet = async (rota) => (await fetch('/api/financeiro/' + rota, { cache: 'no-store' })).json();
 const finOptContas = (sel) => finContas.filter(c => c.ativo).map(c => `<option value="${c.id}" ${c.id == sel ? 'selected' : ''}>${crmEsc(c.nome)}</option>`).join('');
 const finOptCategorias = (tipo, sel) => finCategorias.filter(c => c.ativo && (c.tipo === tipo || c.tipo === 'ambos')).map(c => `<option value="${c.id}" ${c.id == sel ? 'selected' : ''}>${crmEsc(c.nome)}</option>`).join('');
@@ -8052,20 +8054,20 @@ async function renderFinDashboard(host) {
   const s = d.saldos, p = d.pagar, m = d.mes, cls = (v) => v < 0 ? 'neg' : 'pos';
   el.innerHTML = `
     <div class="fin-cards">
-      ${finCard('💰', fmt(s.total), 'Saldo disponível', '', cls(s.total))}
-      ${finCard('💵', fmt(s.caixa), 'Em caixa')}
-      ${finCard('🏦', fmt(s.banco), 'Banco / maquininha')}
-      ${finCard('📥', fmt(d.receber.total), 'A receber (fiado)')}
-      ${finCard('📤', fmt(p.total), 'A pagar', p.vencido ? `${fmt(p.vencido)} vencido` : '', p.vencido ? 'neg' : '')}
-      ${finCard('📅', fmt(p.hoje), 'Pagar hoje')}
-      ${finCard('🗓️', fmt(p.semana), 'Pagar na semana')}
-      ${finCard(m.lucro >= 0 ? '📈' : '📉', fmt(m.lucro), 'Lucro do mês', m.coberturaCusto ? '' : 'sem custo cadastrado', cls(m.lucro))}
+      ${finCard('💰', fmt(s.total), 'Saldo disponível', '', cls(s.total), 'painel:extrato')}
+      ${finCard('💵', fmt(s.caixa), 'Em caixa', '', '', 'painel:extrato')}
+      ${finCard('🏦', fmt(s.banco), 'Banco / maquininha', '', '', 'painel:extrato')}
+      ${finCard('📥', fmt(d.receber.total), 'A receber (fiado)', '', '', 'clientes')}
+      ${finCard('📤', fmt(p.total), 'A pagar', p.vencido ? `${fmt(p.vencido)} vencido` : '', p.vencido ? 'neg' : '', 'contas_pagar')}
+      ${finCard('📅', fmt(p.hoje), 'Pagar hoje', '', '', 'contas_pagar')}
+      ${finCard('🗓️', fmt(p.semana), 'Pagar na semana', '', '', 'contas_pagar')}
+      ${finCard(m.lucro >= 0 ? '📈' : '📉', fmt(m.lucro), 'Lucro do mês', m.coberturaCusto ? '' : 'sem custo cadastrado', cls(m.lucro), 'painel:analise')}
     </div>
     <div class="fin-cards bi-cards-4">
-      ${finCard('🛒', fmt(m.vendas), 'Vendas do mês')}
-      ${finCard('⬆️', fmt(m.receitas), 'Receitas do mês')}
-      ${finCard('⬇️', fmt(m.despesas), 'Despesas do mês')}
-      ${finCard('🧾', fmt(m.compras), 'Compras do mês')}
+      ${finCard('🛒', fmt(m.vendas), 'Vendas do mês', '', '', 'painel:extrato')}
+      ${finCard('⬆️', fmt(m.receitas), 'Receitas do mês', '', '', 'painel:extrato')}
+      ${finCard('⬇️', fmt(m.despesas), 'Despesas do mês', '', '', 'painel:extrato')}
+      ${finCard('🧾', fmt(m.compras), 'Compras do mês', '', '', 'compras')}
     </div>
     ${al && al.total ? finBox('🔔 Alertas', finDashAlertas(al)) : ''}
     <div class="fin-grid2">
@@ -8077,6 +8079,7 @@ async function renderFinDashboard(host) {
       ${finBox('👑 Maior cliente (mês)', d.maiorCliente ? `<div class="fin-dash-linha"><b>${crmEsc(d.maiorCliente.nome)}</b><span>${fmt(d.maiorCliente.total)}</span></div>` : biVazio('Sem vendas no mês.'))}
     </div>
     ${finBox('🍧 Produtos mais lucrativos (mês)', d.produtosLucrativos.length ? biTabela([{ h: 'Produto' }, { h: 'Lucro', cls: 'num' }, { h: 'Margem', cls: 'num' }], d.produtosLucrativos.map(x => [crmEsc(x.nome), fmt(x.lucro), x.margem != null ? (x.margem * 100).toFixed(0) + '%' : '—'])) : biVazio('Cadastre o preço de compra dos produtos pra ver o lucro.'))}`;
+  el.querySelectorAll('[data-fin-goto]').forEach(c => { const go = () => finGoto(c.dataset.finGoto); c.addEventListener('click', go); c.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } }); });
 }
 function finDashAlertas(al) {
   const it = [];
@@ -8285,6 +8288,7 @@ async function finCarregarListaMov(tipo) {
 // Pesquisa por forma de pagamento (máquina/pix/dinheiro): agrupa as contas por tipo.
 // dinheiro→caixa, pix→pix, cartão→maquininha+banco. O filtro é client-side sobre a conta do movimento.
 let finFluxoForma = '';
+let fluxoMovsCache = [];   // guarda os movimentos do fluxo p/ o clique na linha (drill-down da origem)
 const FIN_FORMA_TIPOS = { dinheiro: ['caixa'], pix: ['pix'], cartao: ['maquininha', 'banco'] };
 function finFluxoContaTipo(nome) { const c = finContas.find(x => x.nome === nome); return c ? c.tipo : ''; }
 function renderFinFluxo(host) {
@@ -8325,13 +8329,65 @@ async function finCarregarFluxo() {
     const flbl = { dinheiro: '💵 Dinheiro', pix: '📱 PIX', cartao: '💳 Máquina/Cartão' }[finFluxoForma];
     extraNota = ` · <span class="fin-forma-nota">filtrado: ${flbl}</span>`;
   }
-  const rows = linhas.map(m => [fmtDataHora(m.data), crmEsc(m.descricao || '—'), crmEsc(m.conta_nome || '—') + ' · ' + crmEsc(m.categoria_nome || '—'), finOrigemChip(m.origem),
-    `<span class="fin-val ${m.tipo}">${m.tipo === 'entrada' ? '+' : '−'}${fmt(m.valor)}</span>`, finFluxoForma ? '' : `<b>${fmt(m.saldoAcumulado)}</b>`]);
-  const cols = [{ h: 'Data' }, { h: 'Descrição' }, { h: 'Conta · Categoria' }, { h: 'Origem' }, { h: 'Valor', cls: 'num' }];
-  if (!finFluxoForma) cols.push({ h: 'Saldo acum.', cls: 'num' });
+  fluxoMovsCache = linhas;   // p/ o clique na linha
+  const entradas = linhas.filter(m => m.tipo === 'entrada').reduce((s, m) => s + (+m.valor || 0), 0);
+  const saidas = linhas.filter(m => m.tipo === 'saida').reduce((s, m) => s + (+m.valor || 0), 0);
+  const resultado = Math.round((entradas - saidas) * 100) / 100;
+  const saldoGeral = (finContas || []).reduce((s, c) => s + (+c.saldo || 0), 0);   // SALDO NO GERAL (todas as contas, agora)
+  const contasChips = (finContas || []).map(c => `<button type="button" class="flx-conta-chip" data-flx-conta="${c.id}" title="ver só esta conta"><span>${crmEsc(c.nome)}</span><b class="${(+c.saldo || 0) >= 0 ? 'fin-pos' : 'fin-neg'}">${fmt(c.saldo)}</b></button>`).join('');
   const totLbl = finFluxoForma ? 'Total da forma' : 'Saldo do período';
-  $('fin-fluxo-lista').innerHTML = `<div class="fin-fluxo-topo">${totLbl}: <b class="${saldoFinal >= 0 ? 'fin-pos' : 'fin-neg'}">${fmt(saldoFinal)}</b> · ${linhas.length} movimentações${extraNota}</div>` +
-    biTabela(cols, rows, 'Nenhuma movimentação no filtro.');
+  const colSaldo = finFluxoForma ? '' : '<th class="col-num">Saldo acum.</th>';
+  const rowsHtml = linhas.length ? linhas.map((m, i) => `<tr class="flx-row" data-fi="${i}" tabindex="0" title="clique pra ver de onde veio">
+      <td>${fmtDataHora(m.data)}</td>
+      <td class="flx-desc">${crmEsc(m.descricao || '—')}</td>
+      <td>${crmEsc(m.conta_nome || '—')} · ${crmEsc(m.categoria_nome || '—')}</td>
+      <td>${finOrigemChip(m.origem)}</td>
+      <td class="col-num"><span class="fin-val ${m.tipo}">${m.tipo === 'entrada' ? '+' : '−'}${fmt(m.valor)}</span></td>
+      ${finFluxoForma ? '' : `<td class="col-num"><b>${fmt(m.saldoAcumulado)}</b></td>`}
+      <td class="flx-lupa">🔎</td>
+    </tr>`).join('') : `<tr><td colspan="7" class="ac-vazio">Nenhuma movimentação no filtro.</td></tr>`;
+  $('fin-fluxo-lista').innerHTML = `
+    <div class="flx-topcards">
+      <div class="flx-saldo-geral">
+        <span class="flx-sg-lbl">💰 Saldo geral <small>(todas as contas, agora)</small></span>
+        <b class="flx-sg-val ${saldoGeral >= 0 ? 'fin-pos' : 'fin-neg'}">${fmt(saldoGeral)}</b>
+        <div class="flx-contas">${contasChips || '<span class="flx-sem">sem contas</span>'}</div>
+      </div>
+      <div class="flx-kpis">
+        <div class="flx-kpi ent"><span>⬆️ Entradas <small>(período)</small></span><b>${fmt(entradas)}</b></div>
+        <div class="flx-kpi sai"><span>⬇️ Saídas <small>(período)</small></span><b>${fmt(saidas)}</b></div>
+        <div class="flx-kpi res ${resultado >= 0 ? 'pos' : 'neg'}"><span>${resultado >= 0 ? '📈' : '📉'} Resultado <small>(período)</small></span><b>${fmt(resultado)}</b></div>
+      </div>
+    </div>
+    <div class="fin-fluxo-topo">${totLbl}: <b class="${saldoFinal >= 0 ? 'fin-pos' : 'fin-neg'}">${fmt(saldoFinal)}</b> · ${linhas.length} movimentações${extraNota} · <small>clique numa linha pra ver a origem</small></div>
+    <div class="prod-tabela-wrap flx-wrap"><table class="prod-tabela flx-tabela"><thead><tr><th>Data</th><th>Descrição</th><th>Conta · Categoria</th><th>Origem</th><th class="col-num">Valor</th>${colSaldo}<th></th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+  $('fin-fluxo-lista').querySelectorAll('[data-flx-conta]').forEach(b => b.addEventListener('click', () => { const sel = $('fin-f-conta'); if (sel) { sel.value = b.dataset.flxConta; finCarregarFluxo(); } }));
+  $('fin-fluxo-lista').querySelectorAll('.flx-row').forEach(tr => { const abrir = () => abrirDetalheMov(fluxoMovsCache[+tr.dataset.fi]); tr.addEventListener('click', abrir); tr.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); abrir(); } }); });
+}
+// Detalhe de um movimento do fluxo — "de onde veio" (origem, conta, categoria, referência, quem lançou)
+function abrirDetalheMov(m) {
+  if (!m) return;
+  const origemTxt = { manual: '✍️ Lançamento manual', pdv: '🛒 Venda no PDV', delivery: '🛵 Delivery', fiado: '📒 Fiado (conta de cliente)', caixa: '💰 Caixa (sangria/suprimento)', compra_acai: '🫐 Compra de açaí', compra: '🧾 Compra de fornecedor' }[m.origem] || (m.origem || '—');
+  const refMap = { caixa_sangria: 'Sangria de caixa', caixa_suprimento: 'Suprimento de caixa', compra_acai: 'Compra de açaí', venda: 'Venda', pedido: 'Pedido delivery', anotacao: 'Recebimento anotado', extrato: 'Recebimento de fiado', contas_pagar: 'Conta a pagar' };
+  const refTxt = m.referencia_tipo ? `${refMap[m.referencia_tipo] || m.referencia_tipo}${m.referencia_id ? ' #' + m.referencia_id : ''}` : '—';
+  const linha = (r, v) => `<tr><td class="md-k">${r}</td><td class="md-v">${v}</td></tr>`;
+  abrirErpModal(`<h3 class="erp-modal-tit">🔎 De onde veio este lançamento</h3>
+    <div class="mov-det">
+      <div class="mov-det-val ${m.tipo}">${m.tipo === 'entrada' ? '+' : '−'}${fmt(m.valor)}</div>
+      <div class="mov-det-desc">${crmEsc(m.descricao || '—')}</div>
+      <table class="mov-det-tab">
+        ${linha('Tipo', m.tipo === 'entrada' ? '⬆️ Entrada' : '⬇️ Saída')}
+        ${linha('Origem', origemTxt)}
+        ${linha('Conta', crmEsc(m.conta_nome || '—'))}
+        ${linha('Categoria', crmEsc(m.categoria_nome || '—'))}
+        ${m.centro_custo_nome ? linha('Centro de custo', crmEsc(m.centro_custo_nome)) : ''}
+        ${linha('Data', fmtDataHora(m.data))}
+        ${linha('Quem lançou', crmEsc(nomeOp(m.criado_por || m.responsavel) || '—'))}
+        ${linha('Referência', refTxt)}
+        ${m.obs ? linha('Observação', crmEsc(m.obs)) : ''}
+      </table>
+    </div>`);
+  $('modal-erp-box').classList.add('erp-ci');
 }
 
 function renderFinContas() {
