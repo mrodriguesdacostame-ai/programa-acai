@@ -8411,17 +8411,23 @@ function renderDiaCompleto() {
 // Pesquisa por forma de pagamento (máquina/pix/dinheiro): agrupa as contas por tipo.
 // dinheiro→caixa, pix→pix, cartão→maquininha+banco. O filtro é client-side sobre a conta do movimento.
 let finFluxoForma = '';
+let finFluxoTipo = '';     // '' | 'entrada' | 'saida' — chip rápido de entrada/saída
 let fluxoMovsCache = [];   // guarda os movimentos do fluxo p/ o clique na linha (drill-down da origem)
 const FIN_FORMA_TIPOS = { dinheiro: ['caixa'], pix: ['pix'], cartao: ['maquininha', 'banco'] };
 function finFluxoContaTipo(nome) { const c = finContas.find(x => x.nome === nome); return c ? c.tipo : ''; }
 function renderFinFluxo(host) {
   const el = host || $('fin-conteudo');
   const chip = (v, t) => `<button class="fin-forma-chip ${finFluxoForma === v ? 'ativo' : ''}" data-forma="${v}">${t}</button>`;
+  const tchip = (v, t) => `<button class="fin-forma-chip fin-tipo-chip ${finFluxoTipo === v ? 'ativo' : ''}" data-tipo="${v}">${t}</button>`;
   el.innerHTML = `
     <div class="fin-fluxo-cab"><b>🌊 Fluxo de caixa</b> <small>— todas as entradas (+) e saídas (−) do período, com saldo acumulado. Filtre por data, conta, forma, origem…</small></div>
     <div class="fin-formas">
       <span class="fin-formas-lbl">💳 Pesquisar por forma:</span>
       ${chip('', 'Todas')}${chip('dinheiro', '💵 Dinheiro')}${chip('pix', '📱 PIX')}${chip('cartao', '💳 Máquina/Cartão')}
+    </div>
+    <div class="fin-formas">
+      <span class="fin-formas-lbl">↕️ Entrada / Saída:</span>
+      ${tchip('', 'Tudo')}${tchip('entrada', '⬆️ Entradas')}${tchip('saida', '⬇️ Saídas')}
     </div>
     <div class="fin-filtros">
       <label>De<input type="date" id="fin-f-de"></label>
@@ -8435,7 +8441,8 @@ function renderFinFluxo(host) {
     </div>
     <div id="fin-fluxo-lista">${biLoading()}</div>`;
   $('fin-f-aplicar').addEventListener('click', finCarregarFluxo);
-  el.querySelectorAll('.fin-forma-chip').forEach(b => b.addEventListener('click', () => { finFluxoForma = b.dataset.forma; el.querySelectorAll('.fin-forma-chip').forEach(x => x.classList.toggle('ativo', x.dataset.forma === finFluxoForma)); finCarregarFluxo(); }));
+  el.querySelectorAll('.fin-forma-chip[data-forma]').forEach(b => b.addEventListener('click', () => { finFluxoForma = b.dataset.forma; el.querySelectorAll('.fin-forma-chip[data-forma]').forEach(x => x.classList.toggle('ativo', x.dataset.forma === finFluxoForma)); finCarregarFluxo(); }));
+  el.querySelectorAll('.fin-tipo-chip').forEach(b => b.addEventListener('click', () => { finFluxoTipo = b.dataset.tipo; if ($('fin-f-tipo')) $('fin-f-tipo').value = finFluxoTipo; el.querySelectorAll('.fin-tipo-chip').forEach(x => x.classList.toggle('ativo', x.dataset.tipo === finFluxoTipo)); finCarregarFluxo(); }));
   finCarregarFluxo();
 }
 async function finCarregarFluxo() {
@@ -8466,7 +8473,7 @@ async function finCarregarFluxo() {
   linhas.forEach((m, i) => {
     const key = new Date(m.data).toLocaleDateString('pt-BR');
     let g = mapaDia.get(key);
-    if (!g) { g = { label: key, movs: [], ent: 0, sai: 0 }; mapaDia.set(key, g); dias.push(g); }
+    if (!g) { g = { label: key, ymd: finYmdLocal(m.data), movs: [], ent: 0, sai: 0 }; mapaDia.set(key, g); dias.push(g); }
     g.movs.push({ m, i });
     if (m.tipo === 'entrada') g.ent += +m.valor || 0; else g.sai += +m.valor || 0;
   });
@@ -8476,7 +8483,7 @@ async function finCarregarFluxo() {
   dias.forEach((g, gi) => {
     const net = Math.round((g.ent - g.sai) * 100) / 100, aberto = gi === 0;   // 1º dia (mais recente) já aberto
     bodyHtml += `<tr class="flx-dia-cab${aberto ? ' aberto' : ''}" data-dia-toggle="${gi}" tabindex="0" title="clique pra abrir/fechar o dia">
-        <td colspan="${nCols}"><span class="flx-dia-seta">▸</span><span class="flx-dia-data">📅 ${g.label}</span><span class="flx-dia-qtd">${g.movs.length} mov.</span><span class="flx-dia-tot">⬆️ ${fmt(g.ent)} · ⬇️ ${fmt(g.sai)} · <b class="${net >= 0 ? 'fin-pos' : 'fin-neg'}">${fmt(net)}</b></span></td></tr>`;
+        <td colspan="${nCols}"><span class="flx-dia-seta">▸</span><span class="flx-dia-data">📅 ${g.label}</span><span class="flx-dia-qtd">${g.movs.length} mov.</span><button type="button" class="flx-dia-open" data-dia-open="${g.ymd}" data-dia-label="${g.label}" title="abrir o dia com filtros e vendas por turno">🔎 abrir dia</button><span class="flx-dia-tot">⬆️ ${fmt(g.ent)} · ⬇️ ${fmt(g.sai)} · <b class="${net >= 0 ? 'fin-pos' : 'fin-neg'}">${fmt(net)}</b></span></td></tr>`;
     g.movs.forEach(({ m, i }) => {
       bodyHtml += `<tr class="flx-row flx-mov${aberto ? '' : ' oculto'}" data-diagrp="${gi}" data-fi="${i}" tabindex="0" title="clique pra ver de onde veio">
         <td class="flx-hora">${hora(m.data)}</td>
@@ -8511,6 +8518,8 @@ async function finCarregarFluxo() {
     cab.addEventListener('click', toggle);
     cab.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
   });
+  // 🔎 abrir dia → pop-up "Tudo do dia" (filtros entrada/saída + vendas por turno). Não dispara o toggle.
+  $('fin-fluxo-lista').querySelectorAll('[data-dia-open]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); abrirDiaCompleto(b.dataset.diaOpen, b.dataset.diaLabel); }));
   $('fin-fluxo-lista').querySelectorAll('.flx-mov').forEach(tr => { const abrir = () => abrirDetalheMov(fluxoMovsCache[+tr.dataset.fi]); tr.addEventListener('click', abrir); tr.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); abrir(); } }); });
 }
 // Detalhe de um movimento do fluxo — "de onde veio" (origem, conta, categoria, referência, quem lançou)
