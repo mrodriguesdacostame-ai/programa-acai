@@ -626,7 +626,7 @@ function entrarModoCancelarItens() {
 }
 function sairModoCancelarItens() {
   modoCancelarItens = false; fecharConfirmCancelar();
-  if (itensCupom.length) renderCupom();
+  renderCupom();   // SEMPRE re-renderiza (inclusive p/ mostrar "vazio" quando cancelou o último item)
   focusCodigoMercadoria();
 }
 function moverCursorCancelar(delta) {
