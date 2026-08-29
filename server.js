@@ -5807,8 +5807,18 @@ function relatorioFinanceiro(tipo, fx) {
     let lista;
     if (tipo === 'contas-pagas') lista = cps.filter(c => statusDaConta(c) === 'pago');
     else lista = cps.filter(c => ['aberto', 'parcial'].includes(statusDaConta(c)) && (c.data_vencimento || '').slice(0, 10) < hojeYmd);
-    return { titulo: tipo === 'contas-pagas' ? 'Contas pagas' : 'Contas vencidas', colunas: ['Fornecedor', 'Descrição', 'Valor', 'Vencimento', 'Status'],
-      linhas: lista.map(c => [c.forn || '—', c.descricao || '', r2(c.valor_total), (c.data_vencimento || '').slice(0, 10), statusDaConta(c)]) };
+    const linhas = lista.map(c => [c.forn || '—', c.descricao || '', r2(c.valor_total), (c.data_vencimento || '').slice(0, 10), statusDaConta(c)]);
+    // AÇAÍ: compras de açaí também entram aqui. Pagas → "Contas pagas"; a pagar/vencidas → "Contas vencidas".
+    try {
+      const acai = db.prepare('SELECT * FROM compras_acai').all();
+      if (tipo === 'contas-pagas') {
+        acai.filter(a => a.pago).forEach(a => linhas.push([a.fornecedor || '—', `🫐 Açaí${(+a.quantidade > 0) ? ' (' + a.quantidade + ' latas)' : ''}`, r2(+a.total || 0), (a.data_pagamento || a.data || '').slice(0, 10), 'pago']));
+      } else {
+        acai.filter(a => !a.pago && (a.data_vencimento || a.data || '').slice(0, 10) < hojeYmd)
+          .forEach(a => linhas.push([a.fornecedor || '—', `🫐 Açaí${(+a.quantidade > 0) ? ' (' + a.quantidade + ' latas)' : ''}`, r2(+a.total || 0), (a.data_vencimento || a.data || '').slice(0, 10), 'aberto']));
+      }
+    } catch {}
+    return { titulo: tipo === 'contas-pagas' ? 'Contas pagas' : 'Contas vencidas', colunas: ['Fornecedor', 'Descrição', 'Valor', 'Vencimento', 'Status'], linhas };
   }
   return { titulo: 'Relatório', colunas: [], linhas: [] };
 }
