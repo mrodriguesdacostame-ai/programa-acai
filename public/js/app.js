@@ -8366,18 +8366,46 @@ function finListaMovAgrupada(movs) {
   });
   return `<table class="fin-tabela fsd-tabela"><thead><tr><th>Hora</th><th>Descrição</th><th>Conta</th><th class="col-num">Valor</th></tr></thead><tbody>${body}</tbody></table>`;
 }
-// Abre TUDO (entradas + saídas) de um dia específico num modal.
+// Abre TUDO (entradas + saídas) de um dia num modal: filtros entrada/saída + vendas por turno.
+let diaComp = { linhas: [], filtro: 'tudo', abertos: {}, ymd: '', label: '' };
 async function abrirDiaCompleto(ymd, label) {
   let d; try { d = await (await fetch('/api/financeiro/fluxo?de=' + ymd + '&ate=' + ymd, { cache: 'no-store' })).json(); } catch { toast('⚠ Falha ao abrir o dia'); return; }
-  const linhas = d.linhas || [];
+  diaComp = { linhas: d.linhas || [], filtro: 'tudo', abertos: { manha: false, noite: false, outro: false }, ymd, label: label || ymd };
+  abrirErpModal('<div id="diac-host"></div>');
+  $('modal-erp-box').classList.add('erp-ci');
+  renderDiaCompleto();
+}
+function renderDiaCompleto() {
+  const host = $('diac-host'); if (!host) return;
+  const { linhas, filtro, label, abertos } = diaComp;
+  const hora = x => new Date(x).toLocaleTimeString('pt-BR').slice(0, 5);
+  const isVenda = m => ['pdv', 'delivery'].includes(m.origem);
+  const turnoDe = h => (h >= 7 && h < 14) ? 'manha' : (h >= 17 && h <= 23) ? 'noite' : 'outro';
   const ent = linhas.filter(m => m.tipo === 'entrada').reduce((s, m) => s + (+m.valor || 0), 0);
   const sai = linhas.filter(m => m.tipo === 'saida').reduce((s, m) => s + (+m.valor || 0), 0);
-  const hora = x => new Date(x).toLocaleTimeString('pt-BR').slice(0, 5);
-  const rows = linhas.length ? linhas.map(m => `<tr><td class="fsd-hora">${hora(m.data)}</td><td>${crmEsc(m.descricao || '—')}</td><td>${crmEsc(m.conta_nome || '—')} · ${crmEsc(m.categoria_nome || '—')}</td><td class="col-num"><span class="fin-val ${m.tipo}">${m.tipo === 'entrada' ? '+' : '−'}${fmt(m.valor)}</span></td></tr>`).join('') : '<tr><td colspan="4" class="ac-vazio">Nada neste dia.</td></tr>';
-  abrirErpModal(`<h3 class="erp-modal-tit">📅 Tudo do dia ${label || ymd}</h3>
+  const fil = linhas.filter(m => filtro === 'tudo' ? true : m.tipo === filtro);
+  const vendas = fil.filter(isVenda), outras = fil.filter(m => !isVenda(m));
+  const T = { manha: { lbl: '🌅 Manhã (07h–14h)', movs: [], tot: 0 }, noite: { lbl: '🌙 Tarde/Noite (17h–23h)', movs: [], tot: 0 }, outro: { lbl: '🕐 Outros horários', movs: [], tot: 0 } };
+  vendas.forEach(m => { const k = turnoDe(new Date(m.data).getHours()); T[k].movs.push(m); T[k].tot += +m.valor || 0; });
+  const rowsHtml = arr => arr.map(m => `<tr><td class="fsd-hora">${hora(m.data)}</td><td>${crmEsc(m.descricao || '—')}</td><td>${crmEsc(m.conta_nome || '—')}</td><td class="col-num"><span class="fin-val ${m.tipo}">${m.tipo === 'entrada' ? '+' : '−'}${fmt(m.valor)}</span></td></tr>`).join('');
+  const fbtn = (v, t) => `<button type="button" class="diac-fbtn${filtro === v ? ' ativo' : ''}" data-diac-f="${v}">${t}</button>`;
+  let turnosHtml = '';
+  ['manha', 'noite', 'outro'].forEach(k => { const g = T[k]; if (!g.movs.length) return; const ab = !!abertos[k];
+    turnosHtml += `<table class="fin-tabela fsd-tabela"><tbody>
+        <tr class="fsd-cab" data-diac-turno="${k}" tabindex="0" title="clique pra abrir/fechar"><td colspan="4"><span class="fsd-seta">${ab ? '▾' : '▸'}</span> <span class="fsd-data">${g.lbl}</span> <span class="fsd-qtd">${g.movs.length} venda(s)</span> <b class="fsd-tot fin-pos">${fmt(g.tot)}</b></td></tr>
+        ${ab ? rowsHtml(g.movs) : ''}</tbody></table>`; });
+  const outrasHtml = outras.length ? `<table class="fin-tabela"><thead><tr><th>Hora</th><th>Descrição</th><th>Conta</th><th class="col-num">Valor</th></tr></thead><tbody>${rowsHtml(outras)}</tbody></table>` : '';
+  const nada = (!vendas.length && !outras.length) ? '<div class="ac-vazio">Nada neste filtro.</div>' : '';
+  host.innerHTML = `<h3 class="erp-modal-tit">📅 Tudo do dia ${label}</h3>
     <div class="dia-tot">⬆️ <b class="fin-pos">${fmt(ent)}</b> · ⬇️ <b class="fin-neg">${fmt(sai)}</b> · resultado <b class="${ent - sai >= 0 ? 'fin-pos' : 'fin-neg'}">${fmt(ent - sai)}</b></div>
-    <div class="dia-tab-wrap"><table class="fin-tabela"><thead><tr><th>Hora</th><th>Descrição</th><th>Conta · Categoria</th><th class="col-num">Valor</th></tr></thead><tbody>${rows}</tbody></table></div>`);
-  $('modal-erp-box').classList.add('erp-ci');
+    <div class="diac-filtros">${fbtn('tudo', 'Tudo')}${fbtn('entrada', '⬆️ Entradas')}${fbtn('saida', '⬇️ Saídas')}</div>
+    <div class="dia-tab-wrap">
+      ${vendas.length ? `<div class="diac-sec">🛒 Vendas por turno <small>(clique pra ver as vendas)</small></div>${turnosHtml}` : ''}
+      ${outras.length ? `<div class="diac-sec">📋 Outras movimentações</div>${outrasHtml}` : ''}
+      ${nada}
+    </div>`;
+  host.querySelectorAll('[data-diac-f]').forEach(b => b.addEventListener('click', () => { diaComp.filtro = b.dataset.diacF; renderDiaCompleto(); }));
+  host.querySelectorAll('[data-diac-turno]').forEach(c => { const t = () => { const k = c.dataset.diacTurno; diaComp.abertos[k] = !diaComp.abertos[k]; renderDiaCompleto(); }; c.addEventListener('click', t); c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t(); } }); });
 }
 
 // Pesquisa por forma de pagamento (máquina/pix/dinheiro): agrupa as contas por tipo.
