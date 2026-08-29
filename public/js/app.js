@@ -566,9 +566,9 @@ $('tela-pdv').addEventListener('click', e => {
   if (!e.target.closest('input, button, select, a, label, .item-linha')) focusCodigoMercadoria();
 });
 
-let modoCancelarItens = false;      // "modo cancelar" (tecla I): navega e escolhe QUANTO cancelar (teclado puro)
+let modoCancelarItens = false;      // "modo cancelar" (tecla I): ↑↓ escolhe o item · Enter confirma (teclado puro)
 let cancelCursor = 0;               // item "sob o cursor"
-let cancelQtyOpen = false, cancelQtyItem = -1, cancelQtyOps = [], cancelQtyIdx = 0;   // listinha de "quanto cancelar"
+let cancelConfirmOpen = false, cancelConfirmItem = -1;   // tela de confirmação (Enter cancela · Esc volta)
 function renderCupom() {
   const el = $('espelho-itens');
   $('btn-limpar-venda').disabled = itensCupom.length === 0;
@@ -580,7 +580,7 @@ function renderCupom() {
     return;
   }
   el.innerHTML = itensCupom.map((it, i) => `
-    <div class="item-linha${modoCancelarItens ? ' modo-cancelar' : ''}${modoCancelarItens && i === cancelCursor ? ' cancel-cursor' : ''}" tabindex="0" data-idx="${i}" title="${modoCancelarItens ? 'Enter escolhe quanto cancelar' : '2× clique ou Enter para alterar'}">
+    <div class="item-linha${modoCancelarItens ? ' modo-cancelar' : ''}${modoCancelarItens && i === cancelCursor ? ' cancel-cursor' : ''}" tabindex="0" data-idx="${i}" title="${modoCancelarItens ? 'Enter para cancelar este item' : '2× clique ou Enter para alterar'}">
       <span class="cod">${it.cod}</span>
       <span class="desc">${it.desc}${it.pacote ? ' <small class="tag-pacote">caixa</small>' : ''}</span>
       <span class="qtd">${it.qtd}</span>
@@ -599,7 +599,7 @@ let itemEditIndex = -1;
 $('espelho-itens').addEventListener('click', e => {
   if (!modoCancelarItens) return;                     // clique só age no MODO CANCELAR (mouse é opcional)
   const linha = e.target.closest('.item-linha'); if (!linha) return;
-  cancelCursor = +linha.dataset.idx; renderCupom(); abrirEscolherQtdCancelar(cancelCursor);
+  cancelCursor = +linha.dataset.idx; renderCupom(); abrirConfirmCancelar(cancelCursor);
 });
 $('espelho-itens').addEventListener('dblclick', e => {
   if (modoCancelarItens) return;                      // no modo cancelar, 2× clique não abre edição
@@ -616,16 +616,16 @@ $('espelho-itens').addEventListener('keydown', e => {
   else if (e.key === 'ArrowUp')   { e.preventDefault(); linha.previousElementSibling ? linha.previousElementSibling.focus() : $('codigo').focus(); }
   else if (e.key === 'Delete')    { e.preventDefault(); itensCupom.splice(idx, 1); renderCupom(); focusCodigoMercadoria(); }
 });
-/* ── MODO CANCELAR ITENS (tecla I no PDV): ↑↓ move o cursor · Enter abre a listinha de QUANTO cancelar ── */
+/* ── MODO CANCELAR ITENS (tecla I no PDV): ↑↓ move o cursor · Enter abre a CONFIRMAÇÃO · Enter de novo cancela ── */
 function entrarModoCancelarItens() {
   if (!itensCupom.length) { toast('🛒 Não há itens no cupom pra cancelar'); focusCodigoMercadoria(); return; }
-  modoCancelarItens = true; cancelCursor = 0; fecharChooserQtd();
+  modoCancelarItens = true; cancelCursor = 0; fecharConfirmCancelar();
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // tira o foco do código
   renderCupom();
-  toast('🗑 Cancelar: ↑↓ escolhe o item · Enter abre quanto cancelar · Esc sai');
+  toast('🗑 Cancelar: ↑↓ escolhe o item · Enter confirma · Esc sai');
 }
 function sairModoCancelarItens() {
-  modoCancelarItens = false; fecharChooserQtd();
+  modoCancelarItens = false; fecharConfirmCancelar();
   if (itensCupom.length) renderCupom();
   focusCodigoMercadoria();
 }
@@ -635,49 +635,34 @@ function moverCursorCancelar(delta) {
   renderCupom();
   const l = $('espelho-itens').querySelector('.item-linha.cancel-cursor'); if (l && l.scrollIntoView) l.scrollIntoView({ block: 'nearest' });
 }
-// opções de quantidade a cancelar: 1, 2, … até o total (e a fração final, se houver)
-function opcoesQtdCancelar(q) {
-  const arr = []; const n = Math.floor(q + 1e-9);
-  for (let k = 1; k <= n; k++) arr.push(k);
-  if (q - n > 1e-9) arr.push(r2loc(q));
-  if (!arr.length && q > 0) arr.push(r2loc(q));
-  return arr;
-}
-function abrirEscolherQtdCancelar(idx) {
+// Tela de confirmação: mostra o item e pede Enter de novo (Esc volta pra lista).
+function abrirConfirmCancelar(idx) {
   const it = itensCupom[idx]; if (!it) return;
-  cancelQtyItem = idx; cancelQtyOps = opcoesQtdCancelar(+it.qtd || 0);
-  cancelQtyIdx = cancelQtyOps.length - 1;   // começa em "tudo" (é o mais comum); ↑ diminui
-  cancelQtyOpen = true;
-  renderChooserQtd();
-}
-function fecharChooserQtd() {
-  cancelQtyOpen = false; cancelQtyItem = -1; cancelQtyOps = []; cancelQtyIdx = 0;
-  const p = $('cancel-qty-pop'); if (p) p.remove();
-}
-function moverChooserQtd(delta) {
-  if (!cancelQtyOps.length) return;
-  cancelQtyIdx = Math.max(0, Math.min(cancelQtyOps.length - 1, cancelQtyIdx + delta));
-  renderChooserQtd();
-}
-function renderChooserQtd() {
-  const it = itensCupom[cancelQtyItem]; if (!it) { fecharChooserQtd(); return; }
-  let pop = $('cancel-qty-pop');
-  if (!pop) { pop = document.createElement('div'); pop.id = 'cancel-qty-pop'; pop.className = 'cancel-qty-pop'; document.body.appendChild(pop); }
+  cancelConfirmItem = idx; cancelConfirmOpen = true;
+  let ov = $('cancel-confirm');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'cancel-confirm'; ov.className = 'cancel-confirm'; document.body.appendChild(ov); }
   const q = +it.qtd || 0;
-  pop.innerHTML = `<div class="cqp-tit">🗑 Cancelar de <b>${crmEsc(it.desc || it.cod)}</b> <small>(tem ${biNum(q)})</small></div>
-    <div class="cqp-list">${cancelQtyOps.map((k, i) => `<button type="button" class="cqp-op${i === cancelQtyIdx ? ' sel' : ''}" data-i="${i}">${biNum(k)}${k >= q - 1e-9 ? ' · tudo' : ''}</button>`).join('')}</div>
-    <div class="cqp-hint">↑↓ escolhe · Enter cancela · Esc volta</div>`;
-  pop.querySelectorAll('.cqp-op').forEach(b => b.addEventListener('click', () => { cancelQtyIdx = +b.dataset.i; confirmarQtdCancelar(); }));
-  const sel = pop.querySelector('.cqp-op.sel'); if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: 'nearest' });
+  ov.innerHTML = `<div class="ccf-card">
+      <div class="ccf-ic">🗑</div>
+      <div class="ccf-tit">CANCELAR ITEM?</div>
+      <div class="ccf-item"><b>${crmEsc(it.desc || it.cod)}</b><span class="ccf-sub">${biNum(q)} × ${fmt(it.preco)} = <b>${fmt(q * it.preco)}</b></span></div>
+      <div class="ccf-acoes"><button type="button" class="ccf-sim" id="ccf-sim">✔ Enter — Cancelar</button><button type="button" class="ccf-nao" id="ccf-nao">Esc — Voltar</button></div>
+    </div>`;
+  ov.classList.add('show');
+  $('ccf-sim').addEventListener('click', confirmarCancelarItem);
+  $('ccf-nao').addEventListener('click', fecharConfirmCancelar);
 }
-function confirmarQtdCancelar() {
-  const it = itensCupom[cancelQtyItem]; if (!it) { fecharChooserQtd(); return; }
-  const k = cancelQtyOps[cancelQtyIdx] || 0; if (k <= 0) return;
-  const q = +it.qtd || 0; const nome = it.desc || it.cod;
-  if (k >= q - 1e-9) itensCupom.splice(cancelQtyItem, 1);   // cancelou tudo → tira a linha
-  else it.qtd = r2loc(q - k);
-  fecharChooserQtd();
-  toast(`🗑 Cancelado ${biNum(k)} de ${nome}`);
+function fecharConfirmCancelar() {
+  cancelConfirmOpen = false; cancelConfirmItem = -1;
+  const ov = $('cancel-confirm'); if (ov) ov.remove();
+}
+function confirmarCancelarItem() {
+  const it = itensCupom[cancelConfirmItem];
+  if (!it) { fecharConfirmCancelar(); return; }
+  const nome = it.desc || it.cod;
+  itensCupom.splice(cancelConfirmItem, 1);   // cancela o item inteiro
+  fecharConfirmCancelar();
+  toast(`🗑 Item cancelado: ${nome}`);
   if (!itensCupom.length) { sairModoCancelarItens(); return; }
   cancelCursor = Math.max(0, Math.min(cancelCursor, itensCupom.length - 1));
   renderCupom();
@@ -2399,19 +2384,17 @@ window.addEventListener('keydown', e => {
 document.addEventListener('keydown', e => {
   if ($('app-principal').classList.contains('oculto')) return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
-  // MODO CANCELAR ITENS — teclado puro. ↑↓ escolhe o item · Enter abre a listinha de QUANTO cancelar.
-  // Na listinha: ↑↓ escolhe a quantidade · Enter cancela · Esc volta. I/Esc saem do modo.
+  // MODO CANCELAR ITENS — teclado puro. ↑↓ escolhe o item · Enter abre a CONFIRMAÇÃO.
+  // Na confirmação: Enter cancela o item · Esc volta pra lista. I/Esc saem do modo.
   if (modoCancelarItens) {
-    if (cancelQtyOpen) {
-      if (e.key === 'ArrowUp')   { e.preventDefault(); moverChooserQtd(-1); return; }
-      if (e.key === 'ArrowDown') { e.preventDefault(); moverChooserQtd(1); return; }
-      if (e.key === 'Enter')     { e.preventDefault(); confirmarQtdCancelar(); return; }
-      if (e.key === 'Escape')    { e.preventDefault(); fecharChooserQtd(); return; }
+    if (cancelConfirmOpen) {
+      if (e.key === 'Enter')  { e.preventDefault(); confirmarCancelarItem(); return; }
+      if (e.key === 'Escape') { e.preventDefault(); fecharConfirmCancelar(); return; }
       e.preventDefault(); return;
     }
     if (e.key === 'ArrowUp')   { e.preventDefault(); moverCursorCancelar(-1); return; }
     if (e.key === 'ArrowDown') { e.preventDefault(); moverCursorCancelar(1); return; }
-    if (e.key === 'Enter')     { e.preventDefault(); abrirEscolherQtdCancelar(cancelCursor); return; }
+    if (e.key === 'Enter')     { e.preventDefault(); abrirConfirmCancelar(cancelCursor); return; }
     if (e.key === 'Escape' || e.key === 'i' || e.key === 'I') { e.preventDefault(); sairModoCancelarItens(); return; }
     e.preventDefault(); return;
   }

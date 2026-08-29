@@ -1880,14 +1880,20 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 .rcc-resultado.quite { background: #eaf3fc; color: #0d6ea9; border: 1.5px solid #a9cef0; }
 
 /* listinha "quanto cancelar" (Enter abre) */
-.cancel-qty-pop { position: fixed; z-index: 99999; left: 50%; bottom: 60px; transform: translateX(-50%); background: #fff; border: 2px solid #c0392b; border-radius: 14px; padding: 12px 14px; box-shadow: 0 14px 40px rgba(0,0,0,.3); min-width: 240px; max-width: 92vw; }
-.cancel-qty-pop .cqp-tit { font-weight: 800; color: #c0392b; font-size: 14.5px; margin-bottom: 8px; }
-.cancel-qty-pop .cqp-tit b { color: #7a1f13; }
-.cancel-qty-pop .cqp-tit small { color: #8a7f8f; font-weight: 700; }
-.cancel-qty-pop .cqp-list { display: flex; flex-wrap: wrap; gap: 6px; max-height: 40vh; overflow-y: auto; }
-.cancel-qty-pop .cqp-op { min-width: 44px; padding: 9px 12px; border-radius: 9px; border: 1.5px solid #e3c9c4; background: #fdf3f2; color: #7a2c1c; font-weight: 800; font-size: 15px; cursor: pointer; font-family: inherit; }
-.cancel-qty-pop .cqp-op.sel { background: #c0392b; border-color: #c0392b; color: #fff; box-shadow: 0 3px 10px rgba(192,57,43,.4); }
-.cancel-qty-pop .cqp-hint { margin-top: 8px; font-size: 12px; color: #6b7688; }
+/* Confirmação de cancelamento (tela central: Enter cancela · Esc volta) */
+.cancel-confirm { position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; background: rgba(120, 0, 0, 0.28); opacity: 0; visibility: hidden; transition: opacity .12s ease; }
+.cancel-confirm.show { opacity: 1; visibility: visible; }
+.cancel-confirm .ccf-card { background: #fff; border: 5px solid #c0392b; border-radius: 22px; padding: clamp(22px, 4vw, 38px) clamp(28px, 6vw, 56px); text-align: center; box-shadow: 0 26px 80px rgba(0,0,0,0.5); max-width: 92vw; }
+.cancel-confirm .ccf-ic { font-size: clamp(48px, 9vw, 78px); line-height: 1; }
+.cancel-confirm .ccf-tit { font-size: clamp(26px, 5vw, 44px); font-weight: 900; color: #c0392b; letter-spacing: 1px; margin-top: 4px; }
+.cancel-confirm .ccf-item { margin-top: 12px; font-size: clamp(16px, 3vw, 22px); color: #1a1a2e; }
+.cancel-confirm .ccf-item b { color: #7a1f13; }
+.cancel-confirm .ccf-item .ccf-sub { display: block; margin-top: 4px; font-size: clamp(14px, 2.4vw, 18px); font-weight: 700; color: #55677a; }
+.cancel-confirm .ccf-acoes { display: flex; gap: 12px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+.cancel-confirm .ccf-sim { background: #c0392b; color: #fff; border: none; font-family: inherit; font-weight: 900; font-size: clamp(15px, 2.6vw, 19px); padding: 13px 22px; border-radius: 12px; cursor: pointer; }
+.cancel-confirm .ccf-sim:hover { background: #a5301f; }
+.cancel-confirm .ccf-nao { background: #f1f4f8; color: #55677a; border: 1.5px solid #c4d0dd; font-family: inherit; font-weight: 800; font-size: clamp(14px, 2.4vw, 17px); padding: 13px 20px; border-radius: 12px; cursor: pointer; }
+.cancel-confirm .ccf-nao:hover { background: #e6edf5; }
 .item-linha.cancel-cursor.cancel-sel { outline-color: #c0392b; }
 .item-linha.cancel-sel .desc, .item-linha.cancel-sel .cod, .item-linha.cancel-sel .qtd, .item-linha.cancel-sel .total { text-decoration: line-through; color: #c0392b !important; }
 .cupom-cancel-bar { position: fixed; z-index: 99998; left: 50%; bottom: 18px; transform: translateX(-50%);
