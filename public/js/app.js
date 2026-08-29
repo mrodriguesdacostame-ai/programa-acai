@@ -452,7 +452,7 @@ function registrarCodigoPdv(parte) {
     const [q, c] = entrada.split('*');
     const qn = parseFloat((q || '').replace(',', '.'));
     if (qn > 0) {
-      if (!qtdMeioValida(qn)) { toast('❌ Quantidade só de meio em meio: 0,5 · 1 · 1,5 · 2… (não vale ' + (q || '').trim() + ')'); bipErro(); falar('Quantidade inválida'); return false; }
+      if (!qtdMeioValida(qn)) { avisoGrandeQtd((q || '').trim()); bipErro(); falar('Quantidade inválida'); return false; }
       qtd = qn;
     }
     entrada = (c || '').trim();
@@ -485,6 +485,10 @@ function avisoGrande(titulo, sub) {
 function avisoGrandeCodigo(codigo) {
   avisoGrande('CÓDIGO NÃO CONFERE', codigo ? '“' + codigo + '” não está cadastrado' : '');
 }
+// Quantidade fora do meio-a-meio (0,5 · 1 · 1,5…)
+function avisoGrandeQtd(valor) {
+  avisoGrande('QUANTIDADE NÃO CONFERE', 'Só de meio em meio: 0,5 · 1 · 1,5 · 2…' + (valor ? ' (não vale ' + valor + ')' : ''));
+}
 $('codigo').addEventListener('keydown', e => {
   if (e.key === 'Enter') {
     const entrada = $('codigo').value.trim();
@@ -508,7 +512,7 @@ $('codigo').addEventListener('keydown', e => {
     if (agora - ultimoEspaco < 450) {
       ultimoEspaco = 0;
       qtdPendentePdv = mQtd ? (parseFloat(mQtd[1].replace(',', '.')) || 0) : 0;   // guarda a qtd pra aplicar na escolha
-      if (qtdPendentePdv > 0 && !qtdMeioValida(qtdPendentePdv)) { toast('❌ Quantidade só de meio em meio: 0,5 · 1 · 1,5 · 2…'); bipErro(); qtdPendentePdv = 0; return; }
+      if (qtdPendentePdv > 0 && !qtdMeioValida(qtdPendentePdv)) { avisoGrandeQtd(mQtd ? mQtd[1] : ''); bipErro(); qtdPendentePdv = 0; return; }
       abrirBuscaProduto();
     } else ultimoEspaco = agora;
   }
@@ -704,7 +708,7 @@ function salvarEditarItem() {
   if (itemEditIndex < 0) return;
   const q = +$('item-qtd').value || 0;
   const p = +$('item-preco').value || 0;
-  if (q > 0 && !qtdMeioValida(q)) { toast('❌ Quantidade só de meio em meio: 0,5 · 1 · 1,5 · 2…'); bipErro(); $('item-qtd').focus(); $('item-qtd').select(); return; }
+  if (q > 0 && !qtdMeioValida(q)) { avisoGrandeQtd($('item-qtd').value); bipErro(); $('item-qtd').focus(); $('item-qtd').select(); return; }
   if (q <= 0) itensCupom.splice(itemEditIndex, 1);
   else { itensCupom[itemEditIndex].qtd = q; itensCupom[itemEditIndex].preco = p; }
   renderCupom();
