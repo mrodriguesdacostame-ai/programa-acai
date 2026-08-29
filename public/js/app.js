@@ -435,6 +435,9 @@ function bipErro() {
 /* Campo de código: Enter registra · duplo-espaço abre a busca por nome */
 let ultimoEspaco = 0;
 let qtdPendentePdv = 0;   // quantidade digitada antes do "*" (ex.: 5*) pra aplicar ao escolher na busca
+// O caixa só trabalha com METADES: quantidade tem que ser múltiplo de 0,5 (0,5 · 1 · 1,5 · 2 · 2,5…).
+// Rejeita 1,2 · 0,3 · etc. (evita digitar errado a "parte" de um produto).
+function qtdMeioValida(q) { return q > 0 && Math.abs(q * 2 - Math.round(q * 2)) < 1e-9; }
 // Registra UM código (com suporte a "qtd*código"). Retorna true se adicionou.
 function registrarCodigoPdv(parte) {
   let entrada = (parte || '').trim();
@@ -444,7 +447,10 @@ function registrarCodigoPdv(parte) {
   if (entrada.includes('*')) {
     const [q, c] = entrada.split('*');
     const qn = parseFloat((q || '').replace(',', '.'));
-    if (qn > 0) qtd = qn;
+    if (qn > 0) {
+      if (!qtdMeioValida(qn)) { toast('❌ Quantidade só de meio em meio: 0,5 · 1 · 1,5 · 2… (não vale ' + (q || '').trim() + ')'); bipErro(); falar('Quantidade inválida'); return false; }
+      qtd = qn;
+    }
     entrada = (c || '').trim();
   }
   const prod = buscarPorCodigo(entrada);
@@ -477,6 +483,7 @@ $('codigo').addEventListener('keydown', e => {
     if (agora - ultimoEspaco < 450) {
       ultimoEspaco = 0;
       qtdPendentePdv = mQtd ? (parseFloat(mQtd[1].replace(',', '.')) || 0) : 0;   // guarda a qtd pra aplicar na escolha
+      if (qtdPendentePdv > 0 && !qtdMeioValida(qtdPendentePdv)) { toast('❌ Quantidade só de meio em meio: 0,5 · 1 · 1,5 · 2…'); bipErro(); qtdPendentePdv = 0; return; }
       abrirBuscaProduto();
     } else ultimoEspaco = agora;
   }
@@ -672,6 +679,7 @@ function salvarEditarItem() {
   if (itemEditIndex < 0) return;
   const q = +$('item-qtd').value || 0;
   const p = +$('item-preco').value || 0;
+  if (q > 0 && !qtdMeioValida(q)) { toast('❌ Quantidade só de meio em meio: 0,5 · 1 · 1,5 · 2…'); bipErro(); $('item-qtd').focus(); $('item-qtd').select(); return; }
   if (q <= 0) itensCupom.splice(itemEditIndex, 1);
   else { itensCupom[itemEditIndex].qtd = q; itensCupom[itemEditIndex].preco = p; }
   renderCupom();
