@@ -2780,6 +2780,15 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .op-mov-hint-fluxo { font-size: 12.5px; line-height: 1.45; color: #eaf2fe; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.20); border-radius: 10px; padding: 9px 12px; margin: 2px 0 0; }
 @media (max-width: 700px) { .conf-mv-grid { grid-template-columns: 1fr; } }
 
+/* Janela de ATENÇÃO grande: código errado (fica 3s) */
+#aviso-grande { position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; background: rgba(140, 0, 0, 0.30); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .14s ease; }
+#aviso-grande.show { opacity: 1; visibility: visible; }
+#aviso-grande .avg-card { background: #fff; border: 6px solid #c0392b; border-radius: 26px; padding: clamp(28px, 5vw, 56px) clamp(36px, 7vw, 80px); text-align: center; box-shadow: 0 30px 90px rgba(0,0,0,0.5); animation: avgPulse .55s ease-in-out infinite alternate; max-width: 92vw; }
+#aviso-grande .avg-ic { font-size: clamp(70px, 14vw, 130px); line-height: 1; }
+#aviso-grande .avg-tit { font-size: clamp(38px, 8vw, 72px); font-weight: 900; color: #c0392b; letter-spacing: 2px; margin-top: 6px; }
+#aviso-grande .avg-sub { font-size: clamp(16px, 3vw, 26px); font-weight: 700; color: #333; margin-top: 12px; }
+@keyframes avgPulse { from { transform: scale(1); } to { transform: scale(1.045); } }
+
 /* ── FONTE MAIOR na conferência (estava pequena demais pra ler) ── */
 .conf-sub { font-size: 14px; }
 .conf-periodo label { font-size: 13.5px; }
