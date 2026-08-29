@@ -8750,7 +8750,11 @@ async function carregarContasPagar() {
   const r = d.resumo;
   $('erp-cp-resumo').innerHTML = `<div class="erp-cp-chips"><span class="erp-cp-chip vermelho">Vencidas ${r.vencidas}</span><span class="erp-cp-chip amarelo">Hoje ${r.hoje}</span><span class="erp-cp-chip">Amanhã ${r.amanha}</span><span class="erp-cp-chip">Próx. 7d ${r.proximos}</span><span class="erp-cp-chip">Parciais ${r.parciais}</span><span class="erp-cp-chip verde">Pagas ${r.pagas}</span><span class="erp-cp-total">Em aberto: <b>${fmt(d.totalAberto)}</b></span></div>`;
   const rows = d.contas.map(c => {
-    const acoes = (finPodeLancar() && (c.status === 'aberto' || c.status === 'parcial')) ? `<button class="fin-mini" data-erp-acao="cp-pagar" data-id="${c.id}" data-rest="${c.restante}">💵 Pagar</button>` : '';
+    const acoes = (finPodeLancar() && (c.status === 'aberto' || c.status === 'parcial'))
+      ? (c.acai
+          ? `<button class="fin-mini" data-erp-acao="cp-pagar-acai" data-acaiid="${c.acaiId}">💵 Pagar</button>`
+          : `<button class="fin-mini" data-erp-acao="cp-pagar" data-id="${c.id}" data-rest="${c.restante}">💵 Pagar</button>`)
+      : '';
     return [crmEsc(c.fornecedor_nome || '—'), crmEsc(c.descricao || '—'), erpFmtData(c.data_vencimento) + (c.bucket === 'vencida' ? ' <span class="erp-venc-flag">vencida</span>' : ''), fmt(c.valor_total), fmt(c.pago), fmt(c.restante), erpStatusChip(c.status), acoes];
   });
   $('erp-cp-lista').innerHTML = biTabela([{ h: 'Fornecedor' }, { h: 'Descrição' }, { h: 'Vencimento' }, { h: 'Total', cls: 'num' }, { h: 'Pago', cls: 'num' }, { h: 'Aberto', cls: 'num' }, { h: 'Status' }, { h: '' }], rows, 'Nenhuma conta a pagar no filtro.');
@@ -8841,6 +8845,14 @@ $('fin-conteudo').addEventListener('click', async e => {
   else if (acao === 'compra-relatorios') renderCompraRelatorios();
   else if (acao === 'compra-cancelar') { if (!confirm('Cancelar esta compra? O estoque volta, a conta a pagar é cancelada e os pagamentos são estornados.')) return; const r = await (await fetch('/api/erp/compras/' + id + '/cancelar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).json(); if (r.erro) { toast('⚠ ' + r.erro); return; } toast('🚫 Compra cancelada'); await finCarregarBase(); renderCompraDetalhe(id); }
   else if (acao === 'cp-pagar') abrirPagarModal(id, +b.dataset.rest || 0);
+  else if (acao === 'cp-pagar-acai') {
+    const aid = b.dataset.acaiid; if (!aid) return;
+    if (!confirm('Pagar esta compra de açaí agora? (entra como saída no fluxo de caixa)')) return;
+    const hoje = new Date().toISOString().slice(0, 10);
+    const r = await (await fetch('/api/compras-acai/' + aid + '/pagar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ forma_pagamento: 'Dinheiro', data_pagamento: hoje }) })).json();
+    if (r && r.erro) { toast('⚠ ' + r.erro); return; }
+    toast('✅ Açaí pago · saiu no fluxo de caixa e foi pra Contas pagas'); await finCarregarBase(); carregarContasPagar();
+  }
   else if (acao === 'cp-nova') abrirContaAvulsaForm();
   else if (acao === 'cp-filtrar') carregarContasPagar();
   else if (acao === 'receb-novo') abrirRecebimentoModal(id);

@@ -4427,6 +4427,23 @@ app.get('/api/erp/contas-pagar', (req, res) => {
   if (q.bucket) rows = rows.filter(r => r.bucket === q.bucket);
   if (q.conta_id) rows = rows.filter(r => db.prepare('SELECT 1 FROM contas_pagar_pagamentos WHERE conta_pagar_id=? AND conta_id=? AND estornado=0 LIMIT 1').get(r.id, +q.conta_id));
   if (q.forma_pagamento) rows = rows.filter(r => db.prepare('SELECT 1 FROM contas_pagar_pagamentos WHERE conta_pagar_id=? AND forma_pagamento=? AND estornado=0 LIMIT 1').get(r.id, q.forma_pagamento));
+  // AÇAÍ: compras de açaí NÃO pagas também aparecem em "A pagar" (marcadas com acai:true → o front paga pela rota do açaí)
+  if ((!q.status || q.status === 'aberto') && !q.conta_id && !q.forma_pagamento) {
+    try {
+      let acai = db.prepare('SELECT * FROM compras_acai WHERE COALESCE(pago,0)=0').all();
+      if (q.busca) { const t = String(q.busca).toLowerCase(); acai = acai.filter(a => (a.fornecedor || '').toLowerCase().includes(t) || 'açaí'.includes(t) || 'acai'.includes(t)); }
+      if (q.vencDe) acai = acai.filter(a => ((a.data_vencimento || a.data || '').slice(0, 10)) >= String(q.vencDe).slice(0, 10));
+      if (q.vencAte) acai = acai.filter(a => ((a.data_vencimento || a.data || '').slice(0, 10)) <= String(q.vencAte).slice(0, 10));
+      let acaiRows = acai.map(a => {
+        const venc = a.data_vencimento || a.data || null;
+        return { id: 'acai-' + a.id, acai: true, acaiId: a.id, fornecedor_nome: a.fornecedor || '—', categoria_nome: 'Açaí',
+          descricao: `🫐 Açaí${(+a.quantidade > 0) ? ' (' + a.quantidade + ' latas)' : ''}`, valor_total: r2(+a.total || 0), pago: 0,
+          restante: r2(+a.total || 0), data_vencimento: venc, status: 'aberto', bucket: classificarVencimento({ data_vencimento: venc }, 'aberto') };
+      });
+      if (q.bucket) acaiRows = acaiRows.filter(r => r.bucket === q.bucket);
+      rows = rows.concat(acaiRows);
+    } catch {}
+  }
   const resumo = { vencidas: 0, hoje: 0, amanha: 0, proximos: 0, abertas: 0, parciais: 0, pagas: 0, canceladas: 0 };
   for (const r of rows) {
     if (r.status === 'pago') resumo.pagas++;
