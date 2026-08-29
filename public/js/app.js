@@ -8283,40 +8283,50 @@ const finBox = (tit, conteudo) => `<div class="fin-box"><h3 class="fin-box-tit">
 function renderFinLancamento(tipo) {
   const el = $('fin-conteudo');
   const nome = tipo === 'entrada' ? 'entrada' : 'saída';
-  el.innerHTML = `
-    ${tipo === 'saida' ? `<div class="fin-saida-atalhos">
-      <div class="fsa-tit">📌 Contas a pagar <small>— pague na hora ou agende com aviso</small></div>
-      <div class="fsa-btns">
-        <button type="button" class="fsa-btn" data-erp-acao="cp-abrir">📋 Ver contas a pagar</button>
-        <button type="button" class="fsa-btn func" data-erp-acao="cp-func">👤 Pagar funcionário</button>
-        <button type="button" class="fsa-btn parc" data-erp-acao="cp-nova">➕ Conta com parcelas</button>
+  // SAÍDAS = hub de Contas a pagar (sem lançamento manual avulso). Toda saída passa por
+  // registrar a conta (uma vez ou parcelada) e depois pagar (o pagamento vira o movimento).
+  if (tipo === 'saida') {
+    el.innerHTML = `
+      <div class="fin-saida-atalhos">
+        <div class="fsa-tit">📌 Contas a pagar <small>— registre a conta, agende com aviso e pague</small></div>
+        <div class="fsa-btns">
+          <button type="button" class="fsa-btn parc" data-erp-acao="cp-nova">🧾 Registrar conta a pagar</button>
+          <button type="button" class="fsa-btn func" data-erp-acao="cp-func">👤 Pagar funcionário</button>
+          <button type="button" class="fsa-btn" data-erp-acao="cp-abrir">📋 Ver contas a pagar</button>
+        </div>
+        <div id="fin-saida-avisos"></div>
       </div>
-      <div id="fin-saida-avisos"></div>
-    </div>` : ''}
+      <div class="fin-box">
+        <h3 class="fin-box-tit">Últimas saídas</h3>
+        <div id="fin-mov-lista">${biLoading()}</div>
+      </div>`;
+    finCarregarListaMov('saida');
+    erpGet('alertas').then(a => { const box = $('fin-saida-avisos'); if (box) box.innerHTML = renderAlertasBanner(a) || '<div class="fsa-ok">✅ Nenhuma conta vencida ou vencendo agora.</div>'; }).catch(() => {});
+    return;
+  }
+  el.innerHTML = `
     <div class="fin-grid-form">
       <div class="fin-box">
-        <h3 class="fin-box-tit">${tipo === 'entrada' ? '⬆️ Nova entrada' : '⬇️ Nova saída'}</h3>
+        <h3 class="fin-box-tit">⬆️ Nova entrada</h3>
         <form id="fin-form-mov" autocomplete="off" class="fin-form">
           <input type="hidden" id="fin-mov-tipo" value="${tipo}">
           <div class="fin-frow"><label>Data<input type="date" id="fin-mov-data"></label><label>Valor (R$)<input type="number" step="0.01" min="0" id="fin-mov-valor" placeholder="0,00"></label></div>
           <div class="fin-frow"><label>Conta<select id="fin-mov-conta">${finOptContas()}</select></label><label>Categoria<select id="fin-mov-cat">${finOptCategorias(tipo)}</select></label></div>
           <label>Centro de custo<select id="fin-mov-cc">${finOptCentros()}</select></label>
-          <label>Descrição<input id="fin-mov-desc" placeholder="${tipo === 'entrada' ? 'ex.: aporte do dono' : 'ex.: conta de luz'}"></label>
+          <label>Descrição<input id="fin-mov-desc" placeholder="ex.: aporte do dono"></label>
           <div class="fin-frow"><label>Responsável<input id="fin-mov-resp" placeholder="quem lançou"></label><label>Situação<select id="fin-mov-sit"><option value="confirmado">Confirmado</option><option value="pendente">Pendente</option></select></label></div>
           <label>Observação<input id="fin-mov-obs"></label>
           <button type="submit" class="fin-btn-salvar">💾 Lançar ${nome}</button>
         </form>
       </div>
       <div class="fin-box">
-        <h3 class="fin-box-tit">Últimas ${tipo === 'entrada' ? 'entradas' : 'saídas'}</h3>
+        <h3 class="fin-box-tit">Últimas entradas</h3>
         <div id="fin-mov-lista">${biLoading()}</div>
       </div>
     </div>`;
   $('fin-mov-data').value = new Date().toISOString().slice(0, 10);
   $('fin-form-mov').addEventListener('submit', finSalvarMov);
   finCarregarListaMov(tipo);
-  // AVISO de vencimentos direto na tela de Saídas (mesma fonte do Contas a pagar)
-  if (tipo === 'saida') { erpGet('alertas').then(a => { const box = $('fin-saida-avisos'); if (box) box.innerHTML = renderAlertasBanner(a) || '<div class="fsa-ok">✅ Nenhuma conta vencida ou vencendo agora.</div>'; }).catch(() => {}); }
 }
 async function finSalvarMov(e) {
   e.preventDefault();
