@@ -10,6 +10,10 @@ let toastTimer;
 function toast(msg, tipo = '') {
   const t = $('toast');
   t.textContent = msg;
+  if (!tipo) {   // deduz o tom pelo começo da mensagem (padrão de cores do projeto)
+    if (/^\s*(❌|⛔|⚠|🚫)/.test(msg)) tipo = 'erro';
+    else if (/^\s*(✅|✔|🎉)/.test(msg)) tipo = 'sucesso';
+  }
   t.className = 'toast show' + (tipo ? ' ' + tipo : '');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
