@@ -2622,6 +2622,30 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 #tela-financeiro .fsa-btn.parc:hover { background: #dcf5e6; }
 #tela-financeiro #fin-saida-avisos { margin-top: 10px; }
 #tela-financeiro .fsa-ok { font-size: 13px; color: #0a7a3b; font-weight: 700; }
+/* Nova conta a pagar → chips de fornecedor/origem (modal claro) */
+.modal-erp .ecp-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 6px; max-height: 100px; overflow-y: auto; }
+.modal-erp .ecp-chip { font-family: inherit; font-size: 12.5px; font-weight: 700; padding: 5px 10px; border-radius: 999px; border: 1.5px solid #cdddef; background: #eef4fb; color: #14467c; cursor: pointer; }
+.modal-erp .ecp-chip:hover { background: #dcebfb; border-color: #9cc3ec; }
+/* Últimas saídas agrupadas por dia (barra clicável) */
+#tela-financeiro .fsd-tabela { width: 100%; border-collapse: collapse; }
+#tela-financeiro .fsd-tabela th { padding: 6px 10px; text-align: left; font-size: 12.5px; color: #6b7688; }
+#tela-financeiro .fsd-tabela th.col-num, #tela-financeiro .fsd-tabela td.col-num { text-align: right; }
+#tela-financeiro .fsd-mov td { padding: 5px 10px; border-top: 1px solid rgba(15,47,77,.06); font-size: 13.5px; }
+#tela-financeiro tr.fsd-cab { cursor: pointer; background: #e7f0fa; }
+#tela-financeiro tr.fsd-cab:hover { background: #d8e8f7; }
+#tela-financeiro tr.fsd-cab td { border-top: 2px solid #b9d4ef; padding: 8px 12px; }
+#tela-financeiro .fsd-data { font-weight: 900; color: #14467c; }
+#tela-financeiro .fsd-qtd { margin-left: 10px; font-size: 12.5px; color: #6b7688; font-weight: 700; }
+#tela-financeiro .fsd-tot { margin-left: 10px; font-size: 14px; }
+#tela-financeiro .fsd-abrir { float: right; font-size: 12px; font-weight: 800; color: #0d6ea9; }
+#tela-financeiro .fsd-hora { color: var(--acai-rosa); font-weight: 700; white-space: nowrap; }
+/* Modal "Tudo do dia" */
+.modal-erp .dia-tot { font-size: 15px; font-weight: 700; color: #33475b; margin-bottom: 10px; }
+.modal-erp .dia-tab-wrap { max-height: 60vh; overflow-y: auto; }
+.modal-erp .dia-tab-wrap table { width: 100%; border-collapse: collapse; }
+.modal-erp .dia-tab-wrap th { padding: 6px 8px; text-align: left; font-size: 12.5px; color: #6b7688; }
+.modal-erp .dia-tab-wrap td { padding: 6px 8px; border-bottom: 1px solid #eef2f7; font-size: 13.5px; }
+.modal-erp .dia-tab-wrap .col-num { text-align: right; }
 #tela-financeiro .fin-val.entrada { color: #0a9b4b; font-weight: 800; }
 #tela-financeiro .fin-val.saida { color: #c0392b; font-weight: 800; }
 /* cards clicáveis (Visão geral) */

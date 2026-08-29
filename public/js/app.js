@@ -8346,7 +8346,38 @@ async function finSalvarMov(e) {
 }
 async function finCarregarListaMov(tipo) {
   let L; try { L = await finGet('movimentos?tipo=' + tipo); } catch { $('fin-mov-lista').innerHTML = biErro(); return; }
+  if (tipo === 'saida') {   // Saídas: agrupa por dia; clicar no dia abre TUDO do dia
+    $('fin-mov-lista').innerHTML = (L && L.length) ? finListaMovAgrupada(L) : biVazio('Nenhuma saída ainda.');
+    $('fin-mov-lista').querySelectorAll('[data-dia-full]').forEach(cab => { const abrir = () => abrirDiaCompleto(cab.dataset.diaFull, cab.dataset.diaLabel); cab.addEventListener('click', abrir); cab.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(); } }); });
+    return;
+  }
   $('fin-mov-lista').innerHTML = (L && L.length) ? finListaMov(L, true) : biVazio('Nenhum lançamento ainda.');
+}
+const finYmdLocal = d => { const t = new Date(d), p = n => String(n).padStart(2, '0'); return `${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}`; };
+// Últimas saídas agrupadas por DIA: cada dia é uma barra clicável (abre tudo do dia) com as saídas embaixo.
+function finListaMovAgrupada(movs) {
+  const dias = [], mapa = new Map();
+  movs.forEach(m => { const key = new Date(m.data).toLocaleDateString('pt-BR'); let g = mapa.get(key); if (!g) { g = { label: key, ymd: finYmdLocal(m.data), movs: [], total: 0 }; mapa.set(key, g); dias.push(g); } g.movs.push(m); g.total += (+m.valor || 0); });
+  const hora = d => new Date(d).toLocaleTimeString('pt-BR').slice(0, 5);
+  let body = '';
+  dias.forEach(g => {
+    body += `<tr class="fsd-cab" data-dia-full="${g.ymd}" data-dia-label="${g.label}" tabindex="0" title="clique pra ver TUDO deste dia"><td colspan="4"><span class="fsd-data">📅 ${g.label}</span><span class="fsd-qtd">${g.movs.length} saída(s)</span><b class="fsd-tot fin-neg">${fmt(g.total)}</b><span class="fsd-abrir">abrir o dia ▸</span></td></tr>`;
+    g.movs.forEach(m => { body += `<tr class="fsd-mov"><td class="fsd-hora">${hora(m.data)}</td><td>${crmEsc(m.descricao || '—')}</td><td>${crmEsc(m.conta_nome || '—')}</td><td class="col-num"><span class="fin-val ${m.tipo}">${m.tipo === 'entrada' ? '+' : '−'}${fmt(m.valor)}</span></td></tr>`; });
+  });
+  return `<table class="fin-tabela fsd-tabela"><thead><tr><th>Hora</th><th>Descrição</th><th>Conta</th><th class="col-num">Valor</th></tr></thead><tbody>${body}</tbody></table>`;
+}
+// Abre TUDO (entradas + saídas) de um dia específico num modal.
+async function abrirDiaCompleto(ymd, label) {
+  let d; try { d = await (await fetch('/api/financeiro/fluxo?de=' + ymd + '&ate=' + ymd, { cache: 'no-store' })).json(); } catch { toast('⚠ Falha ao abrir o dia'); return; }
+  const linhas = d.linhas || [];
+  const ent = linhas.filter(m => m.tipo === 'entrada').reduce((s, m) => s + (+m.valor || 0), 0);
+  const sai = linhas.filter(m => m.tipo === 'saida').reduce((s, m) => s + (+m.valor || 0), 0);
+  const hora = x => new Date(x).toLocaleTimeString('pt-BR').slice(0, 5);
+  const rows = linhas.length ? linhas.map(m => `<tr><td class="fsd-hora">${hora(m.data)}</td><td>${crmEsc(m.descricao || '—')}</td><td>${crmEsc(m.conta_nome || '—')} · ${crmEsc(m.categoria_nome || '—')}</td><td class="col-num"><span class="fin-val ${m.tipo}">${m.tipo === 'entrada' ? '+' : '−'}${fmt(m.valor)}</span></td></tr>`).join('') : '<tr><td colspan="4" class="ac-vazio">Nada neste dia.</td></tr>';
+  abrirErpModal(`<h3 class="erp-modal-tit">📅 Tudo do dia ${label || ymd}</h3>
+    <div class="dia-tot">⬆️ <b class="fin-pos">${fmt(ent)}</b> · ⬇️ <b class="fin-neg">${fmt(sai)}</b> · resultado <b class="${ent - sai >= 0 ? 'fin-pos' : 'fin-neg'}">${fmt(ent - sai)}</b></div>
+    <div class="dia-tab-wrap"><table class="fin-tabela"><thead><tr><th>Hora</th><th>Descrição</th><th>Conta · Categoria</th><th class="col-num">Valor</th></tr></thead><tbody>${rows}</tbody></table></div>`);
+  $('modal-erp-box').classList.add('erp-ci');
 }
 
 // Pesquisa por forma de pagamento (máquina/pix/dinheiro): agrupa as contas por tipo.
@@ -8946,6 +8977,7 @@ function abrirPagarModal(contaId, restante) {
       <label>Data<input type="date" id="ep-data"></label>
       <input type="hidden" id="ep-conta-id" value="${contaId}">
       <button type="submit" class="fin-btn-salvar">✅ Confirmar pagamento</button></form>`);
+  $('modal-erp-box').classList.add('erp-ci');
   $('ep-data').value = new Date().toISOString().slice(0, 10);
   $('erp-form-pagar').addEventListener('submit', async e => {
     e.preventDefault();
@@ -8968,15 +9000,30 @@ function cpAddIntervalo(base, tipo, i) {
   const p = n => String(n).padStart(2, '0');
   return `${dt.getFullYear()}-${p(dt.getMonth() + 1)}-${p(dt.getDate())}`;
 }
-function abrirContaAvulsaForm() {
+// Acha o fornecedor pelo nome (ignora maiúsc/acento simples) ou CRIA um novo → fica salvo p/ próximas.
+async function resolverFornecedorId(nome) {
+  nome = (nome || '').trim(); if (!nome) return null;
+  if (!erpFornecedoresCache.length) { try { erpFornecedoresCache = await erpGet('fornecedores'); } catch {} }
+  const norm = s => (s || '').trim().toLowerCase();
+  const ja = erpFornecedoresCache.find(f => norm(f.nome) === norm(nome));
+  if (ja) return ja.id;
+  try { const r = await (await fetch('/api/erp/fornecedores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome }) })).json(); if (r && r.id) { erpFornecedoresCache.push(r); return r.id; } } catch {}
+  return null;
+}
+async function abrirContaAvulsaForm() {
+  if (!erpFornecedoresCache.length) { try { erpFornecedoresCache = await erpGet('fornecedores'); } catch {} }
+  const chips = erpFornecedoresCache.filter(f => f.ativo).map(f => `<button type="button" class="ecp-chip" data-nome="${crmEsc(f.nome)}">${crmEsc(f.nome)}</button>`).join('');
   abrirErpModal(`<h3 class="erp-modal-tit">➕ Nova conta a pagar</h3>
     <form id="erp-form-cp" class="fin-form">
       <label>Descrição<input id="ecp-desc" placeholder="ex.: Aluguel, energia, internet..."></label>
-      <div class="fin-frow"><label>Fornecedor (opcional)<select id="ecp-forn"><option value="">—</option>${erpOptFornecedores()}</select></label><label>Valor de cada<input type="number" step="0.01" id="ecp-valor" placeholder="0,00"></label></div>
-      <label>1º vencimento<input type="date" id="ecp-venc"></label>
+      <label>Fornecedor / origem do pagamento <small>(digite ou escolha — fica salvo p/ próximas)</small><input id="ecp-forn-nome" autocomplete="off" placeholder="ex.: Energia, Aluguel, Fornecedor X"></label>
+      ${chips ? `<div class="ecp-chips" id="ecp-chips">${chips}</div>` : ''}
+      <div class="fin-frow"><label>Valor de cada<input type="number" step="0.01" id="ecp-valor" placeholder="0,00"></label><label>1º vencimento<input type="date" id="ecp-venc"></label></div>
       <div class="fin-frow"><label>Parcelas (repetir o valor)<input type="number" min="1" step="1" id="ecp-parcelas" value="1"></label><label>Intervalo<select id="ecp-intervalo"><option value="mes" selected>Mensal</option><option value="quinzena">Quinzenal</option><option value="semana">Semanal</option></select></label></div>
       <div class="fin-hint" id="ecp-resumo">1 parcela.</div>
       <button type="submit" class="fin-btn-salvar">💾 Criar</button></form>`);
+  $('modal-erp-box').classList.add('erp-ci');
+  const chipsBox = $('ecp-chips'); if (chipsBox) chipsBox.querySelectorAll('.ecp-chip').forEach(b => b.addEventListener('click', () => { $('ecp-forn-nome').value = b.dataset.nome; }));
   const resumo = () => {
     const v = parseFloat($('ecp-valor').value) || 0;
     const n = Math.max(1, parseInt($('ecp-parcelas').value) || 1);
@@ -8993,7 +9040,7 @@ function abrirContaAvulsaForm() {
     const n = Math.max(1, parseInt($('ecp-parcelas').value) || 1);
     const it = $('ecp-intervalo').value, base = $('ecp-venc').value || null;
     const descBase = $('ecp-desc').value.trim() || 'Conta a pagar';
-    const forn = +$('ecp-forn').value || null;
+    const forn = await resolverFornecedorId($('ecp-forn-nome').value);   // acha ou cria (fica salvo)
     let criadas = 0, erros = 0;
     for (let i = 0; i < n; i++) {
       const desc = n > 1 ? `${descBase} (${i + 1}/${n})` : descBase;
@@ -9019,6 +9066,7 @@ async function abrirPagamentoFuncionario() {
       <div class="fin-frow"><label>Repetir (vezes)<input type="number" min="1" step="1" id="efp-parcelas" value="1"></label><label>A cada<select id="efp-intervalo"><option value="mes" selected>Mês</option><option value="quinzena">Quinzena</option><option value="semana">Semana</option></select></label></div>
       <div class="fin-hint" id="efp-resumo"></div>
       <button type="submit" class="fin-btn-salvar">💾 Lançar em Contas a pagar</button></form>`);
+  $('modal-erp-box').classList.add('erp-ci');
   $('efp-venc').value = new Date().toISOString().slice(0, 10);
   if (!ativos.length) $('efp-func').value = '__outro';
   const outroWrap = $('efp-outro-wrap');
