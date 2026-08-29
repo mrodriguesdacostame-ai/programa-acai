@@ -4058,6 +4058,26 @@ app.get('/api/financeiro/fluxo', (req, res) => {
   const linhas = rows.map(m => { acc += (m.tipo === 'entrada' ? m.valor : -m.valor); return { ...m, saldoAcumulado: Math.round(acc * 100) / 100 }; });
   res.json({ linhas: linhas.reverse(), saldoFinal: Math.round(acc * 100) / 100, total: linhas.length });
 });
+// Itens vendidos de UM dia, agrupados por TURNO + produto + preço (p/ o resumo "20 LT de R$10").
+// Turnos: manhã 07h–13h · noite 17h–23h · resto = outro (mesmos cortes do modal).
+app.get('/api/financeiro/vendas-dia', (req, res) => {
+  const dia = String(req.query.dia || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) return res.json({ itens: [] });
+  const rows = db.prepare(`
+    SELECT CASE
+        WHEN CAST(strftime('%H', v.data,'localtime') AS INTEGER) BETWEEN 7 AND 13 THEN 'manha'
+        WHEN CAST(strftime('%H', v.data,'localtime') AS INTEGER) BETWEEN 17 AND 23 THEN 'noite'
+        ELSE 'outro' END turno,
+      i.nome, i.preco, COALESCE(p.unidade,'') unidade,
+      COALESCE(SUM(i.qtd),0) qtd, COALESCE(SUM(i.subtotal),0) total
+    FROM vendas_itens i
+    JOIN vendas v ON v.id = i.venda_id
+    LEFT JOIN produtos p ON p.codigo = i.produto_codigo
+    WHERE v.status='concluida' AND date(v.data,'localtime') = ?
+    GROUP BY turno, i.nome, i.preco, unidade
+    ORDER BY turno, total DESC`).all(dia);
+  res.json({ itens: rows.map(r => ({ turno: r.turno, nome: r.nome, preco: r2(r.preco), unidade: r.unidade, qtd: r2(r.qtd), total: r2(r.total) })) });
+});
 // Criar movimento manual (entrada/saída) — admin/supervisor
 app.post('/api/financeiro/movimentos', (req, res) => {
   if (!gateFinLancar(req, res)) return;
