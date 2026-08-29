@@ -2547,6 +2547,9 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 #tela-financeiro .fin-hint { font-size: 13px; color: #5a6b7c; }
 #tela-financeiro .fin-forma-chip { font-size: 13.5px; padding: 8px 15px; }
 #tela-financeiro .fin-forma-chip.ativo { background: #dcecfb; border-color: #86baec; color: #0d6ea9; }
+#tela-financeiro .fin-fluxo-cab { margin-bottom: 12px; padding: 10px 14px; background: #eaf3fc; border: 1.5px solid #cfe3f7; border-radius: 12px; color: #14467c; }
+#tela-financeiro .fin-fluxo-cab b { color: #0d6ea9; font-size: 17px; }
+#tela-financeiro .fin-fluxo-cab small { color: #5a6b7c; font-weight: 600; font-size: 12.5px; }
 /* COMPRA DE AÇAÍ (latas) */
 .acai { display: flex; flex-direction: column; gap: 14px; }
 .acai-resumo { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }

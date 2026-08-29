@@ -7197,7 +7197,7 @@ function renderFinPainel() {
   el.innerHTML = `
     <div class="fin-painel">
       <div class="fin-painel-tabs">
-        ${tab('visao', '📊 Visão geral')}${tab('extrato', '🌊 Extrato & pesquisa')}${tab('analise', '💎 Análise (DRE)')}
+        ${tab('visao', '📊 Visão geral')}${tab('extrato', '🌊 Fluxo de caixa')}${tab('analise', '💎 Análise (DRE)')}
       </div>
       <div id="fin-painel-sub"></div>
     </div>`;
@@ -8289,6 +8289,7 @@ function renderFinFluxo(host) {
   const el = host || $('fin-conteudo');
   const chip = (v, t) => `<button class="fin-forma-chip ${finFluxoForma === v ? 'ativo' : ''}" data-forma="${v}">${t}</button>`;
   el.innerHTML = `
+    <div class="fin-fluxo-cab"><b>🌊 Fluxo de caixa</b> <small>— todas as entradas (+) e saídas (−) do período, com saldo acumulado. Filtre por data, conta, forma, origem…</small></div>
     <div class="fin-formas">
       <span class="fin-formas-lbl">💳 Pesquisar por forma:</span>
       ${chip('', 'Todas')}${chip('dinheiro', '💵 Dinheiro')}${chip('pix', '📱 PIX')}${chip('cartao', '💳 Máquina/Cartão')}
