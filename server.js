@@ -3833,6 +3833,12 @@ db.exec('CREATE INDEX IF NOT EXISTS idx_fin_mov_ref ON financeiro_movimentos(ref
 db.exec('CREATE INDEX IF NOT EXISTS idx_fin_mov_data ON financeiro_movimentos(data)');
 db.exec('CREATE INDEX IF NOT EXISTS idx_fin_mov_conta ON financeiro_movimentos(conta_id)');
 try { db.exec('ALTER TABLE financeiro_movimentos ADD COLUMN fora_fluxo INTEGER DEFAULT 0'); } catch {}  // 1 = NÃO aparece no fluxo de caixa (ex.: sangria só p/ fechamento)
+// Regra nova (v1.0.120): sangria/suprimento são SÓ-GAVETA por padrão e só entram no fluxo/painel
+// quando marcados no fechamento. Alinha o histórico: todo caixa_sangria/caixa_suprimento existente
+// vira fora_fluxo=1 (sai do fluxo até ser marcado). Roda 1x.
+migrar('caixa_sangria_supr_so_gaveta', () => {
+  db.prepare("UPDATE financeiro_movimentos SET fora_fluxo=1 WHERE referencia_tipo IN ('caixa_sangria','caixa_suprimento') AND COALESCE(fora_fluxo,0)=0").run();
+});
 
 // Seed inicial (só se vazio) — contas e categorias que a loja já usa.
 (function seedFinanceiro() {
