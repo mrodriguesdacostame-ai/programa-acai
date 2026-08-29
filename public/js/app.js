@@ -464,22 +464,26 @@ function registrarCodigoPdv(parte) {
   avisoGrandeCodigo(entrada); bipErro(); falar('Código errado');
   return false;
 }
-// Janela de ATENÇÃO grande (fica 3s) quando o código não existe — pra o caixa não passar batido.
+// Janela de ATENÇÃO grande no meio da tela (fica 3s) — pra o caixa não passar batido.
 let avisoGrandeTimer = null;
-function avisoGrandeCodigo(codigo) {
+function avisoGrande(titulo, sub) {
   let ov = document.getElementById('aviso-grande');
   if (!ov) {
     ov = document.createElement('div');
     ov.id = 'aviso-grande';
-    ov.innerHTML = '<div class="avg-card"><div class="avg-ic">⚠️</div><div class="avg-tit">CÓDIGO ERRADO</div><div class="avg-sub" id="avg-sub"></div></div>';
+    ov.innerHTML = '<div class="avg-card"><div class="avg-ic">⚠️</div><div class="avg-tit" id="avg-tit"></div><div class="avg-sub" id="avg-sub"></div></div>';
     document.body.appendChild(ov);
   }
-  const sub = ov.querySelector('#avg-sub');
-  if (sub) sub.textContent = codigo ? '“' + codigo + '” não está cadastrado' : '';
-  ov.classList.remove('show'); void ov.offsetWidth;   // reinicia a animação a cada erro
+  const et = ov.querySelector('#avg-tit'); if (et) et.textContent = titulo || 'ATENÇÃO';
+  const es = ov.querySelector('#avg-sub'); if (es) es.textContent = sub || '';
+  ov.classList.remove('show'); void ov.offsetWidth;   // reinicia a animação a cada aviso
   ov.classList.add('show');
   clearTimeout(avisoGrandeTimer);
   avisoGrandeTimer = setTimeout(() => ov.classList.remove('show'), 3000);
+}
+// Código digitado não existe / não confere
+function avisoGrandeCodigo(codigo) {
+  avisoGrande('CÓDIGO NÃO CONFERE', codigo ? '“' + codigo + '” não está cadastrado' : '');
 }
 $('codigo').addEventListener('keydown', e => {
   if (e.key === 'Enter') {
