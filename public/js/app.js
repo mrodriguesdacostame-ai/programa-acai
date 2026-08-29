@@ -2440,13 +2440,18 @@ function abrirAcoesFinanceiras() {
     </div>
     <p class="fin-hint">Atalhos: <b>1</b> Sangria · <b>2</b> Suprimento · <b>ESC</b> fecha. (F8/F9 continuam funcionando.)</p>`);
   $('modal-erp-box').classList.add('erp-ci', 'erp-acaofin');   // paleta clara padrão
-  $('opaf-sangria').addEventListener('click', () => { fecharErpModal(); abrirSangria(); });
-  $('opaf-supr').addEventListener('click', () => { fecharErpModal(); abrirSuprimento(); });
   const teclas = e2 => {
-    if (e2.key === '1') { e2.preventDefault(); document.removeEventListener('keydown', teclas, true); fecharErpModal(); abrirSangria(); }
-    else if (e2.key === '2') { e2.preventDefault(); document.removeEventListener('keydown', teclas, true); fecharErpModal(); abrirSuprimento(); }
-    else if (e2.key === 'Escape') { document.removeEventListener('keydown', teclas, true); }
+    if (e2.key === '1') { e2.preventDefault(); irAcao(abrirSangria); }
+    else if (e2.key === '2') { e2.preventDefault(); irAcao(abrirSuprimento); }
+    else if (e2.key === 'Escape') { limparTeclas(); }
   };
+  const limparTeclas = () => document.removeEventListener('keydown', teclas, true);
+  // BUGFIX: SEMPRE remover o listener de 1/2 ao sair (senão, no form de suprimento, digitar
+  // um valor começando com "1" era capturado e pulava pra Sangria). Vale p/ clique, tecla, X, ESC.
+  const irAcao = (fn) => { limparTeclas(); fecharErpModal(); fn(); };
+  erpOnClose = limparTeclas;   // qualquer fechamento do modal (X, clique fora, ESC) tira o listener
+  $('opaf-sangria').addEventListener('click', () => irAcao(abrirSangria));
+  $('opaf-supr').addEventListener('click', () => irAcao(abrirSuprimento));
   document.addEventListener('keydown', teclas, true);
 }
 function podeOperarCaixa() { return !!usuarioAtual; } // qualquer logado tem caixa próprio (o backend valida gateCaixa)
