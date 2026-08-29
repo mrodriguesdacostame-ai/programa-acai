@@ -1605,7 +1605,7 @@ async function abrirCaixaMov(tipo) {
       <div class="op-mov-chips">${cedulas.map(v => `<button type="button" class="op-mov-chip" data-v="${v}">+${v}</button>`).join('')}<button type="button" class="op-mov-chip zerar" data-zerar="1">limpar</button></div>
       <label>Justificativa *<input id="op-mov-just" autocomplete="off" placeholder="${ehSup ? 'ex.: troco inicial, reforço de caixa' : 'ex.: pagamento fornecedor, retirada para banco'}"></label>
       <div class="op-mov-chips motivos">${motivos.map(m => `<button type="button" class="op-mov-chip mot" data-m="${crmEsc(m)}">${crmEsc(m)}</button>`).join('')}</div>
-      <label class="op-mov-fluxo"><input type="checkbox" id="op-mov-fluxo" checked> Entra no <b>fluxo de caixa</b> e no <b>painel financeiro</b> <small>— desmarque se for só pra fechar o caixa do dia (conta na gaveta, mas não no financeiro)</small></label>
+      <p class="op-mov-hint-fluxo">🧾 Entra no <b>caixa do dia</b> (fechamento). Se também tiver que ir pro <b>fluxo de caixa / painel financeiro</b>, você marca isso <b>no fechamento diário do caixa</b>.</p>
       <button type="submit" class="fin-btn-salvar">${ehSup ? '➕ Registrar suprimento' : '➖ Registrar sangria'}</button>
     </form>`);
   $('modal-erp-box').classList.add('erp-mov', ehSup ? 'erp-mov-sup' : 'erp-mov-san');   // padrão azul (igual Recebimento)
@@ -1621,8 +1621,8 @@ async function abrirCaixaMov(tipo) {
     e.preventDefault();
     const v = parseFloat(valor.value) || 0; if (v <= 0) { toast('⚠ Informe um valor maior que zero'); valor.focus(); return; }
     if (!just.value.trim()) { toast('⚠ A justificativa é obrigatória'); just.focus(); return; }
-    const noFluxo = $('op-mov-fluxo') ? $('op-mov-fluxo').checked : true;   // sangria E suprimento podem ficar fora do fluxo/painel (só fechamento)
-    const r = await (await fetch(`/api/caixa/${tipo}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: v, motivo: just.value.trim(), no_fluxo: noFluxo }) })).json();
+    // Padrão: só gaveta/fechamento. A escolha de mandar pro fluxo é feita depois, no fechamento diário.
+    const r = await (await fetch(`/api/caixa/${tipo}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: v, motivo: just.value.trim() }) })).json();
     if (r.erro) { toast('⚠ ' + r.erro); return; }
     toast(`✅ ${ehSup ? 'Suprimento' : 'Sangria'} de ${fmt(v)} registrado`); fecharErpModal(); caixaAtualCache = null;
     if ($('tela-financeiro') && $('tela-financeiro').classList.contains('ativa')) finIr(finSecao);
@@ -7473,7 +7473,9 @@ async function confBuscarEsperado() {
 function confMovimentosHTML() {
   const m = confMovimentos || { entradas: [], saidas: [], totalEntradas: 0, totalSaidas: 0 };
   const porData = a => (a || []).slice().sort((x, y) => new Date(x.data) - new Date(y.data));   // sempre em ORDEM DE DATA
-  const linha = x => `<tr><td class="conf-mv-hora">${x.data ? fmtDataHora(x.data) : ''}</td><td class="conf-mv-desc">${crmEsc(x.descricao)}</td><td class="col-num">${fmt(x.valor)}</td></tr>`;
+  const linha = x => `<tr><td class="conf-mv-hora">${x.data ? fmtDataHora(x.data) : ''}</td><td class="conf-mv-desc">${crmEsc(x.descricao)}</td><td class="col-num">${fmt(x.valor)}</td><td class="conf-mv-fx">${x.podeFluxo
+      ? `<button type="button" class="conf-fx-tog ${x.noFluxo ? 'on' : 'off'}" data-fx-id="${x.id}" data-fx-on="${x.noFluxo ? 1 : 0}" title="${x.noFluxo ? 'Está indo pro fluxo de caixa — clique p/ deixar só na gaveta' : 'Só na gaveta — clique p/ mandar pro fluxo de caixa'}">${x.noFluxo ? '💵 no fluxo' : '🧾 só gaveta'}</button>`
+      : '<span class="conf-fx-na" title="Recebimentos já entram no fluxo normalmente">—</span>'}</td></tr>`;
   const bloco = (titulo, ico, lista, total, cls) => `
     <div class="conf-mv-bloco conf-mv-${cls}">
       <div class="conf-mv-tit">${ico} ${titulo}<span class="conf-mv-tot">${fmt(total)}</span></div>
@@ -7482,11 +7484,26 @@ function confMovimentosHTML() {
   const saldo = Math.round(((m.totalEntradas || 0) - (m.totalSaidas || 0)) * 100) / 100;
   return `
     <div class="fin-box-tit">📋 Movimentações do período <small>(fora as vendas — suprimento, sangria, recebimentos e despesas)</small></div>
+    <div class="conf-mv-aviso">💡 Sangrias e suprimentos entram só no <b>caixa do dia</b>. Clique em <b>“🧾 só gaveta”</b> pra também mandar pro <b>fluxo de caixa / painel financeiro</b> (vira <b>💵 no fluxo</b>).</div>
     <div class="conf-mv-grid">
       ${bloco('Entradas', '⬆️', porData(m.entradas), m.totalEntradas, 'ent')}
       ${bloco('Saídas / Despesas', '⬇️', porData(m.saidas), m.totalSaidas, 'sai')}
     </div>
     <div class="conf-mv-saldo">Saldo das movimentações: <strong class="${saldo >= 0 ? 'pos' : 'neg'}">${fmt(saldo)}</strong> <small>(entradas − saídas)</small></div>`;
+}
+// liga os botões "só gaveta ↔ no fluxo" de cada sangria/suprimento no fechamento
+function bindConfFluxo() {
+  const box = $('conf-movimentos'); if (!box) return;
+  box.querySelectorAll('[data-fx-id]').forEach(b => b.addEventListener('click', async () => {
+    const id = +b.dataset.fxId, estaNoFluxo = b.dataset.fxOn === '1';
+    b.disabled = true;
+    let r; try { r = await (await fetch('/api/conferencia/movimento/' + id + '/fluxo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fluxo: !estaNoFluxo }) })).json(); } catch { r = { erro: 'Falha de rede' }; }
+    if (!r || r.erro) { toast('⚠ ' + ((r && r.erro) || 'erro')); b.disabled = false; return; }
+    const upd = arr => (arr || []).forEach(x => { if (x.id === id) x.noFluxo = !!r.noFluxo; });
+    if (confMovimentos) { upd(confMovimentos.entradas); upd(confMovimentos.saidas); }
+    const mv = $('conf-movimentos'); if (mv) { mv.innerHTML = confMovimentosHTML(); bindConfFluxo(); }
+    toast(r.noFluxo ? '💵 Também no fluxo de caixa' : '🧾 Só na gaveta do dia');
+  }));
 }
 async function renderFinConferencia() {
   const el = $('fin-conteudo'); el.innerHTML = biLoading();
@@ -7565,10 +7582,11 @@ async function renderFinConferencia() {
     confPeriodo = { de: $('conf-de').value, ate: $('conf-ate').value };
     try { await confBuscarEsperado(); } catch {}
     const orow = $('conf-outros-row'); if (orow) orow.style.display = (+confEsperado.outros || 0) > 0 ? '' : 'none';
-    const mv = $('conf-movimentos'); if (mv) mv.innerHTML = confMovimentosHTML();  // entradas/saídas do novo período
+    const mv = $('conf-movimentos'); if (mv) { mv.innerHTML = confMovimentosHTML(); bindConfFluxo(); }  // entradas/saídas do novo período
     const fv = $('conf-fundo-val'); if (fv) fv.textContent = fmt((confEsperado.dinheiroDetalhe || {}).fundo || 0);
     confAtualizarComparacao();
   };
+  bindConfFluxo();   // liga os botões "só gaveta ↔ no fluxo" no 1º render
   ['conf-de', 'conf-ate'].forEach(id => $(id).addEventListener('change', aplicarPeriodo));
   { const b = $('conf-desde'); if (b) b.addEventListener('click', () => { $('conf-de').value = (ultima && ultima.de) || hoje; $('conf-ate').value = hoje; aplicarPeriodo(); }); }
   { const b = $('conf-troco-btn'); if (b) b.addEventListener('click', () => cxdAbrirTroco(renderFinConferencia)); }

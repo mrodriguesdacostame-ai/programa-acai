@@ -1581,12 +1581,14 @@ function conferenciaMovimentos(de, ate) {
   if (de) { pc.push("date(data,'localtime') >= ?"); pa.push(de); }
   if (ate) { pc.push("date(data,'localtime') <= ?"); pa.push(ate); }
   const per = pc.length ? ' AND ' + pc.join(' AND ') : '';
-  const rows = db.prepare(`SELECT id, data, tipo, valor, descricao, referencia_tipo
+  const rows = db.prepare(`SELECT id, data, tipo, valor, descricao, referencia_tipo, fora_fluxo
     FROM financeiro_movimentos
     WHERE situacao='confirmado' AND (referencia_tipo IS NULL OR referencia_tipo <> 'venda')${per}
     ORDER BY data, id`).all(...pa);
   const ROTULO = { caixa_suprimento: 'Suprimento (entrada de caixa)', caixa_sangria: 'Sangria (retirada de caixa)', anotacao: 'Recebimento anotado', extrato: 'Recebimento de fiado' };
-  const map = r => ({ data: r.data, valor: r2(r.valor), descricao: r.descricao || ROTULO[r.referencia_tipo] || (r.tipo === 'entrada' ? 'Entrada' : 'Saída'), ref: r.referencia_tipo || '' });
+  const map = r => ({ id: r.id, data: r.data, valor: r2(r.valor), descricao: r.descricao || ROTULO[r.referencia_tipo] || (r.tipo === 'entrada' ? 'Entrada' : 'Saída'), ref: r.referencia_tipo || '',
+    // só sangria/suprimento têm a escolha "entra no fluxo?"; fora_fluxo=1 → só gaveta (padrão)
+    podeFluxo: ['caixa_sangria', 'caixa_suprimento'].includes(r.referencia_tipo), noFluxo: !r.fora_fluxo });
   const entradas = rows.filter(r => r.tipo === 'entrada').map(map);
   const saidas = rows.filter(r => r.tipo === 'saida').map(map);
   const soma = a => r2(a.reduce((s, x) => s + (+x.valor || 0), 0));
@@ -1610,6 +1612,18 @@ app.delete('/api/conferencia/maquininhas/:id', (req, res) => {
   if (!gateFinLancar(req, res)) return;
   db.prepare('UPDATE conf_maquininhas SET ativo=0 WHERE id=?').run(+req.params.id); // soft-delete: histórico mantém o nome
   res.json({ ok: true });
+});
+// Fechamento: escolher se uma SANGRIA/SUPRIMENTO do dia entra no FLUXO DE CAIXA (e painel).
+// Padrão é só-gaveta (fora_fluxo=1). Aqui, na conferência, o operador marca o que "sai" pro financeiro.
+app.post('/api/conferencia/movimento/:id/fluxo', (req, res) => {
+  if (!gateFinLancar(req, res)) return;
+  const id = +req.params.id, m = db.prepare('SELECT * FROM financeiro_movimentos WHERE id=?').get(id);
+  if (!m) return res.status(404).json({ erro: 'Movimento não encontrado.' });
+  if (!['caixa_sangria', 'caixa_suprimento'].includes(m.referencia_tipo)) return res.status(400).json({ erro: 'Só sangria/suprimento podem ser enviados ao fluxo.' });
+  const entra = !!(req.body || {}).fluxo;   // true = entra no fluxo/painel; false = volta a ser só gaveta
+  db.prepare('UPDATE financeiro_movimentos SET fora_fluxo=?, atualizado_em=? WHERE id=?').run(entra ? 0 : 1, new Date().toISOString(), id);
+  manut.logAcao('caixa: ' + (entra ? 'enviado ao fluxo' : 'só na gaveta'), 'caixa', { id, ref: m.referencia_tipo, por: (req.usuario || {}).usuario }, 'operacao');
+  res.json({ ok: true, id, noFluxo: entra });
 });
 app.get('/api/conferencia/esperado', (req, res) => {
   res.json({
@@ -5344,7 +5358,7 @@ function lancarCaixaMov(req, res, tipo) {
   const ehSup = tipo === 'suprimento';
   const movId = inserirMovimento({ tipo: ehSup ? 'entrada' : 'saida', conta_id: s.conta_id, categoria_id: catFinId(ehSup ? 'Suprimento' : 'Sangria'),
     valor, descricao: (ehSup ? 'Suprimento' : 'Sangria') + (d.motivo ? ' · ' + d.motivo : ''), origem: 'caixa', obs: d.obs || '',
-    fora_fluxo: (d.no_fluxo === false) ? 1 : 0,   // sangria só p/ fechamento (não entra no fluxo de caixa)
+    fora_fluxo: (d.no_fluxo === true) ? 0 : 1,   // PADRÃO = só gaveta/fechamento; entra no fluxo só se marcado (na criação ou depois no fechamento)
     responsavel: d.responsavel || (req.usuario || {}).nome || '', situacao: 'confirmado', referencia_tipo: 'caixa_' + tipo, referencia_id: id, caixa_sessao_id: id, criado_por: (req.usuario || {}).usuario || '' });
   manut.logAcao(tipo + ' de caixa', 'caixa', { sessao: id, valor, motivo: d.motivo || '', por: (req.usuario || {}).usuario }, 'operacao');
   res.json({ ok: true, movimento_id: movId, conferencia: conferenciaSessao(s) });
@@ -5362,7 +5376,7 @@ function lancarCaixaMovAvulso(req, res, tipo) {
   const contaCaixa = (db.prepare("SELECT id FROM financeiro_contas WHERE nome='Caixa'").get() || {}).id || null;
   const movId = inserirMovimento({ tipo: ehSup ? 'entrada' : 'saida', conta_id: contaCaixa, categoria_id: catFinId(ehSup ? 'Suprimento' : 'Sangria'),
     valor, descricao: (ehSup ? 'Suprimento' : 'Sangria') + ' · ' + d.motivo.trim(), origem: 'caixa', situacao: 'confirmado',
-    fora_fluxo: (d.no_fluxo === false) ? 1 : 0,   // sangria só p/ fechamento (não entra no fluxo de caixa)
+    fora_fluxo: (d.no_fluxo === true) ? 0 : 1,   // PADRÃO = só gaveta/fechamento; entra no fluxo só se marcado (na criação ou depois no fechamento)
     referencia_tipo: 'caixa_' + tipo, caixa_sessao_id: 0, responsavel: (req.usuario || {}).nome || '', criado_por: (req.usuario || {}).usuario || '' });
   manut.logAcao(tipo + ' de caixa (avulso)', 'caixa', { valor, motivo: d.motivo.trim(), por: (req.usuario || {}).usuario }, 'operacao');
   res.json({ ok: true, movimento_id: movId });
