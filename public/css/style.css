@@ -2595,6 +2595,20 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 #tela-financeiro .flx-tabela tbody tr.flx-row:hover { background: #eaf3fc; }
 #tela-financeiro .flx-lupa { opacity: .3; text-align: center; }
 #tela-financeiro .flx-tabela tr.flx-row:hover .flx-lupa { opacity: 1; }
+/* Fluxo AGRUPADO por dia — cabeçalho clicável + linhas compactas */
+#tela-financeiro .flx-agrupada td, #tela-financeiro .flx-agrupada th { padding: 5px 10px; }         /* mais compacto */
+#tela-financeiro .flx-mov.oculto { display: none; }
+#tela-financeiro .flx-hora { color: var(--acai-rosa); font-weight: 700; white-space: nowrap; }
+#tela-financeiro tr.flx-dia-cab { cursor: pointer; background: #e7f0fa; user-select: none; }
+#tela-financeiro tr.flx-dia-cab:hover { background: #d8e8f7; }
+#tela-financeiro tr.flx-dia-cab td { padding: 9px 12px; border-top: 2px solid #b9d4ef; }
+#tela-financeiro .flx-dia-seta { display: inline-block; transition: transform .15s; color: #0d6ea9; font-weight: 900; margin-right: 8px; }
+#tela-financeiro tr.flx-dia-cab.aberto .flx-dia-seta { transform: rotate(90deg); }
+#tela-financeiro .flx-dia-data { font-weight: 900; color: #14467c; font-size: 15px; }
+#tela-financeiro .flx-dia-qtd { margin-left: 12px; font-size: 12.5px; color: #6b7688; font-weight: 700; }
+#tela-financeiro .flx-dia-tot { float: right; font-size: 13px; font-weight: 700; color: #55677a; }
+#tela-financeiro .flx-dia-tot b { font-size: 14.5px; margin-left: 4px; }
+@media (max-width: 620px) { #tela-financeiro .flx-dia-tot { float: none; display: block; margin-top: 3px; } #tela-financeiro .flx-cc { display: none; } }
 #tela-financeiro .fin-val.entrada { color: #0a9b4b; font-weight: 800; }
 #tela-financeiro .fin-val.saida { color: #c0392b; font-weight: 800; }
 /* cards clicáveis (Visão geral) */

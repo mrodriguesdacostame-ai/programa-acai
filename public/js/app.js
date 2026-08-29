@@ -8380,15 +8380,34 @@ async function finCarregarFluxo() {
   const contasChips = (finContas || []).map(c => `<button type="button" class="flx-conta-chip" data-flx-conta="${c.id}" title="ver só esta conta"><span>${crmEsc(c.nome)}</span><b class="${(+c.saldo || 0) >= 0 ? 'fin-pos' : 'fin-neg'}">${fmt(c.saldo)}</b></button>`).join('');
   const totLbl = finFluxoForma ? 'Total da forma' : 'Saldo do período';
   const colSaldo = finFluxoForma ? '' : '<th class="col-num">Saldo acum.</th>';
-  const rowsHtml = linhas.length ? linhas.map((m, i) => `<tr class="flx-row" data-fi="${i}" tabindex="0" title="clique pra ver de onde veio">
-      <td>${fmtDataHora(m.data)}</td>
-      <td class="flx-desc">${crmEsc(m.descricao || '—')}</td>
-      <td>${crmEsc(m.conta_nome || '—')} · ${crmEsc(m.categoria_nome || '—')}</td>
-      <td>${finOrigemChip(m.origem)}</td>
-      <td class="col-num"><span class="fin-val ${m.tipo}">${m.tipo === 'entrada' ? '+' : '−'}${fmt(m.valor)}</span></td>
-      ${finFluxoForma ? '' : `<td class="col-num"><b>${fmt(m.saldoAcumulado)}</b></td>`}
-      <td class="flx-lupa">🔎</td>
-    </tr>`).join('') : `<tr><td colspan="7" class="ac-vazio">Nenhuma movimentação no filtro.</td></tr>`;
+  const nCols = finFluxoForma ? 5 : 6;
+  // agrupa por DIA (ordem preservada = mais recente no topo); cada dia é um cabeçalho clicável.
+  const dias = []; const mapaDia = new Map();
+  linhas.forEach((m, i) => {
+    const key = new Date(m.data).toLocaleDateString('pt-BR');
+    let g = mapaDia.get(key);
+    if (!g) { g = { label: key, movs: [], ent: 0, sai: 0 }; mapaDia.set(key, g); dias.push(g); }
+    g.movs.push({ m, i });
+    if (m.tipo === 'entrada') g.ent += +m.valor || 0; else g.sai += +m.valor || 0;
+  });
+  const hora = d => new Date(d).toLocaleTimeString('pt-BR').slice(0, 5);
+  let bodyHtml = '';
+  if (!linhas.length) bodyHtml = `<tr><td colspan="${nCols}" class="ac-vazio">Nenhuma movimentação no filtro.</td></tr>`;
+  dias.forEach((g, gi) => {
+    const net = Math.round((g.ent - g.sai) * 100) / 100, aberto = gi === 0;   // 1º dia (mais recente) já aberto
+    bodyHtml += `<tr class="flx-dia-cab${aberto ? ' aberto' : ''}" data-dia-toggle="${gi}" tabindex="0" title="clique pra abrir/fechar o dia">
+        <td colspan="${nCols}"><span class="flx-dia-seta">▸</span><span class="flx-dia-data">📅 ${g.label}</span><span class="flx-dia-qtd">${g.movs.length} mov.</span><span class="flx-dia-tot">⬆️ ${fmt(g.ent)} · ⬇️ ${fmt(g.sai)} · <b class="${net >= 0 ? 'fin-pos' : 'fin-neg'}">${fmt(net)}</b></span></td></tr>`;
+    g.movs.forEach(({ m, i }) => {
+      bodyHtml += `<tr class="flx-row flx-mov${aberto ? '' : ' oculto'}" data-diagrp="${gi}" data-fi="${i}" tabindex="0" title="clique pra ver de onde veio">
+        <td class="flx-hora">${hora(m.data)}</td>
+        <td class="flx-desc">${crmEsc(m.descricao || '—')}</td>
+        <td class="flx-cc">${crmEsc(m.conta_nome || '—')} · ${crmEsc(m.categoria_nome || '—')}</td>
+        <td>${finOrigemChip(m.origem)}</td>
+        <td class="col-num"><span class="fin-val ${m.tipo}">${m.tipo === 'entrada' ? '+' : '−'}${fmt(m.valor)}</span></td>
+        ${finFluxoForma ? '' : `<td class="col-num"><b>${fmt(m.saldoAcumulado)}</b></td>`}
+      </tr>`;
+    });
+  });
   $('fin-fluxo-lista').innerHTML = `
     <div class="flx-topcards">
       <div class="flx-saldo-geral">
@@ -8402,10 +8421,17 @@ async function finCarregarFluxo() {
         <div class="flx-kpi res ${resultado >= 0 ? 'pos' : 'neg'}"><span>${resultado >= 0 ? '📈' : '📉'} Resultado <small>(período)</small></span><b>${fmt(resultado)}</b></div>
       </div>
     </div>
-    <div class="fin-fluxo-topo">${totLbl}: <b class="${saldoFinal >= 0 ? 'fin-pos' : 'fin-neg'}">${fmt(saldoFinal)}</b> · ${linhas.length} movimentações${extraNota} · <small>clique numa linha pra ver a origem</small></div>
-    <div class="prod-tabela-wrap flx-wrap"><table class="prod-tabela flx-tabela"><thead><tr><th>Data</th><th>Descrição</th><th>Conta · Categoria</th><th>Origem</th><th class="col-num">Valor</th>${colSaldo}<th></th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+    <div class="fin-fluxo-topo">${totLbl}: <b class="${saldoFinal >= 0 ? 'fin-pos' : 'fin-neg'}">${fmt(saldoFinal)}</b> · ${linhas.length} movimentações${extraNota} · <small>clique num dia pra abrir/fechar</small></div>
+    <div class="prod-tabela-wrap flx-wrap"><table class="prod-tabela flx-tabela flx-agrupada"><thead><tr><th>Hora</th><th>Descrição</th><th>Conta · Categoria</th><th>Origem</th><th class="col-num">Valor</th>${colSaldo}</tr></thead><tbody>${bodyHtml}</tbody></table></div>`;
   $('fin-fluxo-lista').querySelectorAll('[data-flx-conta]').forEach(b => b.addEventListener('click', () => { const sel = $('fin-f-conta'); if (sel) { sel.value = b.dataset.flxConta; finCarregarFluxo(); } }));
-  $('fin-fluxo-lista').querySelectorAll('.flx-row').forEach(tr => { const abrir = () => abrirDetalheMov(fluxoMovsCache[+tr.dataset.fi]); tr.addEventListener('click', abrir); tr.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); abrir(); } }); });
+  // cabeçalho de dia → abre/fecha as linhas daquele dia
+  $('fin-fluxo-lista').querySelectorAll('[data-dia-toggle]').forEach(cab => {
+    const gi = cab.dataset.diaToggle;
+    const toggle = () => { cab.classList.toggle('aberto'); const ab = cab.classList.contains('aberto'); $('fin-fluxo-lista').querySelectorAll(`.flx-mov[data-diagrp="${gi}"]`).forEach(r => r.classList.toggle('oculto', !ab)); };
+    cab.addEventListener('click', toggle);
+    cab.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+  });
+  $('fin-fluxo-lista').querySelectorAll('.flx-mov').forEach(tr => { const abrir = () => abrirDetalheMov(fluxoMovsCache[+tr.dataset.fi]); tr.addEventListener('click', abrir); tr.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); abrir(); } }); });
 }
 // Detalhe de um movimento do fluxo — "de onde veio" (origem, conta, categoria, referência, quem lançou)
 function abrirDetalheMov(m) {
