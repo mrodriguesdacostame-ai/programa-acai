@@ -2609,6 +2609,19 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 #tela-financeiro .flx-dia-tot { float: right; font-size: 13px; font-weight: 700; color: #55677a; }
 #tela-financeiro .flx-dia-tot b { font-size: 14.5px; margin-left: 4px; }
 @media (max-width: 620px) { #tela-financeiro .flx-dia-tot { float: none; display: block; margin-top: 3px; } #tela-financeiro .flx-cc { display: none; } }
+/* Saídas → atalhos de Contas a pagar + aviso */
+#tela-financeiro .fin-saida-atalhos { background: #fdf6ee; border: 1.5px solid #f0d9b8; border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; }
+#tela-financeiro .fsa-tit { font-weight: 800; color: #8a5a12; font-size: 15px; margin-bottom: 10px; }
+#tela-financeiro .fsa-tit small { font-weight: 600; color: #a98a5f; }
+#tela-financeiro .fsa-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+#tela-financeiro .fsa-btn { font-family: inherit; font-weight: 800; font-size: 14px; padding: 11px 16px; border-radius: 11px; border: 1.5px solid #d7c3a3; background: #fff; color: #6b4d1e; cursor: pointer; transition: .12s; }
+#tela-financeiro .fsa-btn:hover { background: #fff7ec; border-color: #c79b57; transform: translateY(-1px); }
+#tela-financeiro .fsa-btn.func { background: #eef4fb; border-color: #a9cef0; color: #14467c; }
+#tela-financeiro .fsa-btn.func:hover { background: #e2eefb; }
+#tela-financeiro .fsa-btn.parc { background: #eafaf0; border-color: #a4d5b6; color: #0a7a3b; }
+#tela-financeiro .fsa-btn.parc:hover { background: #dcf5e6; }
+#tela-financeiro #fin-saida-avisos { margin-top: 10px; }
+#tela-financeiro .fsa-ok { font-size: 13px; color: #0a7a3b; font-weight: 700; }
 #tela-financeiro .fin-val.entrada { color: #0a9b4b; font-weight: 800; }
 #tela-financeiro .fin-val.saida { color: #c0392b; font-weight: 800; }
 /* cards clicáveis (Visão geral) */

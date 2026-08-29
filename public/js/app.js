@@ -8284,6 +8284,15 @@ function renderFinLancamento(tipo) {
   const el = $('fin-conteudo');
   const nome = tipo === 'entrada' ? 'entrada' : 'saída';
   el.innerHTML = `
+    ${tipo === 'saida' ? `<div class="fin-saida-atalhos">
+      <div class="fsa-tit">📌 Contas a pagar <small>— pague na hora ou agende com aviso</small></div>
+      <div class="fsa-btns">
+        <button type="button" class="fsa-btn" data-erp-acao="cp-abrir">📋 Ver contas a pagar</button>
+        <button type="button" class="fsa-btn func" data-erp-acao="cp-func">👤 Pagar funcionário</button>
+        <button type="button" class="fsa-btn parc" data-erp-acao="cp-nova">➕ Conta com parcelas</button>
+      </div>
+      <div id="fin-saida-avisos"></div>
+    </div>` : ''}
     <div class="fin-grid-form">
       <div class="fin-box">
         <h3 class="fin-box-tit">${tipo === 'entrada' ? '⬆️ Nova entrada' : '⬇️ Nova saída'}</h3>
@@ -8306,6 +8315,8 @@ function renderFinLancamento(tipo) {
   $('fin-mov-data').value = new Date().toISOString().slice(0, 10);
   $('fin-form-mov').addEventListener('submit', finSalvarMov);
   finCarregarListaMov(tipo);
+  // AVISO de vencimentos direto na tela de Saídas (mesma fonte do Contas a pagar)
+  if (tipo === 'saida') { erpGet('alertas').then(a => { const box = $('fin-saida-avisos'); if (box) box.innerHTML = renderAlertasBanner(a) || '<div class="fsa-ok">✅ Nenhuma conta vencida ou vencendo agora.</div>'; }).catch(() => {}); }
 }
 async function finSalvarMov(e) {
   e.preventDefault();
@@ -8881,7 +8892,7 @@ async function renderFinContasPagar() {
   if (!erpFornecedoresCache.length) { try { erpFornecedoresCache = await erpGet('fornecedores'); } catch {} }
   let alertas = {}; try { alertas = await erpGet('alertas'); } catch {}
   el.innerHTML = `
-    <div class="erp-topo"><h2 class="erp-h2">📌 Contas a serem pagas</h2><span class="fin-flex"></span>${finPodeLancar() ? '<button class="fin-mini" data-erp-acao="cp-nova">➕ Nova conta</button>' : ''}</div>
+    <div class="erp-topo"><h2 class="erp-h2">📌 Contas a serem pagas</h2><span class="fin-flex"></span>${finPodeLancar() ? '<button class="fin-mini" data-erp-acao="cp-func">👤 Pagar funcionário</button><button class="fin-mini" data-erp-acao="cp-nova">➕ Nova conta</button>' : ''}</div>
     ${renderAlertasBanner(alertas)}
     <div class="fin-filtros">
       <label>Fornecedor<select id="pf-forn"><option value="">Todos</option>${erpOptFornecedores()}</select></label>
@@ -8985,6 +8996,52 @@ function abrirContaAvulsaForm() {
     fecharErpModal(); renderFinContasPagar();
   });
 }
+// Pagamento de funcionário → lança em Contas a pagar (com recorrência opcional: repete N meses).
+async function abrirPagamentoFuncionario() {
+  let funcs = [];
+  try { funcs = await (await fetch('/api/funcionarios', { cache: 'no-store' })).json(); } catch {}
+  const ativos = (Array.isArray(funcs) ? funcs : []).filter(f => f.ativo !== 0 && f.ativo !== false);
+  abrirErpModal(`<h3 class="erp-modal-tit">👤 Pagamento de funcionário</h3>
+    <form id="erp-form-func" class="fin-form">
+      <label>Funcionário<select id="efp-func">${ativos.map(f => `<option value="${crmEsc(f.nome)}">${crmEsc(f.nome)}</option>`).join('')}<option value="__outro">➕ Outro (digitar)</option></select></label>
+      <label id="efp-outro-wrap" style="display:none">Nome<input id="efp-outro" placeholder="nome do funcionário"></label>
+      <div class="fin-frow"><label>Valor<input type="number" step="0.01" id="efp-valor" placeholder="0,00"></label><label>1º vencimento<input type="date" id="efp-venc"></label></div>
+      <div class="fin-frow"><label>Repetir (vezes)<input type="number" min="1" step="1" id="efp-parcelas" value="1"></label><label>A cada<select id="efp-intervalo"><option value="mes" selected>Mês</option><option value="quinzena">Quinzena</option><option value="semana">Semana</option></select></label></div>
+      <div class="fin-hint" id="efp-resumo"></div>
+      <button type="submit" class="fin-btn-salvar">💾 Lançar em Contas a pagar</button></form>`);
+  $('efp-venc').value = new Date().toISOString().slice(0, 10);
+  if (!ativos.length) $('efp-func').value = '__outro';
+  const outroWrap = $('efp-outro-wrap');
+  const syncOutro = () => { const o = $('efp-func').value === '__outro'; outroWrap.style.display = o ? '' : 'none'; if (o) $('efp-outro').focus(); };
+  syncOutro();
+  const resumo = () => {
+    const v = parseFloat($('efp-valor').value) || 0, n = Math.max(1, parseInt($('efp-parcelas').value) || 1);
+    const it = $('efp-intervalo').value, base = $('efp-venc').value, rot = { mes: 'mês', quinzena: 'quinzena', semana: 'semana' }[it] || 'mês';
+    let t = n > 1 ? `${n} pagamentos de ${fmt(v)} = <b>${fmt(v * n)}</b> (um por ${rot})` : `1 pagamento de ${fmt(v)}.`;
+    if (n > 1 && base) t += ` · 1º: ${erpFmtData(cpAddIntervalo(base, it, 0))} · último: ${erpFmtData(cpAddIntervalo(base, it, n - 1))}`;
+    $('efp-resumo').innerHTML = t;
+  };
+  $('efp-func').addEventListener('change', () => { syncOutro(); resumo(); });
+  ['efp-valor', 'efp-parcelas', 'efp-intervalo', 'efp-venc', 'efp-outro'].forEach(id => { const e = $(id); if (e) { e.addEventListener('input', resumo); e.addEventListener('change', resumo); } });
+  resumo();
+  $('erp-form-func').addEventListener('submit', async e => {
+    e.preventDefault();
+    const nome = ($('efp-func').value === '__outro' ? $('efp-outro').value.trim() : $('efp-func').value);
+    if (!nome) { toast('⚠ Escolha ou digite o funcionário'); return; }
+    const valor = parseFloat($('efp-valor').value) || 0; if (valor <= 0) { toast('⚠ Informe o valor'); return; }
+    const n = Math.max(1, parseInt($('efp-parcelas').value) || 1), it = $('efp-intervalo').value, base = $('efp-venc').value || null;
+    let criadas = 0, erros = 0;
+    for (let i = 0; i < n; i++) {
+      const desc = `👤 Pagamento — ${nome}${n > 1 ? ` (${i + 1}/${n})` : ''}`;
+      const body = { descricao: desc, fornecedor_id: null, valor_total: valor, data_vencimento: cpAddIntervalo(base, it, i) };
+      const r = await (await fetch('/api/erp/contas-pagar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
+      if (r && r.erro) erros++; else criadas++;
+    }
+    if (criadas) toast(`✅ ${criadas > 1 ? criadas + ' pagamentos lançados' : 'Pagamento lançado'} em Contas a pagar${erros ? ` (${erros} falharam)` : ''}`);
+    else toast('⚠ Não foi possível lançar');
+    fecharErpModal(); if (finSecao === 'contas_pagar') renderFinContasPagar();
+  });
+}
 
 // Ações delegadas do ERP (separado do handler de data-fin-acao)
 $('fin-conteudo').addEventListener('click', async e => {
@@ -9010,6 +9067,8 @@ $('fin-conteudo').addEventListener('click', async e => {
     toast('✅ Açaí pago · saiu no fluxo de caixa e foi pra Contas pagas'); await finCarregarBase(); carregarContasPagar();
   }
   else if (acao === 'cp-nova') abrirContaAvulsaForm();
+  else if (acao === 'cp-func') abrirPagamentoFuncionario();
+  else if (acao === 'cp-abrir') finIr('contas_pagar');
   else if (acao === 'cp-filtrar') carregarContasPagar();
   else if (acao === 'receb-novo') abrirRecebimentoModal(id);
   else if (acao === 'receb-aprovar') { const r = await (await fetch('/api/erp/recebimentos/' + id + '/aprovar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).json(); if (r.erro) { toast('⚠ ' + r.erro); return; } toast('✅ Recebimento aprovado'); await finCarregarBase(); renderCompraDetalhe(erpCompraAberta); }
