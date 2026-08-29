@@ -1858,6 +1858,11 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 .erp-acaofin .fin-hint { font-size: 13px; color: #5a6b7c; }
 .erp-acaofin .fin-hint b { color: #0d6ea9; }
 
+/* Sangria: escolher se entra no fluxo de caixa (ou é só p/ fechamento) */
+.op-mov-form .op-mov-fluxo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; font-weight: 800; color: #fff; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.35); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+.op-mov-form .op-mov-fluxo input { width: 18px; height: 18px; flex: 0 0 auto; }
+.op-mov-form .op-mov-fluxo small { flex-basis: 100%; font-weight: 500; opacity: .9; font-size: 12px; }
+
 /* Receber conta: troco (pagou mais) ou saldo que fica devendo (pagou menos) */
 .rcc-resultado { margin-top: 8px; padding: 11px 14px; border-radius: 12px; font-size: 16px; font-weight: 800; text-align: center; }
 .rcc-resultado b { font-size: 20px; }

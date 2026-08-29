@@ -3818,6 +3818,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS financeiro_movimentos (
 db.exec('CREATE INDEX IF NOT EXISTS idx_fin_mov_ref ON financeiro_movimentos(referencia_tipo, referencia_id)');
 db.exec('CREATE INDEX IF NOT EXISTS idx_fin_mov_data ON financeiro_movimentos(data)');
 db.exec('CREATE INDEX IF NOT EXISTS idx_fin_mov_conta ON financeiro_movimentos(conta_id)');
+try { db.exec('ALTER TABLE financeiro_movimentos ADD COLUMN fora_fluxo INTEGER DEFAULT 0'); } catch {}  // 1 = NÃO aparece no fluxo de caixa (ex.: sangria só p/ fechamento)
 
 // Seed inicial (só se vazio) — contas e categorias que a loja já usa.
 (function seedFinanceiro() {
@@ -3871,11 +3872,11 @@ function inserirMovimento(m) {
   let sessaoId = m.caixa_sessao_id != null ? m.caixa_sessao_id : null;
   if (sessaoId == null && typeof sessaoAbertaUnica === 'function') { try { sessaoId = sessaoAbertaUnica(); } catch {} }
   const info = db.prepare(`INSERT INTO financeiro_movimentos
-     (data,tipo,conta_id,categoria_id,valor,descricao,origem,obs,responsavel,situacao,referencia_tipo,referencia_id,caixa_sessao_id,centro_custo_id,criado_em,criado_por,atualizado_em)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+     (data,tipo,conta_id,categoria_id,valor,descricao,origem,obs,responsavel,situacao,referencia_tipo,referencia_id,caixa_sessao_id,centro_custo_id,fora_fluxo,criado_em,criado_por,atualizado_em)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
      m.data || agora, m.tipo, m.conta_id || null, m.categoria_id || null, +m.valor || 0, m.descricao || '',
      m.origem || 'manual', m.obs || '', m.responsavel || '', m.situacao || 'confirmado',
-     m.referencia_tipo || null, m.referencia_id != null ? String(m.referencia_id) : null, sessaoId, m.centro_custo_id || null, agora, m.criado_por || '', agora);
+     m.referencia_tipo || null, m.referencia_id != null ? String(m.referencia_id) : null, sessaoId, m.centro_custo_id || null, m.fora_fluxo ? 1 : 0, agora, m.criado_por || '', agora);
   return info.lastInsertRowid;
 }
 function estornarMovimento(id, motivo, por) {
@@ -4032,7 +4033,7 @@ app.get('/api/financeiro/movimentos', (req, res) => {
 // Fluxo de caixa — cronológico com saldo acumulado (só confirmado)
 app.get('/api/financeiro/fluxo', (req, res) => {
   const f = filtrosMovimentos(req.query);
-  const rows = db.prepare(`${SELECT_MOV} WHERE ${f.where} AND m.situacao='confirmado' ORDER BY m.data ASC, m.id ASC`).all(...f.args);
+  const rows = db.prepare(`${SELECT_MOV} WHERE ${f.where} AND m.situacao='confirmado' AND COALESCE(m.fora_fluxo,0)=0 ORDER BY m.data ASC, m.id ASC`).all(...f.args);
   let acc = 0;
   const linhas = rows.map(m => { acc += (m.tipo === 'entrada' ? m.valor : -m.valor); return { ...m, saldoAcumulado: Math.round(acc * 100) / 100 }; });
   res.json({ linhas: linhas.reverse(), saldoFinal: Math.round(acc * 100) / 100, total: linhas.length });
@@ -5340,6 +5341,7 @@ function lancarCaixaMov(req, res, tipo) {
   const ehSup = tipo === 'suprimento';
   const movId = inserirMovimento({ tipo: ehSup ? 'entrada' : 'saida', conta_id: s.conta_id, categoria_id: catFinId(ehSup ? 'Suprimento' : 'Sangria'),
     valor, descricao: (ehSup ? 'Suprimento' : 'Sangria') + (d.motivo ? ' · ' + d.motivo : ''), origem: 'caixa', obs: d.obs || '',
+    fora_fluxo: (!ehSup && d.no_fluxo === false) ? 1 : 0,   // sangria só p/ fechamento (não entra no fluxo de caixa)
     responsavel: d.responsavel || (req.usuario || {}).nome || '', situacao: 'confirmado', referencia_tipo: 'caixa_' + tipo, referencia_id: id, caixa_sessao_id: id, criado_por: (req.usuario || {}).usuario || '' });
   manut.logAcao(tipo + ' de caixa', 'caixa', { sessao: id, valor, motivo: d.motivo || '', por: (req.usuario || {}).usuario }, 'operacao');
   res.json({ ok: true, movimento_id: movId, conferencia: conferenciaSessao(s) });
@@ -5357,6 +5359,7 @@ function lancarCaixaMovAvulso(req, res, tipo) {
   const contaCaixa = (db.prepare("SELECT id FROM financeiro_contas WHERE nome='Caixa'").get() || {}).id || null;
   const movId = inserirMovimento({ tipo: ehSup ? 'entrada' : 'saida', conta_id: contaCaixa, categoria_id: catFinId(ehSup ? 'Suprimento' : 'Sangria'),
     valor, descricao: (ehSup ? 'Suprimento' : 'Sangria') + ' · ' + d.motivo.trim(), origem: 'caixa', situacao: 'confirmado',
+    fora_fluxo: (!ehSup && d.no_fluxo === false) ? 1 : 0,   // sangria só p/ fechamento (não entra no fluxo de caixa)
     referencia_tipo: 'caixa_' + tipo, caixa_sessao_id: 0, responsavel: (req.usuario || {}).nome || '', criado_por: (req.usuario || {}).usuario || '' });
   manut.logAcao(tipo + ' de caixa (avulso)', 'caixa', { valor, motivo: d.motivo.trim(), por: (req.usuario || {}).usuario }, 'operacao');
   res.json({ ok: true, movimento_id: movId });
@@ -5810,7 +5813,7 @@ function relatorioFinanceiro(tipo, fx) {
     return { titulo: (tipo === 'despesas' ? 'Despesas' : 'Receitas') + ' por categoria', colunas: ['Categoria', 'Total', 'Lançamentos'], linhas: rows.map(r => [r.nome, r2(r.tot), r.n]) };
   }
   if (tipo === 'fluxo') {
-    const rows = db.prepare(`SELECT date(data,'localtime') dia, COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) ent, COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) sai FROM financeiro_movimentos m WHERE situacao='confirmado'${wm.clause} GROUP BY dia ORDER BY dia`).all(...wm.args);
+    const rows = db.prepare(`SELECT date(data,'localtime') dia, COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) ent, COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) sai FROM financeiro_movimentos m WHERE situacao='confirmado' AND COALESCE(fora_fluxo,0)=0${wm.clause} GROUP BY dia ORDER BY dia`).all(...wm.args);
     return { titulo: 'Fluxo de caixa por dia', colunas: ['Dia', 'Entradas', 'Saídas', 'Resultado'], linhas: rows.map(r => [r.dia, r2(r.ent), r2(r.sai), r2(r.ent - r.sai)]) };
   }
   if (tipo === 'fornecedores') {

@@ -1605,6 +1605,7 @@ async function abrirCaixaMov(tipo) {
       <div class="op-mov-chips">${cedulas.map(v => `<button type="button" class="op-mov-chip" data-v="${v}">+${v}</button>`).join('')}<button type="button" class="op-mov-chip zerar" data-zerar="1">limpar</button></div>
       <label>Justificativa *<input id="op-mov-just" autocomplete="off" placeholder="${ehSup ? 'ex.: troco inicial, reforço de caixa' : 'ex.: pagamento fornecedor, retirada para banco'}"></label>
       <div class="op-mov-chips motivos">${motivos.map(m => `<button type="button" class="op-mov-chip mot" data-m="${crmEsc(m)}">${crmEsc(m)}</button>`).join('')}</div>
+      ${!ehSup ? `<label class="op-mov-fluxo"><input type="checkbox" id="op-mov-fluxo" checked> Entra no <b>fluxo de caixa</b> como saída <small>— desmarque se for só pra fechar o caixa do dia (não conta como despesa)</small></label>` : ''}
       <button type="submit" class="fin-btn-salvar">${ehSup ? '➕ Registrar suprimento' : '➖ Registrar sangria'}</button>
     </form>`);
   $('modal-erp-box').classList.add('erp-mov', ehSup ? 'erp-mov-sup' : 'erp-mov-san');   // padrão azul (igual Recebimento)
@@ -1620,7 +1621,8 @@ async function abrirCaixaMov(tipo) {
     e.preventDefault();
     const v = parseFloat(valor.value) || 0; if (v <= 0) { toast('⚠ Informe um valor maior que zero'); valor.focus(); return; }
     if (!just.value.trim()) { toast('⚠ A justificativa é obrigatória'); just.focus(); return; }
-    const r = await (await fetch(`/api/caixa/${tipo}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: v, motivo: just.value.trim() }) })).json();
+    const noFluxo = ehSup ? true : ($('op-mov-fluxo') ? $('op-mov-fluxo').checked : true);   // sangria pode ficar fora do fluxo (só fechamento)
+    const r = await (await fetch(`/api/caixa/${tipo}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: v, motivo: just.value.trim(), no_fluxo: noFluxo }) })).json();
     if (r.erro) { toast('⚠ ' + r.erro); return; }
     toast(`✅ ${ehSup ? 'Suprimento' : 'Sangria'} de ${fmt(v)} registrado`); fecharErpModal(); caixaAtualCache = null;
     if ($('tela-financeiro') && $('tela-financeiro').classList.contains('ativa')) finIr(finSecao);
