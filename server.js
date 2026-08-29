@@ -3847,7 +3847,7 @@ function saldoDaConta(contaId) {
   if (!c) return 0;
   const r = db.prepare(`SELECT COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) ent,
       COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) sai
-    FROM financeiro_movimentos WHERE conta_id = ? AND situacao = 'confirmado'`).get(contaId);
+    FROM financeiro_movimentos WHERE conta_id = ? AND situacao = 'confirmado' AND COALESCE(fora_fluxo,0)=0`).get(contaId);
   return Math.round(((c.saldo_inicial || 0) + r.ent - r.sai) * 100) / 100;
 }
 const contaComSaldo = (c) => ({ ...c, saldo: saldoDaConta(c.id) });
@@ -4050,16 +4050,19 @@ app.post('/api/financeiro/movimentos', (req, res) => {
   manut.logAcao('movimento financeiro criado', 'financeiro', { id, tipo: d.tipo, valor: +d.valor, por: (req.usuario || {}).usuario }, 'operacao');
   res.json(movFront(id));
 });
-// Editar movimento (só manual) — admin/supervisor
+// Editar movimento — SÓ ADMIN. Edita manual + sangria/suprimento (caixa_*). A DATA fica
+// TRAVADA no dia original: editar nunca tira o movimento do fechamento daquele dia.
 app.put('/api/financeiro/movimentos/:id', (req, res) => {
-  if (!gateFinLancar(req, res)) return;
+  if (!gateFinAdmin(req, res)) return;
   const id = +req.params.id, m = db.prepare('SELECT * FROM financeiro_movimentos WHERE id=?').get(id);
   if (!m) return res.status(404).json({ erro: 'Movimento não encontrado.' });
-  if (m.referencia_tipo) return res.status(400).json({ erro: 'Movimento automático (venda/pedido/fiado) não é editável aqui.' });
+  const editavel = !m.referencia_tipo || ['caixa_sangria', 'caixa_suprimento'].includes(m.referencia_tipo);
+  if (!editavel) return res.status(400).json({ erro: 'Movimento de venda/pedido/fiado não é editável aqui (cancele o documento de origem).' });
   const d = req.body || {};
-  db.prepare('UPDATE financeiro_movimentos SET data=COALESCE(?,data), tipo=COALESCE(?,tipo), conta_id=COALESCE(?,conta_id), categoria_id=COALESCE(?,categoria_id), valor=COALESCE(?,valor), descricao=COALESCE(?,descricao), obs=COALESCE(?,obs), responsavel=COALESCE(?,responsavel), situacao=COALESCE(?,situacao), atualizado_em=? WHERE id=?')
-    .run(d.data ?? null, d.tipo ?? null, d.conta_id != null ? +d.conta_id : null, d.categoria_id != null ? +d.categoria_id : null, d.valor != null ? +d.valor : null, d.descricao ?? null, d.obs ?? null, d.responsavel ?? null, d.situacao ?? null, new Date().toISOString(), id);
-  manut.logAcao('movimento financeiro editado', 'financeiro', { id, por: (req.usuario || {}).usuario }, 'operacao');
+  const foraFluxo = d.fora_fluxo != null ? (d.fora_fluxo ? 1 : 0) : null;
+  db.prepare('UPDATE financeiro_movimentos SET conta_id=COALESCE(?,conta_id), categoria_id=COALESCE(?,categoria_id), valor=COALESCE(?,valor), descricao=COALESCE(?,descricao), obs=COALESCE(?,obs), responsavel=COALESCE(?,responsavel), situacao=COALESCE(?,situacao), fora_fluxo=COALESCE(?,fora_fluxo), atualizado_em=? WHERE id=?')
+    .run(d.conta_id != null ? +d.conta_id : null, d.categoria_id != null ? +d.categoria_id : null, d.valor != null ? +d.valor : null, d.descricao ?? null, d.obs ?? null, d.responsavel ?? null, d.situacao ?? null, foraFluxo, new Date().toISOString(), id);
+  manut.logAcao('movimento financeiro editado', 'financeiro', { id, por: (req.usuario || {}).usuario, referencia: m.referencia_tipo || 'manual' }, 'operacao');
   res.json(movFront(id));
 });
 // Estornar (não apaga — marca estornado, sai do saldo) — admin
@@ -4085,8 +4088,8 @@ app.delete('/api/financeiro/movimentos/:id', (req, res) => {
 app.get('/api/financeiro/visao-geral', (req, res) => {
   const dia = (col) => `date(${col},'localtime')=date('now','localtime')`;
   const mi = new Date(); const mesIni = `${mi.getFullYear()}-${String(mi.getMonth() + 1).padStart(2, '0')}-01`;
-  const sDia = db.prepare(`SELECT COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) ent, COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) sai FROM financeiro_movimentos WHERE situacao='confirmado' AND ${dia('data')}`).get();
-  const sMes = db.prepare(`SELECT COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) ent, COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) sai FROM financeiro_movimentos WHERE situacao='confirmado' AND date(data,'localtime') >= ?`).get(mesIni);
+  const sDia = db.prepare(`SELECT COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) ent, COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) sai FROM financeiro_movimentos WHERE situacao='confirmado' AND COALESCE(fora_fluxo,0)=0 AND ${dia('data')}`).get();
+  const sMes = db.prepare(`SELECT COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) ent, COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) sai FROM financeiro_movimentos WHERE situacao='confirmado' AND COALESCE(fora_fluxo,0)=0 AND date(data,'localtime') >= ?`).get(mesIni);
   const ultimas = db.prepare(`${SELECT_MOV} WHERE m.situacao != 'estornado' ORDER BY m.data DESC, m.id DESC LIMIT 12`).all();
   const pendentes = db.prepare(`${SELECT_MOV} WHERE m.situacao='pendente' ORDER BY m.data DESC LIMIT 30`).all();
   const contas = db.prepare('SELECT * FROM financeiro_contas WHERE ativo=1 ORDER BY nome').all().map(contaComSaldo);
@@ -5341,7 +5344,7 @@ function lancarCaixaMov(req, res, tipo) {
   const ehSup = tipo === 'suprimento';
   const movId = inserirMovimento({ tipo: ehSup ? 'entrada' : 'saida', conta_id: s.conta_id, categoria_id: catFinId(ehSup ? 'Suprimento' : 'Sangria'),
     valor, descricao: (ehSup ? 'Suprimento' : 'Sangria') + (d.motivo ? ' · ' + d.motivo : ''), origem: 'caixa', obs: d.obs || '',
-    fora_fluxo: (!ehSup && d.no_fluxo === false) ? 1 : 0,   // sangria só p/ fechamento (não entra no fluxo de caixa)
+    fora_fluxo: (d.no_fluxo === false) ? 1 : 0,   // sangria só p/ fechamento (não entra no fluxo de caixa)
     responsavel: d.responsavel || (req.usuario || {}).nome || '', situacao: 'confirmado', referencia_tipo: 'caixa_' + tipo, referencia_id: id, caixa_sessao_id: id, criado_por: (req.usuario || {}).usuario || '' });
   manut.logAcao(tipo + ' de caixa', 'caixa', { sessao: id, valor, motivo: d.motivo || '', por: (req.usuario || {}).usuario }, 'operacao');
   res.json({ ok: true, movimento_id: movId, conferencia: conferenciaSessao(s) });
@@ -5359,7 +5362,7 @@ function lancarCaixaMovAvulso(req, res, tipo) {
   const contaCaixa = (db.prepare("SELECT id FROM financeiro_contas WHERE nome='Caixa'").get() || {}).id || null;
   const movId = inserirMovimento({ tipo: ehSup ? 'entrada' : 'saida', conta_id: contaCaixa, categoria_id: catFinId(ehSup ? 'Suprimento' : 'Sangria'),
     valor, descricao: (ehSup ? 'Suprimento' : 'Sangria') + ' · ' + d.motivo.trim(), origem: 'caixa', situacao: 'confirmado',
-    fora_fluxo: (!ehSup && d.no_fluxo === false) ? 1 : 0,   // sangria só p/ fechamento (não entra no fluxo de caixa)
+    fora_fluxo: (d.no_fluxo === false) ? 1 : 0,   // sangria só p/ fechamento (não entra no fluxo de caixa)
     referencia_tipo: 'caixa_' + tipo, caixa_sessao_id: 0, responsavel: (req.usuario || {}).nome || '', criado_por: (req.usuario || {}).usuario || '' });
   manut.logAcao(tipo + ' de caixa (avulso)', 'caixa', { valor, motivo: d.motivo.trim(), por: (req.usuario || {}).usuario }, 'operacao');
   res.json({ ok: true, movimento_id: movId });
@@ -5680,9 +5683,9 @@ app.get('/api/financeiro/dashboard', (req, res) => {
   const cli = biClientes(fx), maiorCliente = (cli.maisGastaram || [])[0] || null;
   const prod = biProdutos(fx), produtosLucrativos = (prod.maisLucro || []).slice(0, 5).map(p => ({ nome: p.nome, lucro: r2(p.lucro), margem: p.margem }));
   const serie = (sql) => db.prepare(sql).all().map(x => ({ k: x.k, v: r2(x.v) }));
-  const serieDia = serie("SELECT date(data,'localtime') k, COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE -valor END),0) v FROM financeiro_movimentos WHERE situacao='confirmado' AND date(data,'localtime')>=date('now','-13 days','localtime') GROUP BY k ORDER BY k");
-  const serieMes = db.prepare("SELECT strftime('%Y-%m',data,'localtime') k, COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE -valor END),0) v FROM financeiro_movimentos WHERE situacao='confirmado' GROUP BY k ORDER BY k DESC LIMIT 12").all().reverse().map(x => ({ k: x.k, v: r2(x.v) }));
-  const serieAno = serie("SELECT strftime('%Y',data,'localtime') k, COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE -valor END),0) v FROM financeiro_movimentos WHERE situacao='confirmado' GROUP BY k ORDER BY k");
+  const serieDia = serie("SELECT date(data,'localtime') k, COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE -valor END),0) v FROM financeiro_movimentos WHERE situacao='confirmado' AND COALESCE(fora_fluxo,0)=0 AND date(data,'localtime')>=date('now','-13 days','localtime') GROUP BY k ORDER BY k");
+  const serieMes = db.prepare("SELECT strftime('%Y-%m',data,'localtime') k, COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE -valor END),0) v FROM financeiro_movimentos WHERE situacao='confirmado' AND COALESCE(fora_fluxo,0)=0 GROUP BY k ORDER BY k DESC LIMIT 12").all().reverse().map(x => ({ k: x.k, v: r2(x.v) }));
+  const serieAno = serie("SELECT strftime('%Y',data,'localtime') k, COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE -valor END),0) v FROM financeiro_movimentos WHERE situacao='confirmado' AND COALESCE(fora_fluxo,0)=0 GROUP BY k ORDER BY k");
   res.json({
     saldos: { caixa: somaTipo(['caixa']), banco: somaTipo(['banco', 'maquininha']), total: r2(contas.reduce((s, c) => s + c.saldo, 0)), contas: contas.map(c => ({ nome: c.nome, tipo: c.tipo, saldo: c.saldo })) },
     receber: { hoje: 0, semana: 0, total: r2(fiadoReceber + anotacoesPendentesTotal()), fiado: fiadoReceber, anotacoes: anotacoesPendentesTotal(), obs: 'a receber = fiado + anotações "pagar depois" em aberto' },
@@ -5723,8 +5726,8 @@ app.get('/api/financeiro/premium', (req, res) => {
       hoje: r2(cpAbertas.filter(c => venc(c) === hoje).reduce((s, c) => s + emAberto(c), 0)),
       semana: r2(cpAbertas.filter(c => venc(c) && venc(c) >= hoje && venc(c) <= semYmd).reduce((s, c) => s + emAberto(c), 0)) };
     // Resultado do período (livro-caixa)
-    const receitas = r2(db.prepare(`SELECT COALESCE(SUM(valor),0) t FROM financeiro_movimentos WHERE tipo='entrada' AND situacao='confirmado'${wMov.clause}`).get(...wMov.args).t);
-    const despesas = r2(db.prepare(`SELECT COALESCE(SUM(valor),0) t FROM financeiro_movimentos WHERE tipo='saida' AND situacao='confirmado'${wMov.clause}`).get(...wMov.args).t);
+    const receitas = r2(db.prepare(`SELECT COALESCE(SUM(valor),0) t FROM financeiro_movimentos WHERE tipo='entrada' AND situacao='confirmado' AND COALESCE(fora_fluxo,0)=0${wMov.clause}`).get(...wMov.args).t);
+    const despesas = r2(db.prepare(`SELECT COALESCE(SUM(valor),0) t FROM financeiro_movimentos WHERE tipo='saida' AND situacao='confirmado' AND COALESCE(fora_fluxo,0)=0${wMov.clause}`).get(...wMov.args).t);
     // Vendas + CMV (custo real FIFO, Fase 30/35) do período
     const bi = biVisaoGeral(fx);
     const lb = db.prepare(`SELECT COALESCE(SUM(qtd*preco_unitario),0) receita, COALESCE(SUM(custo_total),0) custo FROM lotes_consumo WHERE 1=1${wLC.clause}`).get(...wLC.args);
@@ -5753,7 +5756,7 @@ app.get('/api/financeiro/premium', (req, res) => {
       { chave: 'fechamento', nome: '🧮 Fechamento de Caixa', valor: null, obs: sessaoAbertaUnica() ? 'sessão aberta' : 'nenhuma sessão aberta' },
     ];
     // Série diária (14 dias) — saldo líquido por dia
-    const serieDia = db.prepare("SELECT date(data,'localtime') k, COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE -valor END),0) v FROM financeiro_movimentos WHERE situacao='confirmado' AND date(data,'localtime')>=date('now','-13 days','localtime') GROUP BY k ORDER BY k").all().map(x => ({ k: x.k, v: r2(x.v) }));
+    const serieDia = db.prepare("SELECT date(data,'localtime') k, COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE -valor END),0) v FROM financeiro_movimentos WHERE situacao='confirmado' AND COALESCE(fora_fluxo,0)=0 AND date(data,'localtime')>=date('now','-13 days','localtime') GROUP BY k ORDER BY k").all().map(x => ({ k: x.k, v: r2(x.v) }));
     res.json({
       periodo: fx,
       saldos: { total: saldoTotal, caixa, banco, contas: contas.map(c => ({ nome: c.nome, tipo: c.tipo, saldo: c.saldo })) },

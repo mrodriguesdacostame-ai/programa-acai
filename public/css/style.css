@@ -1862,6 +1862,13 @@ body.alto-contraste .fin-menu-item, body.alto-contraste .adm-tab, body.alto-cont
 .op-mov-form .op-mov-fluxo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; font-weight: 800; color: #fff; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.35); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
 .op-mov-form .op-mov-fluxo input { width: 18px; height: 18px; flex: 0 0 auto; }
 .op-mov-form .op-mov-fluxo small { flex-basis: 100%; font-weight: 500; opacity: .9; font-size: 12px; }
+/* Editar movimentação (modal CLARO erp-ci): op-mov-fluxo precisa de texto escuro */
+.modal-erp.erp-ci .op-mov-form .op-mov-fluxo { color: #14283a; background: rgba(13,110,169,0.07); border-color: rgba(13,110,169,0.28); }
+.modal-erp.erp-ci .op-mov-form label { color: #14283a; font-weight: 700; }
+.mov-edit-dia { font-size: 14px; font-weight: 800; color: #14283a; background: #eef4fb; border: 1px solid #cfe0f0; border-radius: 10px; padding: 9px 12px; }
+.mov-edit-dia small { display: block; font-weight: 500; opacity: .8; font-size: 12px; margin-top: 2px; }
+.mov-det-acoes { margin-top: 12px; display: flex; }
+.mov-det-acoes .fin-btn-salvar { width: 100%; }
 
 /* Receber conta: troco (pagou mais) ou saldo que fica devendo (pagou menos) */
 .rcc-resultado { margin-top: 8px; padding: 11px 14px; border-radius: 12px; font-size: 16px; font-weight: 800; text-align: center; }

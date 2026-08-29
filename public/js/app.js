@@ -1605,7 +1605,7 @@ async function abrirCaixaMov(tipo) {
       <div class="op-mov-chips">${cedulas.map(v => `<button type="button" class="op-mov-chip" data-v="${v}">+${v}</button>`).join('')}<button type="button" class="op-mov-chip zerar" data-zerar="1">limpar</button></div>
       <label>Justificativa *<input id="op-mov-just" autocomplete="off" placeholder="${ehSup ? 'ex.: troco inicial, reforço de caixa' : 'ex.: pagamento fornecedor, retirada para banco'}"></label>
       <div class="op-mov-chips motivos">${motivos.map(m => `<button type="button" class="op-mov-chip mot" data-m="${crmEsc(m)}">${crmEsc(m)}</button>`).join('')}</div>
-      ${!ehSup ? `<label class="op-mov-fluxo"><input type="checkbox" id="op-mov-fluxo" checked> Entra no <b>fluxo de caixa</b> como saída <small>— desmarque se for só pra fechar o caixa do dia (não conta como despesa)</small></label>` : ''}
+      <label class="op-mov-fluxo"><input type="checkbox" id="op-mov-fluxo" checked> Entra no <b>fluxo de caixa</b> e no <b>painel financeiro</b> <small>— desmarque se for só pra fechar o caixa do dia (conta na gaveta, mas não no financeiro)</small></label>
       <button type="submit" class="fin-btn-salvar">${ehSup ? '➕ Registrar suprimento' : '➖ Registrar sangria'}</button>
     </form>`);
   $('modal-erp-box').classList.add('erp-mov', ehSup ? 'erp-mov-sup' : 'erp-mov-san');   // padrão azul (igual Recebimento)
@@ -1621,7 +1621,7 @@ async function abrirCaixaMov(tipo) {
     e.preventDefault();
     const v = parseFloat(valor.value) || 0; if (v <= 0) { toast('⚠ Informe um valor maior que zero'); valor.focus(); return; }
     if (!just.value.trim()) { toast('⚠ A justificativa é obrigatória'); just.focus(); return; }
-    const noFluxo = ehSup ? true : ($('op-mov-fluxo') ? $('op-mov-fluxo').checked : true);   // sangria pode ficar fora do fluxo (só fechamento)
+    const noFluxo = $('op-mov-fluxo') ? $('op-mov-fluxo').checked : true;   // sangria E suprimento podem ficar fora do fluxo/painel (só fechamento)
     const r = await (await fetch(`/api/caixa/${tipo}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: v, motivo: just.value.trim(), no_fluxo: noFluxo }) })).json();
     if (r.erro) { toast('⚠ ' + r.erro); return; }
     toast(`✅ ${ehSup ? 'Suprimento' : 'Sangria'} de ${fmt(v)} registrado`); fecharErpModal(); caixaAtualCache = null;
@@ -8387,12 +8387,41 @@ function abrirDetalheMov(m) {
         ${linha('Categoria', crmEsc(m.categoria_nome || '—'))}
         ${m.centro_custo_nome ? linha('Centro de custo', crmEsc(m.centro_custo_nome)) : ''}
         ${linha('Data', fmtDataHora(m.data))}
+        ${linha('No fluxo/painel', m.fora_fluxo ? '🚫 Não — só fechamento do dia' : '✅ Sim')}
         ${linha('Quem lançou', crmEsc(nomeOp(m.criado_por || m.responsavel) || '—'))}
         ${linha('Referência', refTxt)}
         ${m.obs ? linha('Observação', crmEsc(m.obs)) : ''}
       </table>
+      ${finPodeAdmin() && movEditavel(m) ? `<div class="mov-det-acoes"><button class="fin-btn-salvar" id="mov-det-editar">✏️ Editar movimentação</button></div>` : ''}
     </div>`);
   $('modal-erp-box').classList.add('erp-ci');
+  const be = $('mov-det-editar'); if (be) be.addEventListener('click', () => abrirEditarMov(m));
+}
+// só admin edita, e só manual OU sangria/suprimento (venda/pedido/fiado se corrige na origem)
+const movEditavel = (m) => !m.referencia_tipo || ['caixa_sangria', 'caixa_suprimento'].includes(m.referencia_tipo);
+function abrirEditarMov(m) {
+  const foraFluxo = !!m.fora_fluxo;
+  abrirErpModal(`<h3 class="erp-modal-tit">✏️ Editar movimentação</h3>
+    <form id="mov-edit-form" class="op-mov-form">
+      <div class="mov-edit-dia">📅 ${fmtDataHora(m.data)} <small>— a data fica travada no dia do lançamento (não sai do fechamento)</small></div>
+      <label>Valor (R$) *<input id="mov-edit-valor" type="number" step="0.01" min="0.01" value="${(+m.valor || 0).toFixed(2)}"></label>
+      <label>Descrição<input id="mov-edit-desc" autocomplete="off" value="${crmEsc(m.descricao || '')}"></label>
+      <label>Observação<input id="mov-edit-obs" autocomplete="off" value="${crmEsc(m.obs || '')}"></label>
+      <label class="op-mov-fluxo"><input type="checkbox" id="mov-edit-fluxo" ${foraFluxo ? '' : 'checked'}> Entra no <b>fluxo de caixa</b> e no <b>painel financeiro</b> <small>— desmarque se for só pra fechar o caixa do dia</small></label>
+      <button type="submit" class="fin-btn-salvar">💾 Salvar alterações</button>
+    </form>`);
+  $('modal-erp-box').classList.add('erp-ci');
+  setTimeout(() => { const v = $('mov-edit-valor'); if (v) { v.focus(); v.select(); } }, 40);
+  $('mov-edit-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const valor = parseFloat(($('mov-edit-valor').value || '0').replace(',', '.'));
+    if (!(valor > 0)) { toast('⚠ Valor deve ser maior que zero'); return; }
+    const body = { valor, descricao: $('mov-edit-desc').value.trim(), obs: $('mov-edit-obs').value.trim(), fora_fluxo: $('mov-edit-fluxo').checked ? false : true };
+    const r = await (await fetch('/api/financeiro/movimentos/' + m.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
+    if (r && r.erro) { toast('⚠ ' + r.erro); return; }
+    toast('💾 Movimentação atualizada'); fecharErpModal();
+    if (typeof finCarregarFluxo === 'function' && $('tela-financeiro') && $('tela-financeiro').classList.contains('ativa')) finCarregarFluxo();
+  });
 }
 
 function renderFinContas() {
