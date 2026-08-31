@@ -1001,7 +1001,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS compras_itens (
 )`);
 db.exec('CREATE INDEX IF NOT EXISTS idx_compras_itens ON compras_itens(compra_id)');
 // Insumos: amplia pra ter unidade, saldo e observações (mantém qtd/custo_total/custo_unitario)
-for (const col of ['unidade TEXT', 'saldo REAL', 'obs TEXT', 'atualizado_em TEXT']) {
+for (const col of ['unidade TEXT', 'saldo REAL', 'obs TEXT', 'atualizado_em TEXT', 'financeiro_movimento_id INTEGER']) {
   try { db.exec(`ALTER TABLE insumos ADD COLUMN ${col}`); } catch {}
 }
 // Movimentação de insumos (histórico mínimo: entrada/consumo/ajuste)
@@ -1429,7 +1429,18 @@ app.post('/api/insumos', (req, res) => {
   const id = info.lastInsertRowid;
   if (qtd > 0) db.prepare('INSERT INTO insumos_movimentos (insumo_id,tipo,quantidade,custo_unitario,saldo_anterior,saldo_novo,origem,data) VALUES (?,?,?,?,?,?,?,?)')
     .run(id, 'entrada', qtd, cu, 0, qtd, 'compra', agora);
-  res.json({ id, saldo: qtd, custo_unitario: cu });
+  // Descartável entra DIRETO no fluxo de caixa como SAÍDA (categoria Descartáveis). d.fluxo===false desliga.
+  let movimento_id = null;
+  if (custoTotal > 0 && d.fluxo !== false) {
+    let catId = catFinId('Descartáveis');
+    if (!catId) { try { db.prepare("INSERT INTO financeiro_categorias (nome,tipo,cor,icone,sistema,ativo,criado_em) VALUES ('Descartáveis','saida','','🧴',0,1,?)").run(agora); } catch {} catId = catFinId('Descartáveis'); }
+    const contaCaixa = (db.prepare("SELECT id FROM financeiro_contas WHERE nome='Caixa'").get() || {}).id || null;
+    movimento_id = inserirMovimento({ tipo: 'saida', conta_id: contaCaixa, categoria_id: catId, valor: r2(custoTotal),
+      descricao: 'Descartáveis · ' + d.nome + (qtd > 0 ? ` (${qtd} ${d.unidade || 'un'})` : ''), origem: 'insumo', situacao: 'confirmado',
+      referencia_tipo: 'insumo', referencia_id: id, responsavel: (req.usuario || {}).nome || '', criado_por: (req.usuario || {}).usuario || '' });
+    db.prepare('UPDATE insumos SET financeiro_movimento_id=? WHERE id=?').run(movimento_id, id);
+  }
+  res.json({ id, saldo: qtd, custo_unitario: cu, movimento_id });
 });
 app.put('/api/insumos/:id', (req, res) => {
   const id = +req.params.id, d = req.body || {};
@@ -1447,8 +1458,10 @@ app.post('/api/insumos/:id/movimentos', (req, res) => {
   res.json(r);
 });
 app.delete('/api/insumos/:id', (req, res) => {
-  db.prepare('DELETE FROM insumos_movimentos WHERE insumo_id = ?').run(+req.params.id);
-  db.prepare('DELETE FROM insumos WHERE id = ?').run(+req.params.id);
+  const id = +req.params.id, ins = db.prepare('SELECT financeiro_movimento_id FROM insumos WHERE id=?').get(id);
+  if (ins && ins.financeiro_movimento_id) { try { estornarMovimento(ins.financeiro_movimento_id, 'insumo/descartável removido', (req.usuario || {}).usuario || 'sistema'); } catch {} }
+  db.prepare('DELETE FROM insumos_movimentos WHERE insumo_id = ?').run(id);
+  db.prepare('DELETE FROM insumos WHERE id = ?').run(id);
   res.json({ ok: true });
 });
 

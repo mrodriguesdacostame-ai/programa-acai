@@ -533,9 +533,9 @@
       <!-- ─ INSUMOS ─ -->
       <div class="prod-painel" id="ptab-insumos">
         <form class="prod-form" id="form-insumo" autocomplete="off">
-          <h3>🧴 Insumos / Descartáveis</h3>
-          <p class="prod-nota">Controle de gastos com descartáveis (sacolas, copos, colheres...). <strong>Não entra no custo das mercadorias.</strong> Informe a quantidade e o valor total — mostramos o valor por unidade.</p>
-          <div class="campo"><label>Descrição *</label><input id="if-nome" required placeholder="Ex: Sacola, Copo 500ml, Colher"></div>
+          <h3>🧴 Descartáveis</h3>
+          <p class="prod-nota">Entrada de <strong>descartáveis</strong> (sacola, saco, luva, sabão, copo, colher...). Ao finalizar, o valor <strong>entra direto no fluxo de caixa como saída de descartáveis</strong>. <span style="opacity:.7">Não entra no custo das mercadorias.</span></p>
+          <div class="campo"><label>Descrição *</label><input id="if-nome" required placeholder="Ex: Sacola, Saco, Luva, Sabão, Copo"></div>
           <div class="pf-row">
             <div class="campo"><label>Quantidade *</label><input type="number" id="if-qtd" step="0.01" min="0" required placeholder="Ex: 100"></div>
             <div class="campo"><label>Unidade</label>
@@ -548,7 +548,7 @@
           </div>
           <p class="pf-hint" id="if-unit-preview"></p>
           <div class="pf-acoes">
-            <button type="submit" class="btn-prod-salvar">💾 Adicionar insumo</button>
+            <button type="submit" class="btn-prod-salvar" id="if-finalizar">🏁 Finalizar — lançar no fluxo como saída</button>
           </div>
         </form>
         <div class="prod-lista">

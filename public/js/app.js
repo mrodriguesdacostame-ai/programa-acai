@@ -5025,14 +5025,19 @@ $('form-insumo').addEventListener('submit', e => {
     .then(r => r.json()).then(j => { if (j && j.id) { insumo._backendId = j.id; salvarInsumos(); } }).catch(() => {});
   $('form-insumo').reset();
   $('if-unit-preview').textContent = '';
+  atualizarBtnInsumo();
   renderInsumos();
-  toast('✅ Insumo adicionado', 'sucesso');
+  if ($('tela-financeiro') && $('tela-financeiro').classList.contains('ativa') && typeof finCarregarBase === 'function') { try { finCarregarBase(); } catch {} }
+  toast(`✅ Descartável lançado no fluxo (saída de ${fmt(insumo.custo)})`, 'sucesso');
 });
-// preview do valor por unidade enquanto digita
-['if-custo', 'if-qtd'].forEach(id => $(id).addEventListener('input', () => {
+// preview do valor por unidade + habilita o botão Finalizar só quando qtd E valor estão preenchidos
+function atualizarBtnInsumo() {
   const q = +$('if-qtd').value || 0, c = +$('if-custo').value || 0;
-  $('if-unit-preview').textContent = (q > 0 && c > 0) ? `Valor por unidade: ${fmt(c / q)}` : '';
-}));
+  $('if-unit-preview').textContent = (q > 0 && c > 0) ? `Valor por unidade: ${fmt(c / q)} · ao finalizar sai ${fmt(c)} do caixa` : '';
+  const b = $('if-finalizar'); if (b) b.disabled = !(q > 0 && c > 0 && ($('if-nome').value || '').trim());
+}
+['if-custo', 'if-qtd', 'if-nome'].forEach(id => { const e = $(id); if (e) e.addEventListener('input', atualizarBtnInsumo); });
+atualizarBtnInsumo();
 function excluirInsumo(i) {
   const insumo = insumos[i];
   insumos.splice(i, 1); salvarInsumos();
@@ -5041,7 +5046,7 @@ function excluirInsumo(i) {
 }
 function renderInsumos() {
   const total = insumos.reduce((s, i) => s + (+i.custo || 0), 0);
-  $('insumo-resumo').innerHTML = `Total gasto em insumos: <strong>${fmt(total)}</strong> <span style="opacity:.65">— controle de gastos (não entra no custo das mercadorias)</span>`;
+  $('insumo-resumo').innerHTML = `Total em descartáveis: <strong>${fmt(total)}</strong> <span style="opacity:.65">— cada entrada vira saída no fluxo de caixa (não entra no custo das mercadorias)</span>`;
   $('insumo-tbody').innerHTML = insumos.map((i, idx) => {
     const unit = (+i.qtd > 0) ? (+i.custo / +i.qtd) : null;
     return `<tr tabindex="0" data-idx="${idx}">
