@@ -5885,17 +5885,26 @@ function abrirReceberContaModal(clienteId) {
   const confirmar = async () => {
     const v = totalDigitado();
     if (v <= 0) return;
+    // MESMA lógica do troco do PDV: só ABATE até o saldo devedor. O excedente é TROCO (dinheiro
+    // de volta) — NÃO vira pagamento nem saldo negativo. Assim pagar 430 numa dívida de 7 quita e
+    // devolve 423 de troco, em vez de deixar a conta em -423.
+    const abate = Math.round(Math.min(v, Math.max(saldo, 0)) * 100) / 100;
+    const troco = Math.round((v - abate) * 100) / 100;
+    if (abate <= 0) { toast('⚠ Este cliente não tem saldo devedor a receber'); ok.disabled = false; return; }
     ok.disabled = true;
-    const formasPagas = CAMPOS_PGTO_CLIENTE.map(f => ({ nome: f.nome, valor: valorDe(f) })).filter(x => x.valor > 0);
+    // formas registradas = só o que abate (capadas na ordem); o troco sai em dinheiro
+    let falta = abate;
+    const formasPagas = CAMPOS_PGTO_CLIENTE.map(f => ({ nome: f.nome, valor: valorDe(f) })).filter(x => x.valor > 0)
+      .map(x => { const usa = Math.round(Math.min(x.valor, falta) * 100) / 100; falta = Math.round((falta - usa) * 100) / 100; return { nome: x.nome, valor: usa }; }).filter(x => x.valor > 0);
     const desc = ($('rcc-desc').value || '').trim() || 'Recebimento de conta';
-    const r = await lancarNaContaCliente(clienteId, 'pagamento', v, desc, { formasPagas, referencia: 'recebimento' });
+    const r = await lancarNaContaCliente(clienteId, 'pagamento', abate, desc, { formasPagas, referencia: 'recebimento' });
     if (!r) { toast('⚠ Falha ao registrar'); ok.disabled = false; return; }
-    toast(`✅ Recebido ${fmt(v)} de ${c.nome} · saldo ${fmt(r.novoSaldo)}`);
+    toast(`✅ Recebido ${fmt(abate)} de ${c.nome}${troco > 0 ? ` · troco ${fmt(troco)}` : ''} · saldo ${fmt(r.novoSaldo)}`);
     // tela de conclusão: mostra o comprovante e SÓ imprime se o operador quiser (botão)
-    const compr = { loja: lojaConfigCache || {}, cliente: c.nome, valor: v, formas: formasPagas, saldoAntes: saldo, saldoNovo: r.novoSaldo, data: new Date(), operador: (usuarioAtual && usuarioAtual.nome) || '', desc };
+    const compr = { loja: lojaConfigCache || {}, cliente: c.nome, valor: abate, troco, formas: formasPagas, saldoAntes: saldo, saldoNovo: r.novoSaldo, data: new Date(), operador: (usuarioAtual && usuarioAtual.nome) || '', desc };
     $('modal-erp-box').innerHTML = `<h3 class="erp-modal-tit">✅ Recebimento registrado <small class="op-ci-sub">${crmEsc(c.nome)}</small></h3>
       <div class="rcc-ok">
-        <div class="rcc-ok-val">${fmt(v)} recebido</div>
+        <div class="rcc-ok-val">${fmt(abate)} recebido${troco > 0 ? ` · 💵 troco ${fmt(troco)}` : ''}</div>
         <div class="rcc-ok-saldo">Saldo: ${fmt(saldo)} → <b>${fmt(r.novoSaldo)}</b></div>
         <div class="rcc-ok-pergunta">🧾 Imprimir comprovante?</div>
         <div class="rcc-ok-acoes">
