@@ -8335,6 +8335,7 @@ function renderFinLancamento(tipo) {
         <div class="fsa-btns">
           <button type="button" class="fsa-btn parc" data-erp-acao="cp-nova">🧾 Registrar conta a pagar</button>
           <button type="button" class="fsa-btn func" data-erp-acao="cp-func">👤 Pagar funcionário</button>
+          <button type="button" class="fsa-btn vale" data-erp-acao="cp-vale">🤝 Vale funcionário</button>
           <button type="button" class="fsa-btn" data-erp-acao="cp-abrir">📋 Ver contas a pagar</button>
         </div>
         <div id="fin-saida-avisos"></div>
@@ -9027,7 +9028,7 @@ async function renderFinContasPagar() {
   if (!erpFornecedoresCache.length) { try { erpFornecedoresCache = await erpGet('fornecedores'); } catch {} }
   let alertas = {}; try { alertas = await erpGet('alertas'); } catch {}
   el.innerHTML = `
-    <div class="erp-topo"><h2 class="erp-h2">📌 Contas a serem pagas</h2><span class="fin-flex"></span>${finPodeLancar() ? '<button class="fin-mini" data-erp-acao="cp-func">👤 Pagar funcionário</button><button class="fin-mini" data-erp-acao="cp-nova">➕ Nova conta</button>' : ''}</div>
+    <div class="erp-topo"><h2 class="erp-h2">📌 Contas a serem pagas</h2><span class="fin-flex"></span>${finPodeLancar() ? '<button class="fin-mini" data-erp-acao="cp-vale">🤝 Vale</button><button class="fin-mini" data-erp-acao="cp-func">👤 Pagar funcionário</button><button class="fin-mini" data-erp-acao="cp-nova">➕ Nova conta</button>' : ''}</div>
     ${renderAlertasBanner(alertas)}
     <div class="fin-filtros">
       <label>Fornecedor<select id="pf-forn"><option value="">Todos</option>${erpOptFornecedores()}</select></label>
@@ -9222,8 +9223,10 @@ async function abrirContaAvulsaForm() {
 }
 // Pagamento de funcionário → lança em Contas a pagar (com recorrência opcional: repete N meses).
 async function abrirPagamentoFuncionario() {
-  let funcs = [];
+  let funcs = [], vd = {};
   try { funcs = await (await fetch('/api/funcionarios', { cache: 'no-store' })).json(); } catch {}
+  try { vd = await (await fetch('/api/vales?pendentes=1', { cache: 'no-store' })).json(); } catch {}
+  const valesPorFunc = {}; ((vd && vd.vales) || []).forEach(v => { const k = (v.funcionario || '').trim().toLowerCase(); (valesPorFunc[k] || (valesPorFunc[k] = { total: 0, ids: [] })); valesPorFunc[k].total += +v.valor || 0; valesPorFunc[k].ids.push(v.id); });
   const ativos = (Array.isArray(funcs) ? funcs : []).filter(f => f.ativo !== 0 && f.ativo !== false);
   abrirErpModal(`<h3 class="erp-modal-tit">👤 Pagamento de funcionário</h3>
     <form id="erp-form-func" class="fin-form">
@@ -9231,13 +9234,16 @@ async function abrirPagamentoFuncionario() {
       <label id="efp-outro-wrap" style="display:none">Nome<input id="efp-outro" placeholder="nome do funcionário"></label>
       <div class="fin-frow"><label>Valor<input type="number" step="0.01" id="efp-valor" placeholder="0,00"></label><label>1º vencimento<input type="date" id="efp-venc"></label></div>
       <div class="fin-frow"><label>Repetir (vezes)<input type="number" min="1" step="1" id="efp-parcelas" value="1"></label><label>A cada<select id="efp-intervalo"><option value="mes" selected>Mês</option><option value="quinzena">Quinzena</option><option value="semana">Semana</option></select></label></div>
+      <label class="op-mov-fluxo" id="efp-vale-wrap" style="display:none"><input type="checkbox" id="efp-descontar" checked> Descontar <b id="efp-vale-tot"></b> de vale(s) pendente(s)</label>
       <div class="fin-hint" id="efp-resumo"></div>
       <button type="submit" class="fin-btn-salvar">💾 Lançar em Contas a pagar</button></form>`);
   $('modal-erp-box').classList.add('erp-ci');
   $('efp-venc').value = new Date().toISOString().slice(0, 10);
   if (!ativos.length) $('efp-func').value = '__outro';
   const outroWrap = $('efp-outro-wrap');
-  const syncOutro = () => { const o = $('efp-func').value === '__outro'; outroWrap.style.display = o ? '' : 'none'; if (o) $('efp-outro').focus(); };
+  const valeDoFunc = () => valesPorFunc[($('efp-func').value === '__outro' ? ($('efp-outro') || {}).value : $('efp-func').value || '').trim().toLowerCase()] || null;
+  const syncOutro = () => { const o = $('efp-func').value === '__outro'; outroWrap.style.display = o ? '' : 'none'; if (o) $('efp-outro').focus();
+    const v = valeDoFunc(), w = $('efp-vale-wrap'); if (w) { if (v && v.total > 0) { w.style.display = ''; $('efp-vale-tot').textContent = fmt(v.total); } else w.style.display = 'none'; } };
   syncOutro();
   const resumo = () => {
     const v = parseFloat($('efp-valor').value) || 0, n = Math.max(1, parseInt($('efp-parcelas').value) || 1);
@@ -9255,16 +9261,59 @@ async function abrirPagamentoFuncionario() {
     if (!nome) { toast('⚠ Escolha ou digite o funcionário'); return; }
     const valor = parseFloat($('efp-valor').value) || 0; if (valor <= 0) { toast('⚠ Informe o valor'); return; }
     const n = Math.max(1, parseInt($('efp-parcelas').value) || 1), it = $('efp-intervalo').value, base = $('efp-venc').value || null;
+    // desconto de vale: só se marcado e o funcionário tem vale pendente (abate da 1ª parcela)
+    const vinfo = valeDoFunc();
+    const descontar = !!(vinfo && vinfo.total > 0 && $('efp-vale-wrap') && $('efp-vale-wrap').style.display !== 'none' && $('efp-descontar') && $('efp-descontar').checked);
+    const valeTot = descontar ? Math.min(vinfo.total, valor) : 0;
     let criadas = 0, erros = 0;
     for (let i = 0; i < n; i++) {
-      const desc = `👤 Pagamento — ${nome}${n > 1 ? ` (${i + 1}/${n})` : ''}`;
-      const body = { descricao: desc, fornecedor_id: null, valor_total: valor, data_vencimento: cpAddIntervalo(base, it, i) };
+      const vParc = i === 0 ? Math.round((valor - valeTot) * 100) / 100 : valor;
+      const desc = `👤 Pagamento — ${nome}${n > 1 ? ` (${i + 1}/${n})` : ''}${i === 0 && valeTot > 0 ? ` (− vale ${fmt(valeTot)})` : ''}`;
+      const body = { descricao: desc, fornecedor_id: null, valor_total: vParc, data_vencimento: cpAddIntervalo(base, it, i) };
       const r = await (await fetch('/api/erp/contas-pagar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
       if (r && r.erro) erros++; else criadas++;
     }
-    if (criadas) toast(`✅ ${criadas > 1 ? criadas + ' pagamentos lançados' : 'Pagamento lançado'} em Contas a pagar${erros ? ` (${erros} falharam)` : ''}`);
+    if (descontar) { for (const vid of vinfo.ids) { try { await fetch('/api/vales/' + vid + '/descontar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); } catch {} } }
+    if (criadas) toast(`✅ ${criadas > 1 ? criadas + ' pagamentos lançados' : 'Pagamento lançado'}${valeTot > 0 ? ` (− ${fmt(valeTot)} de vale)` : ''}${erros ? ` (${erros} falharam)` : ''}`);
     else toast('⚠ Não foi possível lançar');
     fecharErpModal(); if (finSecao === 'contas_pagar') renderFinContasPagar();
+  });
+}
+// 🤝 Vale / adiantamento: sai do caixa (fluxo) agora e fica pendente pra descontar no pagamento.
+async function abrirValeFuncionario() {
+  let funcs = [], vd = {};
+  try { funcs = await (await fetch('/api/funcionarios', { cache: 'no-store' })).json(); } catch {}
+  try { vd = await (await fetch('/api/vales?pendentes=1', { cache: 'no-store' })).json(); } catch {}
+  const pend = {}; ((vd && vd.pendentesPorFunc) || []).forEach(p => { pend[(p.funcionario || '').trim().toLowerCase()] = p; });
+  const ativos = (Array.isArray(funcs) ? funcs : []).filter(f => f.ativo !== 0 && f.ativo !== false);
+  abrirErpModal(`<h3 class="erp-modal-tit">🤝 Vale / adiantamento</h3>
+    <form id="erp-form-vale" class="fin-form">
+      <label>Funcionário<select id="evl-func">${ativos.map(f => `<option value="${crmEsc(f.nome)}">${crmEsc(f.nome)}</option>`).join('')}<option value="__outro">➕ Outro (digitar)</option></select></label>
+      <label id="evl-outro-wrap" style="display:none">Nome<input id="evl-outro" placeholder="nome do funcionário"></label>
+      <div class="fin-frow"><label>Valor do vale<input type="number" step="0.01" id="evl-valor" placeholder="0,00"></label><label>Data<input type="date" id="evl-data"></label></div>
+      <label>Observação<input id="evl-obs" placeholder="opcional"></label>
+      <div class="fin-hint" id="evl-pend"></div>
+      <button type="submit" class="fin-btn-salvar">🤝 Dar vale (sai do caixa)</button></form>`);
+  $('modal-erp-box').classList.add('erp-ci');
+  $('evl-data').value = new Date().toISOString().slice(0, 10);
+  if (!ativos.length) $('evl-func').value = '__outro';
+  const outroWrap = $('evl-outro-wrap');
+  const syncOutro = () => { const o = $('evl-func').value === '__outro'; outroWrap.style.display = o ? '' : 'none'; if (o) $('evl-outro').focus(); };
+  const mostraPend = () => { const nome = ($('evl-func').value === '__outro' ? ($('evl-outro') || {}).value : $('evl-func').value || '').trim().toLowerCase(); const p = pend[nome]; $('evl-pend').innerHTML = p ? `⚠ ${crmEsc(nome)} já tem <b>${fmt(p.t)}</b> em vale(s) pendente(s) (${p.n}) — pra descontar no próximo pagamento.` : ''; };
+  syncOutro(); mostraPend();
+  $('evl-func').addEventListener('change', () => { syncOutro(); mostraPend(); });
+  { const eo = $('evl-outro'); if (eo) eo.addEventListener('input', mostraPend); }
+  $('erp-form-vale').addEventListener('submit', async e => {
+    e.preventDefault();
+    const nome = ($('evl-func').value === '__outro' ? $('evl-outro').value.trim() : $('evl-func').value);
+    if (!nome) { toast('⚠ Escolha o funcionário'); return; }
+    const valor = parseFloat($('evl-valor').value) || 0; if (valor <= 0) { toast('⚠ Informe o valor'); return; }
+    const body = { funcionario: nome, valor, data: $('evl-data').value || null, obs: $('evl-obs').value.trim() };
+    const r = await (await fetch('/api/vales', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
+    if (r && r.erro) { toast('⚠ ' + r.erro); return; }
+    toast(`🤝 Vale de ${fmt(valor)} pra ${nome} — saiu do caixa`); fecharErpModal();
+    if ($('tela-financeiro') && $('tela-financeiro').classList.contains('ativa') && typeof finCarregarBase === 'function') { try { await finCarregarBase(); } catch {} }
+    if (finSecao === 'contas_pagar') renderFinContasPagar();
   });
 }
 
@@ -9293,6 +9342,7 @@ $('fin-conteudo').addEventListener('click', async e => {
   }
   else if (acao === 'cp-nova') abrirContaAvulsaForm();
   else if (acao === 'cp-func') abrirPagamentoFuncionario();
+  else if (acao === 'cp-vale') abrirValeFuncionario();
   else if (acao === 'cp-editar') abrirEditarContaPagar(+id);
   else if (acao === 'cp-excluir') {
     const c = (cpContasCache || []).find(x => x.id === +id);

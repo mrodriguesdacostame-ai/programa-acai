@@ -2620,6 +2620,8 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 #tela-financeiro .fsa-btn:hover { background: #fff7ec; border-color: #c79b57; transform: translateY(-1px); }
 #tela-financeiro .fsa-btn.func { background: #eef4fb; border-color: #a9cef0; color: #14467c; }
 #tela-financeiro .fsa-btn.func:hover { background: #e2eefb; }
+#tela-financeiro .fsa-btn.vale { background: #f3eefb; border-color: #c9b6ef; color: #5b2ea6; }
+#tela-financeiro .fsa-btn.vale:hover { background: #e9dffb; }
 #tela-financeiro .fsa-btn.parc { background: #eafaf0; border-color: #a4d5b6; color: #0a7a3b; }
 #tela-financeiro .fsa-btn.parc:hover { background: #dcf5e6; }
 #tela-financeiro #fin-saida-avisos { margin-top: 10px; }

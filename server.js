@@ -3501,6 +3501,51 @@ app.delete('/api/funcionarios/:id', (req, res) => {
   try { manut.logAcao('funcionário removido', 'cadastro', { id: +req.params.id }, 'admin'); } catch {}
   res.json({ ok: true });
 });
+// ── VALES / ADIANTAMENTOS de funcionário ── sai do caixa (fluxo) agora; desconta no pagamento depois.
+db.exec(`CREATE TABLE IF NOT EXISTS vales (id INTEGER PRIMARY KEY AUTOINCREMENT, funcionario TEXT, valor REAL, data TEXT, obs TEXT,
+  financeiro_movimento_id INTEGER, descontado INTEGER DEFAULT 0, descontado_em TEXT, criado_em TEXT, criado_por TEXT)`);
+app.get('/api/vales', (req, res) => {
+  const w = ['1=1'], a = [];
+  if (req.query.funcionario) { w.push('lower(trim(funcionario))=lower(trim(?))'); a.push(req.query.funcionario); }
+  if (req.query.pendentes === '1') w.push('COALESCE(descontado,0)=0');
+  const rows = db.prepare(`SELECT * FROM vales WHERE ${w.join(' AND ')} ORDER BY id DESC`).all(...a);
+  const pend = db.prepare("SELECT funcionario, COALESCE(SUM(valor),0) t, COUNT(*) n FROM vales WHERE COALESCE(descontado,0)=0 GROUP BY lower(trim(funcionario))").all();
+  res.json({ vales: rows, pendentesPorFunc: pend });
+});
+app.post('/api/vales', (req, res) => {
+  if (!gateFinLancar(req, res)) return;
+  const d = req.body || {}, valor = r2(+d.valor || 0), func = (d.funcionario || '').trim();
+  if (!func) return res.status(400).json({ erro: 'Informe o funcionário.' });
+  if (!(valor > 0)) return res.status(400).json({ erro: 'Valor deve ser maior que zero.' });
+  const dataYmd = (d.data || ymdLocal(new Date())).slice(0, 10), agora = new Date().toISOString();
+  let catId = catFinId('Vale funcionário');
+  if (!catId) { try { db.prepare("INSERT INTO financeiro_categorias (nome,tipo,cor,icone,sistema,ativo,criado_em) VALUES ('Vale funcionário','saida','','🤝',0,1,?)").run(agora); } catch {} catId = catFinId('Vale funcionário'); }
+  const contaCaixa = (db.prepare("SELECT id FROM financeiro_contas WHERE nome='Caixa'").get() || {}).id || null;
+  const info = db.prepare('INSERT INTO vales (funcionario,valor,data,obs,descontado,criado_em,criado_por) VALUES (?,?,?,?,0,?,?)')
+    .run(func, valor, dataYmd, (d.obs || '').trim(), agora, (req.usuario || {}).usuario || '');
+  const id = info.lastInsertRowid;
+  const movId = inserirMovimento({ data: dataYmd + 'T12:00:00', tipo: 'saida', conta_id: contaCaixa, categoria_id: catId, valor,
+    descricao: 'Vale · ' + func + (d.obs ? ' · ' + d.obs.trim() : ''), origem: 'vale', situacao: 'confirmado',
+    referencia_tipo: 'vale', referencia_id: id, responsavel: (req.usuario || {}).nome || '', criado_por: (req.usuario || {}).usuario || '' });
+  db.prepare('UPDATE vales SET financeiro_movimento_id=? WHERE id=?').run(movId, id);
+  manut.logAcao('vale de funcionário', 'financeiro', { id, funcionario: func, valor, por: (req.usuario || {}).usuario }, 'operacao');
+  res.json(db.prepare('SELECT * FROM vales WHERE id=?').get(id));
+});
+app.post('/api/vales/:id/descontar', (req, res) => {
+  if (!gateFinLancar(req, res)) return;
+  const id = +req.params.id, v = db.prepare('SELECT * FROM vales WHERE id=?').get(id);
+  if (!v) return res.status(404).json({ erro: 'Vale não encontrado.' });
+  db.prepare('UPDATE vales SET descontado=1, descontado_em=? WHERE id=?').run(new Date().toISOString(), id);
+  res.json({ ok: true });
+});
+app.delete('/api/vales/:id', (req, res) => {
+  if (!gateFinLancar(req, res)) return;
+  const id = +req.params.id, v = db.prepare('SELECT * FROM vales WHERE id=?').get(id);
+  if (!v) return res.status(404).json({ erro: 'Vale não encontrado.' });
+  if (v.financeiro_movimento_id) { try { estornarMovimento(v.financeiro_movimento_id, 'vale removido', (req.usuario || {}).usuario || 'sistema'); } catch {} }
+  db.prepare('DELETE FROM vales WHERE id=?').run(id);
+  res.json({ ok: true });
+});
 app.get('/api/movimentacoes', (req, res) => {
   const w = [], a = [];
   if (req.query.tipo) { w.push('tipo=?'); a.push(req.query.tipo); }
