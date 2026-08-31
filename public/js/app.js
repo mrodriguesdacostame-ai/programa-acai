@@ -9054,35 +9054,44 @@ async function carregarContasPagar() {
     if (c.status === 'pago') g.pagas++; else { g.abertas++; const v = (c.data_vencimento || '').slice(0, 10); if (v && (!g.proxVenc || v < g.proxVenc)) { g.proxVenc = v; g.proxConta = c; } if (c.bucket === 'vencida') g.temVencida = true; }
   });
   // padrão "Não pagas": esconde os grupos totalmente quitados (mostra os que têm parcela em aberto)
-  const gruposMostrar = soAbertas ? grupos.filter(g => g.abertas > 0) : grupos;
+  const gruposMostrar = soAbertas ? grupos.filter(g => g.abertas > 0) : grupos.slice();
+  // ordena por URGÊNCIA: vencidas primeiro, depois quem vence mais cedo (hoje sobe); sem vencimento por último
+  const hojeYmd = new Date().toISOString().slice(0, 10);
+  gruposMostrar.forEach(g => { g.venceHoje = g.proxVenc === hojeYmd; });
+  gruposMostrar.sort((a, b) => {
+    const av = a.temVencida ? 0 : (a.venceHoje ? 1 : 2), bv = b.temVencida ? 0 : (b.venceHoje ? 1 : 2);
+    if (av !== bv) return av - bv;
+    const ad = a.proxVenc || '9999-99-99', bd = b.proxVenc || '9999-99-99';
+    return ad < bd ? -1 : ad > bd ? 1 : 0;
+  });
   const btnPagar = c => (finPodeLancar() && (c.status === 'aberto' || c.status === 'parcial'))
     ? (c.acai ? `<button class="fin-mini" data-erp-acao="cp-pagar-acai" data-acaiid="${c.acaiId}">💵 Pagar</button>`
               : `<button class="fin-mini" data-erp-acao="cp-pagar" data-id="${c.id}" data-rest="${c.restante}">💵 Pagar</button>`) : '';
   // editar valor/descrição/vencimento — só conta manual (não açaí, não de compra)
-  const btnEditar = c => (finPodeLancar() && !c.acai && !c.compra_id) ? `<button class="fin-mini" data-erp-acao="cp-editar" data-id="${c.id}" title="Editar valor/descrição/vencimento" onclick="event.stopPropagation()">✏️</button>` : '';
+  const btnEditar = c => (finPodeLancar() && !c.acai && !c.compra_id) ? `<button class="fin-mini" data-erp-acao="cp-editar" data-id="${c.id}" title="Editar valor/descrição/vencimento">✏️</button>` : '';
   const parcelaRow = c => `<tr class="cpg-parc"><td>${erpFmtData(c.data_vencimento)}${c.bucket === 'vencida' ? ' <span class="erp-venc-flag">vencida</span>' : ''}</td><td class="col-num">${fmt(c.valor_total)}</td><td class="col-num">${fmt(c.pago)}</td><td class="col-num"><b>${fmt(c.restante)}</b></td><td>${erpStatusChip(c.status)}</td><td class="col-num">${btnEditar(c)} ${btnPagar(c)}</td></tr>`;
   const html = gruposMostrar.map((g, gi) => {
     if (g.parcelas.length === 1) { const c = g.parcelas[0];
-      return `<div class="cpg-card ${g.temVencida ? 'venc' : ''}"><div class="cpg-head cpg-solo">
+      return `<div class="cpg-card ${g.temVencida ? 'venc' : ''}${g.venceHoje ? ' hoje' : ''}"><div class="cpg-head cpg-solo">
           <div class="cpg-title"><b>${crmEsc(g.titulo)}</b>${g.fornecedor ? `<span class="cpg-forn">${crmEsc(g.fornecedor)}</span>` : ''}</div>
           <div class="cpg-venc">${erpFmtData(c.data_vencimento)}${c.bucket === 'vencida' ? ' <span class="erp-venc-flag">vencida</span>' : ''}</div>
           <div class="cpg-vals"><span class="cpg-aberto ${c.restante > 0 ? '' : 'qui'}">${c.restante > 0 ? 'aberto ' + fmt(c.restante) : '✅ pago'}</span></div>
           <div class="cpg-acao">${btnEditar(c)} ${btnPagar(c)}</div></div></div>`;
     }
     const abertosTxt = g.abertas ? `${g.abertas} aberta(s)` : 'tudo pago';
-    return `<div class="cpg-card ${g.temVencida ? 'venc' : ''}">
+    return `<div class="cpg-card ${g.temVencida ? 'venc' : ''}${g.venceHoje ? ' hoje' : ''}">
         <div class="cpg-head" data-cpg-toggle="${gi}" tabindex="0" title="clique pra ver as parcelas">
           <span class="cpg-seta">▸</span>
           <div class="cpg-title"><b>${crmEsc(g.titulo)}</b>${g.fornecedor ? `<span class="cpg-forn">${crmEsc(g.fornecedor)}</span>` : ''}<span class="cpg-badges"><span class="cpg-badge">${g.parcelas.length}x</span><span class="cpg-badge ${g.abertas ? 'ab' : 'pg'}">${abertosTxt}</span>${g.pagas ? `<span class="cpg-badge pg">${g.pagas} paga(s)</span>` : ''}</span></div>
           <div class="cpg-venc">${g.proxVenc ? `próx.: ${erpFmtData(g.proxVenc)}${g.temVencida ? ' <span class="erp-venc-flag">vencida</span>' : ''}` : ''}</div>
           <div class="cpg-vals"><span class="cpg-aberto">${g.aberto > 0 ? 'aberto ' + fmt(g.aberto) : '✅ quitado'}</span><small>total ${fmt(g.total)}</small></div>
-          <div class="cpg-acao">${(g.proxConta && !g.proxConta.acai && finPodeLancar()) ? `<button class="fin-mini" data-erp-acao="cp-pagar" data-id="${g.proxConta.id}" data-rest="${g.proxConta.restante}" onclick="event.stopPropagation()">💵 Pagar próxima</button>` : ''}</div>
+          <div class="cpg-acao">${(g.proxConta && !g.proxConta.acai && finPodeLancar()) ? `<button class="fin-mini" data-erp-acao="cp-pagar" data-id="${g.proxConta.id}" data-rest="${g.proxConta.restante}">💵 Pagar próxima</button>` : ''}</div>
         </div>
         <div class="cpg-parcelas" data-cpg-grp="${gi}" style="display:none"><table class="cpg-tab"><thead><tr><th>Vencimento</th><th class="col-num">Valor</th><th class="col-num">Pago</th><th class="col-num">Aberto</th><th>Status</th><th></th></tr></thead><tbody>${g.parcelas.map(parcelaRow).join('')}</tbody></table></div>
       </div>`;
   }).join('');
   $('erp-cp-lista').innerHTML = gruposMostrar.length ? html : `<div class="ac-vazio">${soAbertas ? 'Nenhuma conta em aberto 🎉' : 'Nenhuma conta a pagar no filtro.'}</div>`;
-  $('erp-cp-lista').querySelectorAll('[data-cpg-toggle]').forEach(h => { const gi = h.dataset.cpgToggle; const box = $('erp-cp-lista').querySelector(`[data-cpg-grp="${gi}"]`); const t = () => { const open = box.style.display === 'none'; box.style.display = open ? '' : 'none'; h.querySelector('.cpg-seta').textContent = open ? '▾' : '▸'; }; h.addEventListener('click', t); h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t(); } }); });
+  $('erp-cp-lista').querySelectorAll('[data-cpg-toggle]').forEach(h => { const gi = h.dataset.cpgToggle; const box = $('erp-cp-lista').querySelector(`[data-cpg-grp="${gi}"]`); const t = () => { const open = box.style.display === 'none'; box.style.display = open ? '' : 'none'; h.querySelector('.cpg-seta').textContent = open ? '▾' : '▸'; }; h.addEventListener('click', e => { if (e.target.closest('[data-erp-acao]')) return; t(); }); h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t(); } }); });
 }
 // Editar uma conta a pagar lançada errada (valor/descrição/vencimento). Só conta manual.
 function abrirEditarContaPagar(id) {

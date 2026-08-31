@@ -2655,6 +2655,8 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 /* Contas a pagar — cards claros agrupados por conta (parcelas colapsáveis) */
 #tela-financeiro .cpg-card { background: #fff; border: 1px solid #dbe6f2; border-radius: 12px; margin-bottom: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(15,47,77,.06); }
 #tela-financeiro .cpg-card.venc { border-color: #e6a6a0; }
+#tela-financeiro .cpg-card.hoje { border-color: #e6b800; box-shadow: 0 0 0 2px rgba(230,184,0,.25), 0 1px 3px rgba(15,47,77,.06); }
+#tela-financeiro .cpg-card.hoje .cpg-title b::after { content: ' ⏰ vence hoje'; color: #a5771f; font-size: 12px; font-weight: 800; }
 #tela-financeiro .cpg-head { display: grid; grid-template-columns: 18px minmax(0,1fr) auto auto auto; align-items: center; gap: 12px; padding: 10px 14px; cursor: pointer; }
 #tela-financeiro .cpg-head.cpg-solo { grid-template-columns: minmax(0,1fr) auto auto auto; cursor: default; }
 #tela-financeiro .cpg-head:hover { background: #f4f9ff; }
