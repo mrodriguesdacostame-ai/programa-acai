@@ -7503,7 +7503,7 @@ function confMovimentosHTML() {
   const m = confMovimentos || { entradas: [], saidas: [], totalEntradas: 0, totalSaidas: 0 };
   const porData = a => (a || []).slice().sort((x, y) => new Date(x.data) - new Date(y.data));   // sempre em ORDEM DE DATA
   const linha = x => `<tr><td class="conf-mv-hora">${x.data ? fmtDataHora(x.data) : ''}</td><td class="conf-mv-desc">${crmEsc(x.descricao)}</td><td class="col-num">${fmt(x.valor)}</td><td class="conf-mv-fx">${x.podeFluxo
-      ? `<button type="button" class="conf-fx-tog ${x.noFluxo ? 'on' : 'off'}" data-fx-id="${x.id}" data-fx-on="${x.noFluxo ? 1 : 0}" title="${x.noFluxo ? 'Está indo pro fluxo de caixa — clique p/ deixar só na gaveta' : 'Só na gaveta — clique p/ mandar pro fluxo de caixa'}">${x.noFluxo ? '💵 no fluxo' : '🧾 só gaveta'}</button>`
+      ? `<button type="button" class="conf-fx-tog ${x.noFluxo ? 'on' : 'off'}" data-fx-id="${x.id}" data-fx-on="${x.noFluxo ? 1 : 0}" title="${x.noFluxo ? 'Já está no fluxo de caixa — clique p/ deixar só na gaveta do dia' : 'Só na gaveta do dia — clique p/ lançar no fluxo de caixa'}">${x.noFluxo ? '💵 no fluxo' : '➕ lançar no fluxo'}</button>`
       : '<span class="conf-fx-na" title="Recebimentos já entram no fluxo normalmente">—</span>'}</td></tr>`;
   const bloco = (titulo, ico, lista, total, cls) => `
     <div class="conf-mv-bloco conf-mv-${cls}">
@@ -7513,7 +7513,7 @@ function confMovimentosHTML() {
   const saldo = Math.round(((m.totalEntradas || 0) - (m.totalSaidas || 0)) * 100) / 100;
   return `
     <div class="fin-box-tit">📋 Movimentações do período <small>(fora as vendas — suprimento, sangria, recebimentos e despesas)</small></div>
-    <div class="conf-mv-aviso">💡 Sangrias e suprimentos entram só no <b>caixa do dia</b>. Clique em <b>“🧾 só gaveta”</b> pra também mandar pro <b>fluxo de caixa / painel financeiro</b> (vira <b>💵 no fluxo</b>).</div>
+    <div class="conf-mv-aviso">💡 Sangrias e suprimentos entram só no <b>caixa do dia</b>. Clique em <b>“➕ lançar no fluxo”</b> pra também mandar pro <b>fluxo de caixa / painel financeiro</b> (vira <b>💵 no fluxo</b>).</div>
     <div class="conf-mv-grid">
       ${bloco('Entradas', '⬆️', porData(m.entradas), m.totalEntradas, 'ent')}
       ${bloco('Saídas / Despesas', '⬇️', porData(m.saidas), m.totalSaidas, 'sai')}
