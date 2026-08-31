@@ -4511,6 +4511,24 @@ app.post('/api/erp/contas-pagar', (req, res) => {
   manut.logAcao('conta a pagar criada', 'contas_pagar', { id: info.lastInsertRowid, valor: +d.valor_total, por: (req.usuario || {}).usuario }, 'operacao');
   res.json(db.prepare('SELECT * FROM contas_pagar WHERE id=?').get(info.lastInsertRowid));
 });
+// Editar uma conta a pagar (valor/descrição/vencimento) — corrige lançamento errado. Não mexe em
+// conta de COMPRA (edite pela compra) e não deixa o valor cair abaixo do já pago.
+app.put('/api/erp/contas-pagar/:id', (req, res) => {
+  if (!gateFinLancar(req, res)) return;
+  const id = +req.params.id, c = db.prepare('SELECT * FROM contas_pagar WHERE id=?').get(id);
+  if (!c) return res.status(404).json({ erro: 'Conta não encontrada.' });
+  if (c.compra_id) return res.status(400).json({ erro: 'Conta de compra — edite pela compra correspondente.' });
+  const d = req.body || {};
+  if (d.valor_total != null) {
+    const nv = +d.valor_total; if (!(nv > 0)) return res.status(400).json({ erro: 'Valor inválido.' });
+    const pago = valorPagoConta(id); if (nv + 0.0001 < pago) return res.status(400).json({ erro: `Novo valor (${fmtBRLc(nv)}) abaixo do já pago (${fmtBRLc(pago)}).` });
+  }
+  db.prepare('UPDATE contas_pagar SET descricao=COALESCE(?,descricao), valor_total=COALESCE(?,valor_total), data_vencimento=COALESCE(?,data_vencimento), fornecedor_id=COALESCE(?,fornecedor_id) WHERE id=?')
+    .run(d.descricao ?? null, d.valor_total != null ? +d.valor_total : null, d.data_vencimento ?? null, d.fornecedor_id != null ? (+d.fornecedor_id || null) : null, id);
+  try { recomputarConta(id); } catch {}   // reavalia status (aberto/parcial/pago) com o novo total
+  manut.logAcao('conta a pagar editada', 'contas_pagar', { id, por: (req.usuario || {}).usuario }, 'operacao');
+  res.json(db.prepare('SELECT * FROM contas_pagar WHERE id=?').get(id));
+});
 app.post('/api/erp/contas-pagar/:id/pagar', (req, res) => { if (!gateFinLancar(req, res)) return; const r = pagarContaPagar(+req.params.id, { ...req.body, por: (req.usuario || {}).usuario }); r.erro ? res.status(400).json(r) : res.json(r); });
 app.post('/api/erp/contas-pagar/:id/cancelar', (req, res) => {
   if (!gateFinAdmin(req, res)) return;

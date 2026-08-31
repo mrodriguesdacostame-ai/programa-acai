@@ -1914,6 +1914,19 @@ async function abrirLitros() {
   };
   f8VoltarAtual = voltarSelecao;   // o Shift+Enter global usa esta função quando o F8 está aberto
 
+  // Fecha o F8 sozinho após 7s SEM atividade (tecla/clique/digitação/movimento do mouse).
+  {
+    const ovInat = $('overlay-erp');
+    let inatTimer = null;
+    const evs = ['keydown', 'pointerdown', 'mousemove', 'wheel', 'touchstart', 'input'];
+    const fecharPorInatividade = () => { const ov = $('overlay-erp'); if (ov && ov.classList.contains('aberto') && ov.querySelector('.ltr')) fecharErpModal(); };
+    const resetInat = () => { clearTimeout(inatTimer); inatTimer = setTimeout(fecharPorInatividade, 7000); };
+    evs.forEach(ev => document.addEventListener(ev, resetInat, true));
+    resetInat();
+    const obs = new MutationObserver(() => { if (!ovInat.classList.contains('aberto')) { clearTimeout(inatTimer); evs.forEach(ev => document.removeEventListener(ev, resetInat, true)); obs.disconnect(); } });
+    obs.observe(ovInat, { attributes: true, attributeFilter: ['class'] });
+  }
+
   function renderPasso1() {
     stepBox.innerHTML = `
       <div class="ltr-reg">
@@ -1930,6 +1943,7 @@ async function abrirLitros() {
         const [q, c] = t.split('*');
         const qn = parseFloat(String(q).replace(',', '.')), cod = String(c || '').trim();
         if (!(qn > 0) || !cod) { toast('⚠ Fórmula inválida em "' + t + '"'); inp.focus(); return; }
+        if (!qtdMeioValida(qn)) { avisoGrande('LITROS NÃO CONFERE', 'Só de meio em meio: 0,5 · 1 · 1,5 · 2… (não vale ' + String(q).trim() + ')'); bipErro(); inp.focus(); return; }
         let obj = valores.find(v => v.codigo && String(v.codigo).toLowerCase() === cod.toLowerCase());
         if (!obj) { const p = (typeof buscarPorCodigo === 'function') ? buscarPorCodigo(cod) : null; if (p) obj = { valor: r2loc(+p.precoVenda || +p.preco || 0), codigo: p.codigo, nome: p.nome }; }
         if (!obj || !(obj.valor > 0)) { toast('❌ Código não encontrado ou sem preço: ' + cod); inp.focus(); return; }
@@ -1946,6 +1960,7 @@ async function abrirLitros() {
       // só a quantidade → fluxo normal (escolhe o valor no passo 2)
       const v = +String(raw).replace(',', '.') || 0;
       if (!(v > 0)) { toast('⚠ Informe os litros'); inp.focus(); return; }
+      if (!qtdMeioValida(v)) { avisoGrande('LITROS NÃO CONFERE', 'Só de meio em meio: 0,5 · 1 · 1,5 · 2… (não vale ' + raw + ')'); bipErro(); inp.focus(); return; }
       litros = r2loc(v); passo = 2; render();
     };
     inp.addEventListener('keydown', e => {
@@ -8996,6 +9011,7 @@ async function renderCompraRelatorios() {
 }
 
 // ── CONTAS A PAGAR ──
+let cpContasCache = [];   // guarda as contas do último carregamento (p/ o editar achar pelo id)
 async function renderFinContasPagar() {
   const el = $('fin-conteudo'); el.innerHTML = biLoading(); erpCompraAberta = null;
   if (!erpFornecedoresCache.length) { try { erpFornecedoresCache = await erpGet('fornecedores'); } catch {} }
@@ -9005,7 +9021,7 @@ async function renderFinContasPagar() {
     ${renderAlertasBanner(alertas)}
     <div class="fin-filtros">
       <label>Fornecedor<select id="pf-forn"><option value="">Todos</option>${erpOptFornecedores()}</select></label>
-      <label>Status<select id="pf-status"><option value="">Todos</option><option value="aberto">Em aberto</option><option value="parcial">Parcial</option><option value="pago">Pago</option><option value="cancelada">Cancelada</option></select></label>
+      <label>Status<select id="pf-status"><option value="__abertas" selected>Não pagas</option><option value="">Todos</option><option value="aberto">Em aberto</option><option value="parcial">Parcial</option><option value="pago">Pago</option><option value="cancelada">Cancelada</option></select></label>
       <label>Situação<select id="pf-bucket"><option value="">Todas</option><option value="vencida">Vencidas</option><option value="hoje">Vencem hoje</option><option value="amanha">Amanhã</option><option value="proximos">Próximos 7 dias</option></select></label>
       <label>Venc. de<input type="date" id="pf-de"></label><label>até<input type="date" id="pf-ate"></label>
       <label>Buscar<input id="pf-busca" placeholder="fornecedor/descrição"></label>
@@ -9020,10 +9036,11 @@ function renderAlertasBanner(a) {
   return `<div class="erp-alertas">🔔 ${chip((a.vencidas || []).length, 'Vencidas', 'vermelho')}${chip((a.venceHoje || []).length, 'Vencem hoje', 'amarelo')}${chip((a.venceAmanha || []).length, 'Amanhã', '')}${chip((a.fornecedoresSemCompra || []).length, 'Fornecedor sumido', '')}${chip((a.aumentosPreco || []).length, '↑ Preço acima da média', 'vermelho')}</div>`;
 }
 async function carregarContasPagar() {
+  const soAbertas = ($('pf-status') && $('pf-status').value === '__abertas');   // padrão: só as NÃO pagas
   const q = new URLSearchParams(), map = { fornecedor_id: 'pf-forn', status: 'pf-status', bucket: 'pf-bucket', vencDe: 'pf-de', vencAte: 'pf-ate', busca: 'pf-busca' };
-  for (const [k, id] of Object.entries(map)) { const v = $(id) && $(id).value; if (v) q.set(k, v); }
+  for (const [k, id] of Object.entries(map)) { const v = $(id) && $(id).value; if (v && v !== '__abertas') q.set(k, v); }   // "__abertas" é filtro do cliente (aberto+parcial)
   let d; try { d = await erpGet('contas-pagar?' + q); } catch { $('erp-cp-lista').innerHTML = biErro(); return; }
-  const r = d.resumo;
+  const r = d.resumo; cpContasCache = d.contas || [];
   $('erp-cp-resumo').innerHTML = `<div class="erp-cp-chips"><span class="erp-cp-chip vermelho">Vencidas ${r.vencidas}</span><span class="erp-cp-chip amarelo">Hoje ${r.hoje}</span><span class="erp-cp-chip">Amanhã ${r.amanha}</span><span class="erp-cp-chip">Próx. 7d ${r.proximos}</span><span class="erp-cp-chip">Parciais ${r.parciais}</span><span class="erp-cp-chip verde">Pagas ${r.pagas}</span><span class="erp-cp-total">Em aberto: <b>${fmt(d.totalAberto)}</b></span></div>`;
   // agrupa parcelas da MESMA conta (mesmo fornecedor + descrição-base + valor) num card colapsável
   const baseDesc = s => (s || '').replace(/\s*\(\d+\/\d+\)\s*$/, '').trim() || 'Conta a pagar';
@@ -9036,17 +9053,21 @@ async function carregarContasPagar() {
     g.total += +c.valor_total || 0; g.aberto += +c.restante || 0;
     if (c.status === 'pago') g.pagas++; else { g.abertas++; const v = (c.data_vencimento || '').slice(0, 10); if (v && (!g.proxVenc || v < g.proxVenc)) { g.proxVenc = v; g.proxConta = c; } if (c.bucket === 'vencida') g.temVencida = true; }
   });
+  // padrão "Não pagas": esconde os grupos totalmente quitados (mostra os que têm parcela em aberto)
+  const gruposMostrar = soAbertas ? grupos.filter(g => g.abertas > 0) : grupos;
   const btnPagar = c => (finPodeLancar() && (c.status === 'aberto' || c.status === 'parcial'))
     ? (c.acai ? `<button class="fin-mini" data-erp-acao="cp-pagar-acai" data-acaiid="${c.acaiId}">💵 Pagar</button>`
               : `<button class="fin-mini" data-erp-acao="cp-pagar" data-id="${c.id}" data-rest="${c.restante}">💵 Pagar</button>`) : '';
-  const parcelaRow = c => `<tr class="cpg-parc"><td>${erpFmtData(c.data_vencimento)}${c.bucket === 'vencida' ? ' <span class="erp-venc-flag">vencida</span>' : ''}</td><td class="col-num">${fmt(c.valor_total)}</td><td class="col-num">${fmt(c.pago)}</td><td class="col-num"><b>${fmt(c.restante)}</b></td><td>${erpStatusChip(c.status)}</td><td class="col-num">${btnPagar(c)}</td></tr>`;
-  const html = grupos.map((g, gi) => {
+  // editar valor/descrição/vencimento — só conta manual (não açaí, não de compra)
+  const btnEditar = c => (finPodeLancar() && !c.acai && !c.compra_id) ? `<button class="fin-mini" data-erp-acao="cp-editar" data-id="${c.id}" title="Editar valor/descrição/vencimento" onclick="event.stopPropagation()">✏️</button>` : '';
+  const parcelaRow = c => `<tr class="cpg-parc"><td>${erpFmtData(c.data_vencimento)}${c.bucket === 'vencida' ? ' <span class="erp-venc-flag">vencida</span>' : ''}</td><td class="col-num">${fmt(c.valor_total)}</td><td class="col-num">${fmt(c.pago)}</td><td class="col-num"><b>${fmt(c.restante)}</b></td><td>${erpStatusChip(c.status)}</td><td class="col-num">${btnEditar(c)} ${btnPagar(c)}</td></tr>`;
+  const html = gruposMostrar.map((g, gi) => {
     if (g.parcelas.length === 1) { const c = g.parcelas[0];
       return `<div class="cpg-card ${g.temVencida ? 'venc' : ''}"><div class="cpg-head cpg-solo">
           <div class="cpg-title"><b>${crmEsc(g.titulo)}</b>${g.fornecedor ? `<span class="cpg-forn">${crmEsc(g.fornecedor)}</span>` : ''}</div>
           <div class="cpg-venc">${erpFmtData(c.data_vencimento)}${c.bucket === 'vencida' ? ' <span class="erp-venc-flag">vencida</span>' : ''}</div>
           <div class="cpg-vals"><span class="cpg-aberto ${c.restante > 0 ? '' : 'qui'}">${c.restante > 0 ? 'aberto ' + fmt(c.restante) : '✅ pago'}</span></div>
-          <div class="cpg-acao">${btnPagar(c)}</div></div></div>`;
+          <div class="cpg-acao">${btnEditar(c)} ${btnPagar(c)}</div></div></div>`;
     }
     const abertosTxt = g.abertas ? `${g.abertas} aberta(s)` : 'tudo pago';
     return `<div class="cpg-card ${g.temVencida ? 'venc' : ''}">
@@ -9060,8 +9081,33 @@ async function carregarContasPagar() {
         <div class="cpg-parcelas" data-cpg-grp="${gi}" style="display:none"><table class="cpg-tab"><thead><tr><th>Vencimento</th><th class="col-num">Valor</th><th class="col-num">Pago</th><th class="col-num">Aberto</th><th>Status</th><th></th></tr></thead><tbody>${g.parcelas.map(parcelaRow).join('')}</tbody></table></div>
       </div>`;
   }).join('');
-  $('erp-cp-lista').innerHTML = grupos.length ? html : '<div class="ac-vazio">Nenhuma conta a pagar no filtro.</div>';
+  $('erp-cp-lista').innerHTML = gruposMostrar.length ? html : `<div class="ac-vazio">${soAbertas ? 'Nenhuma conta em aberto 🎉' : 'Nenhuma conta a pagar no filtro.'}</div>`;
   $('erp-cp-lista').querySelectorAll('[data-cpg-toggle]').forEach(h => { const gi = h.dataset.cpgToggle; const box = $('erp-cp-lista').querySelector(`[data-cpg-grp="${gi}"]`); const t = () => { const open = box.style.display === 'none'; box.style.display = open ? '' : 'none'; h.querySelector('.cpg-seta').textContent = open ? '▾' : '▸'; }; h.addEventListener('click', t); h.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t(); } }); });
+}
+// Editar uma conta a pagar lançada errada (valor/descrição/vencimento). Só conta manual.
+function abrirEditarContaPagar(id) {
+  const c = (cpContasCache || []).find(x => x.id === id);
+  if (!c) { toast('⚠ Conta não encontrada'); return; }
+  const venc = (c.data_vencimento || '').slice(0, 10);
+  abrirErpModal(`<h3 class="erp-modal-tit">✏️ Editar conta a pagar</h3>
+    <form id="erp-form-cpedit" class="fin-form">
+      ${(+c.pago > 0) ? `<div class="fin-hint">⚠ Já foi pago ${fmt(c.pago)} nesta conta — o valor não pode ficar abaixo disso.</div>` : ''}
+      <label>Descrição<input id="cpe-desc" autocomplete="off" value="${crmEsc(c.descricao || '')}"></label>
+      <label>Fornecedor / origem<input id="cpe-forn" autocomplete="off" value="${crmEsc(c.fornecedor_nome || '')}" placeholder="opcional"></label>
+      <div class="fin-frow"><label>Valor (R$)<input type="number" step="0.01" min="0.01" id="cpe-valor" value="${(+c.valor_total || 0).toFixed(2)}"></label><label>Vencimento<input type="date" id="cpe-venc" value="${venc}"></label></div>
+      <button type="submit" class="fin-btn-salvar">💾 Salvar alterações</button></form>`);
+  $('modal-erp-box').classList.add('erp-ci');
+  setTimeout(() => { const v = $('cpe-valor'); if (v) { v.focus(); v.select(); } }, 40);
+  $('erp-form-cpedit').addEventListener('submit', async e => {
+    e.preventDefault();
+    const valor = parseFloat(($('cpe-valor').value || '').replace(',', '.'));
+    if (!(valor > 0)) { toast('⚠ Valor inválido'); return; }
+    const fornId = await resolverFornecedorId($('cpe-forn').value);   // acha ou cria (fica salvo)
+    const body = { descricao: $('cpe-desc').value.trim(), valor_total: valor, data_vencimento: $('cpe-venc').value || null, fornecedor_id: fornId };
+    const r = await (await fetch('/api/erp/contas-pagar/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
+    if (r && r.erro) { toast('⚠ ' + r.erro); return; }
+    toast('💾 Conta atualizada'); fecharErpModal(); carregarContasPagar();
+  });
 }
 function abrirPagarModal(contaId, restante) {
   const contasFin = finContas.filter(c => c.ativo);
@@ -9222,6 +9268,7 @@ $('fin-conteudo').addEventListener('click', async e => {
   }
   else if (acao === 'cp-nova') abrirContaAvulsaForm();
   else if (acao === 'cp-func') abrirPagamentoFuncionario();
+  else if (acao === 'cp-editar') abrirEditarContaPagar(+id);
   else if (acao === 'cp-abrir') finIr('contas_pagar');
   else if (acao === 'cp-filtrar') carregarContasPagar();
   else if (acao === 'receb-novo') abrirRecebimentoModal(id);
