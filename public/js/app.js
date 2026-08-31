@@ -9041,7 +9041,12 @@ async function carregarContasPagar() {
   for (const [k, id] of Object.entries(map)) { const v = $(id) && $(id).value; if (v && v !== '__abertas') q.set(k, v); }   // "__abertas" é filtro do cliente (aberto+parcial)
   let d; try { d = await erpGet('contas-pagar?' + q); } catch { $('erp-cp-lista').innerHTML = biErro(); return; }
   const r = d.resumo; cpContasCache = d.contas || [];
-  $('erp-cp-resumo').innerHTML = `<div class="erp-cp-chips"><span class="erp-cp-chip vermelho">Vencidas ${r.vencidas}</span><span class="erp-cp-chip amarelo">Hoje ${r.hoje}</span><span class="erp-cp-chip">Amanhã ${r.amanha}</span><span class="erp-cp-chip">Próx. 7d ${r.proximos}</span><span class="erp-cp-chip">Parciais ${r.parciais}</span><span class="erp-cp-chip verde">Pagas ${r.pagas}</span><span class="erp-cp-total">Em aberto: <b>${fmt(d.totalAberto)}</b></span></div>`;
+  const bkt = ($('pf-bucket') || {}).value || '', sts = ($('pf-status') || {}).value || '';
+  const chipB = (bucket, cls, txt, n) => `<button type="button" class="erp-cp-chip ${cls}${bkt === bucket ? ' ativo' : ''}" data-cp-bucket="${bucket}" title="clique pra filtrar">${txt} <b>${n}</b></button>`;
+  const chipS = (status, cls, txt, n) => `<button type="button" class="erp-cp-chip ${cls}${sts === status ? ' ativo' : ''}" data-cp-status="${status}" title="clique pra filtrar">${txt} <b>${n}</b></button>`;
+  $('erp-cp-resumo').innerHTML = `<div class="erp-cp-chips">${chipB('vencida', 'vermelho', '🔴 Vencidas', r.vencidas)}${chipB('hoje', 'amarelo', '⏰ Vencem hoje', r.hoje)}${chipB('amanha', '', 'Amanhã', r.amanha)}${chipB('proximos', '', 'Próx. 7d', r.proximos)}${chipS('parcial', '', 'Parciais', r.parciais)}${chipS('pago', 'verde', 'Pagas', r.pagas)}<span class="erp-cp-total">Em aberto: <b>${fmt(d.totalAberto)}</b></span></div>`;
+  $('erp-cp-resumo').querySelectorAll('[data-cp-bucket]').forEach(b => b.addEventListener('click', () => { const cur = $('pf-bucket'); if (!cur) return; cur.value = (cur.value === b.dataset.cpBucket ? '' : b.dataset.cpBucket); carregarContasPagar(); }));
+  $('erp-cp-resumo').querySelectorAll('[data-cp-status]').forEach(b => b.addEventListener('click', () => { const cur = $('pf-status'); if (!cur) return; cur.value = (cur.value === b.dataset.cpStatus ? '__abertas' : b.dataset.cpStatus); if ($('pf-bucket')) $('pf-bucket').value = ''; carregarContasPagar(); }));
   // agrupa parcelas da MESMA conta (mesmo fornecedor + descrição-base + valor) num card colapsável
   const baseDesc = s => (s || '').replace(/\s*\(\d+\/\d+\)\s*$/, '').trim() || 'Conta a pagar';
   const grupos = [], mapa = new Map();

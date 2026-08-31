@@ -3059,6 +3059,9 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .erp-cp-chip.vermelho { background: rgba(255, 83, 112, 0.15); color: var(--vermelho); }
 .erp-cp-chip.amarelo { background: rgba(185, 130, 10, 0.16); color: var(--amarelo); }
 .erp-cp-chip.verde { background: rgba(0, 230, 118, 0.15); color: var(--verde); }
+button.erp-cp-chip { font-family: inherit; border: 1.5px solid transparent; cursor: pointer; transition: .12s; }
+button.erp-cp-chip:hover { filter: brightness(0.96); transform: translateY(-1px); }
+button.erp-cp-chip.ativo { border-color: currentColor; box-shadow: 0 2px 8px rgba(15,47,77,.18); }
 .erp-cp-total { margin-left: auto; font-size: 13px; color: rgba(15, 47, 77, 0.75); }
 .erp-cp-total b { font-variant-numeric: tabular-nums; color: var(--acai-rosa); }
 .erp-venc-flag { font-size: 10px; font-weight: 800; color: var(--vermelho); background: rgba(255, 83, 112, 0.12); padding: 1px 6px; border-radius: 6px; }
