@@ -1779,7 +1779,15 @@ function litrosResumo(rows) {
     grupos[key].litros = r2(grupos[key].litros + l); grupos[key].n++;
   }
   const net = Math.max(0, r2(bruto - gelado));   // líquido = produzido − gelado
-  if (bruto > 0 && net < bruto) for (const key in grupos) grupos[key].litros = r2(grupos[key].litros * net / bruto);
+  if (bruto > 0 && net < bruto) {
+    for (const key in grupos) grupos[key].litros = r2(grupos[key].litros * net / bruto);
+    // a SOMA dos tipos tem que dar o líquido REAL: o resíduo do arredondamento vai no maior grupo
+    const keys = Object.keys(grupos);
+    if (keys.length) {
+      const soma = r2(keys.reduce((s, k) => s + grupos[k].litros, 0)), resto = r2(net - soma);
+      if (Math.abs(resto) >= 0.001) { const maior = keys.reduce((a, b) => (grupos[a].litros >= grupos[b].litros ? a : b)); grupos[maior].litros = r2(grupos[maior].litros + resto); }
+    }
+  }
   return { totalLitros: r2(net), totalBruto: r2(bruto), geladoLitros: gelado, porValor: Object.values(grupos).filter(g => g.litros > 0).sort((a, b) => a.valor - b.valor), n: rows.length };
 }
 app.post('/api/litros', (req, res) => {
