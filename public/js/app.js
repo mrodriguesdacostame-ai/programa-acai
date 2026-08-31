@@ -7860,7 +7860,15 @@ function abrirBalancoReconciliacao(contados, faltantes) {
   $('brc-ok').addEventListener('click', () => { fecharErpModal(); balancoExecutarReconciliacao(contados, faltantes); });
 }
 async function balancoExecutarReconciliacao(contados, faltantes) {
-  const vendaItens = faltantes.filter(x => balancoMotivo[x.p.codigo] === 'venda');
+  // REFAZ a diferença com o estoque ATUAL do servidor (a contagem pode ter sido feita contra um
+  // estoque já defasado — outras vendas no meio; sem isso a "venda" reduziria a quantidade errada).
+  try {
+    const fresh = await (await fetch('/api/balanco/produtos', { cache: 'no-store' })).json();
+    const mapa = {}; (Array.isArray(fresh) ? fresh : []).forEach(p => { mapa[p.codigo] = p; });
+    contados.forEach(x => { const f = mapa[x.p.codigo]; if (f) { x.p = f; x.dif = Math.round((x.fisico - (+f.estoque || 0)) * 100) / 100; } });
+  } catch {}
+  // só é "venda" o que REALMENTE faltou (dif<0) agora E foi marcado como venda
+  const vendaItens = contados.filter(x => x.dif < 0 && balancoMotivo[x.p.codigo] === 'venda');
   const ajusteItens = contados.filter(x => !(x.dif < 0 && balancoMotivo[x.p.codigo] === 'venda'));   // perdas + sobras de estoque
   let vendaMsg = '';
   if (vendaItens.length) {
