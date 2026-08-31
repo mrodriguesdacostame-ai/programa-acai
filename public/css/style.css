@@ -2866,6 +2866,9 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .conf-mv-saldo strong.neg { color: var(--vermelho); }
 /* Fechamento: aviso + botão "só gaveta ↔ no fluxo" por sangria/suprimento */
 .conf-mv-aviso { margin: 6px 0 10px; font-size: 12.5px; line-height: 1.45; color: var(--branco); background: rgba(13, 110, 169, 0.14); border: 1px solid rgba(13, 110, 169, 0.30); border-radius: 10px; padding: 8px 11px; }
+.conf-mv-contador { margin: 6px 0 6px; font-size: 13px; color: var(--branco); background: rgba(185, 130, 10, 0.18); border: 1px solid rgba(185, 130, 10, 0.4); border-radius: 10px; padding: 8px 11px; font-weight: 700; }
+.conf-mv-contador small { font-weight: 500; opacity: .9; }
+#tela-financeiro .fin-mini.del:hover { background: #fdecec; border-color: #e6a6a0; color: #c0392b; }
 .conf-mv-fx { white-space: nowrap; text-align: right; width: 140px; }
 .conf-fx-tog { font-family: inherit; font-weight: 800; font-size: 11.5px; padding: 4px 9px; border-radius: 999px; cursor: pointer; border: 1.5px solid; transition: .12s; white-space: nowrap; }
 .conf-fx-tog.on { background: #e9f8ee; border-color: #6fc492; color: #0a7d3c; }         /* já vai pro fluxo */

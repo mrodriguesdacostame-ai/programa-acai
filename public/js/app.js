@@ -7526,8 +7526,13 @@ function confMovimentosHTML() {
       ${lista.length ? `<table class="conf-mv-tab"><tbody>${lista.map(linha).join('')}</tbody></table>` : '<div class="conf-mv-vazio">Nenhuma no período</div>'}
     </div>`;
   const saldo = Math.round(((m.totalEntradas || 0) - (m.totalSaidas || 0)) * 100) / 100;
+  // contador "aguardando decisão": sangrias/suprimentos que estão só na gaveta (não foram pro fluxo)
+  const caixaItens = [...(m.entradas || []), ...(m.saidas || [])].filter(x => x.podeFluxo);
+  const soGaveta = caixaItens.filter(x => !x.noFluxo).length, jaFluxo = caixaItens.filter(x => x.noFluxo).length;
+  const contador = caixaItens.length ? `<div class="conf-mv-contador">🔔 <b>${soGaveta}</b> do caixa <b>só na gaveta</b> aguardando decisão${jaFluxo ? ` · <span class="fin-pos">${jaFluxo} já no fluxo</span>` : ''} <small>— revise se alguma precisa ir pro fluxo</small></div>` : '';
   return `
     <div class="fin-box-tit">📋 Movimentações do período <small>(fora as vendas — suprimento, sangria, recebimentos e despesas)</small></div>
+    ${contador}
     <div class="conf-mv-aviso">💡 Sangrias e suprimentos entram só no <b>caixa do dia</b>. Clique em <b>“➕ lançar no fluxo”</b> pra também mandar pro <b>fluxo de caixa / painel financeiro</b> (vira <b>💵 no fluxo</b>).</div>
     <div class="conf-mv-grid">
       ${bloco('Entradas', '⬆️', porData(m.entradas), m.totalEntradas, 'ent')}
@@ -9074,14 +9079,15 @@ async function carregarContasPagar() {
               : `<button class="fin-mini" data-erp-acao="cp-pagar" data-id="${c.id}" data-rest="${c.restante}">💵 Pagar</button>`) : '';
   // editar valor/descrição/vencimento — só conta manual (não açaí, não de compra)
   const btnEditar = c => (finPodeLancar() && !c.acai && !c.compra_id) ? `<button class="fin-mini" data-erp-acao="cp-editar" data-id="${c.id}" title="Editar valor/descrição/vencimento">✏️</button>` : '';
-  const parcelaRow = c => `<tr class="cpg-parc"><td>${erpFmtData(c.data_vencimento)}${c.bucket === 'vencida' ? ' <span class="erp-venc-flag">vencida</span>' : ''}</td><td class="col-num">${fmt(c.valor_total)}</td><td class="col-num">${fmt(c.pago)}</td><td class="col-num"><b>${fmt(c.restante)}</b></td><td>${erpStatusChip(c.status)}</td><td class="col-num">${btnEditar(c)} ${btnPagar(c)}</td></tr>`;
+  const btnExcluir = c => (finPodeAdmin() && !c.acai && !c.compra_id) ? `<button class="fin-mini del" data-erp-acao="cp-excluir" data-id="${c.id}" title="Excluir (lançamento indevido)">🗑</button>` : '';
+  const parcelaRow = c => `<tr class="cpg-parc"><td>${erpFmtData(c.data_vencimento)}${c.bucket === 'vencida' ? ' <span class="erp-venc-flag">vencida</span>' : ''}</td><td class="col-num">${fmt(c.valor_total)}</td><td class="col-num">${fmt(c.pago)}</td><td class="col-num"><b>${fmt(c.restante)}</b></td><td>${erpStatusChip(c.status)}</td><td class="col-num">${btnEditar(c)} ${btnExcluir(c)} ${btnPagar(c)}</td></tr>`;
   const html = gruposMostrar.map((g, gi) => {
     if (g.parcelas.length === 1) { const c = g.parcelas[0];
       return `<div class="cpg-card ${g.temVencida ? 'venc' : ''}${g.venceHoje ? ' hoje' : ''}"><div class="cpg-head cpg-solo">
           <div class="cpg-title"><b>${crmEsc(g.titulo)}</b>${g.fornecedor ? `<span class="cpg-forn">${crmEsc(g.fornecedor)}</span>` : ''}</div>
           <div class="cpg-venc">${erpFmtData(c.data_vencimento)}${c.bucket === 'vencida' ? ' <span class="erp-venc-flag">vencida</span>' : ''}</div>
           <div class="cpg-vals"><span class="cpg-aberto ${c.restante > 0 ? '' : 'qui'}">${c.restante > 0 ? 'aberto ' + fmt(c.restante) : '✅ pago'}</span></div>
-          <div class="cpg-acao">${btnEditar(c)} ${btnPagar(c)}</div></div></div>`;
+          <div class="cpg-acao">${btnEditar(c)} ${btnExcluir(c)} ${btnPagar(c)}</div></div></div>`;
     }
     const abertosTxt = g.abertas ? `${g.abertas} aberta(s)` : 'tudo pago';
     return `<div class="cpg-card ${g.temVencida ? 'venc' : ''}${g.venceHoje ? ' hoje' : ''}">
@@ -9283,6 +9289,13 @@ $('fin-conteudo').addEventListener('click', async e => {
   else if (acao === 'cp-nova') abrirContaAvulsaForm();
   else if (acao === 'cp-func') abrirPagamentoFuncionario();
   else if (acao === 'cp-editar') abrirEditarContaPagar(+id);
+  else if (acao === 'cp-excluir') {
+    const c = (cpContasCache || []).find(x => x.id === +id);
+    if (!confirm(`Excluir de vez esta conta a pagar?\n\n${c ? (c.descricao || '') + ' · ' + fmt(c.valor_total) : ''}\n\nSó faça isso se foi lançada por engano.`)) return;
+    const r = await (await fetch('/api/erp/contas-pagar/' + id, { method: 'DELETE' })).json();
+    if (r && r.erro) { toast('⚠ ' + r.erro); return; }
+    toast('🗑 Conta excluída'); carregarContasPagar();
+  }
   else if (acao === 'cp-abrir') finIr('contas_pagar');
   else if (acao === 'cp-filtrar') carregarContasPagar();
   else if (acao === 'receb-novo') abrirRecebimentoModal(id);

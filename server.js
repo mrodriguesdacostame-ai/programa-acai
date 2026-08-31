@@ -3852,6 +3852,11 @@ migrar('caixa_sangria_supr_so_gaveta', () => {
 migrar('troco_fundo_so_gaveta', () => {
   db.prepare("UPDATE financeiro_movimentos SET fora_fluxo=1 WHERE referencia_tipo='caixa_suprimento' AND descricao LIKE 'Troco na gaveta%' AND COALESCE(fora_fluxo,0)=0").run();
 });
+// Pedido do Melque: TODAS as sangrias E suprimentos voltam a ser só-gaveta (tira as que vazaram
+// indevidas p/ Despesas/Receitas/fluxo). Se precisar de alguma no fluxo, marca no fechamento.
+migrar('caixa_todas_so_gaveta_v2', () => {
+  db.prepare("UPDATE financeiro_movimentos SET fora_fluxo=1 WHERE referencia_tipo IN ('caixa_sangria','caixa_suprimento') AND COALESCE(fora_fluxo,0)=0").run();
+});
 
 // Seed inicial (só se vazio) — contas e categorias que a loja já usa.
 (function seedFinanceiro() {
@@ -4553,6 +4558,17 @@ app.post('/api/erp/contas-pagar/:id/cancelar', (req, res) => {
   for (const p of db.prepare('SELECT id FROM contas_pagar_pagamentos WHERE conta_pagar_id=? AND estornado=0').all(id)) estornarPagamentoConta(p.id, (req.usuario || {}).usuario);
   db.prepare('UPDATE contas_pagar SET status=?, cancelada_em=? WHERE id=?').run('cancelada', new Date().toISOString(), id);
   manut.logAcao('conta a pagar cancelada', 'contas_pagar', { id, por: (req.usuario || {}).usuario }, 'operacao');
+  res.json({ ok: true });
+});
+// Excluir de vez uma conta lançada por engano — SÓ ADMIN, só se NÃO tem pagamento e não é de compra.
+app.delete('/api/erp/contas-pagar/:id', (req, res) => {
+  if (!gateFinAdmin(req, res)) return;
+  const id = +req.params.id, c = db.prepare('SELECT * FROM contas_pagar WHERE id=?').get(id);
+  if (!c) return res.status(404).json({ erro: 'Conta não encontrada.' });
+  if (c.compra_id) return res.status(400).json({ erro: 'Conta de compra — exclua pela compra correspondente.' });
+  if (valorPagoConta(id) > 0.0001) return res.status(400).json({ erro: 'Esta conta já tem pagamento — estorne o pagamento antes de excluir (ou use Cancelar).' });
+  db.prepare('DELETE FROM contas_pagar WHERE id=?').run(id);
+  manut.logAcao('conta a pagar excluída', 'contas_pagar', { id, descricao: c.descricao, valor: c.valor_total, por: (req.usuario || {}).usuario }, 'operacao');
   res.json({ ok: true });
 });
 app.post('/api/erp/pagamentos/:id/estornar', (req, res) => { if (!gateFinAdmin(req, res)) return; const r = estornarPagamentoConta(+req.params.id, (req.usuario || {}).usuario); r.erro ? res.status(400).json(r) : res.json(r); });
