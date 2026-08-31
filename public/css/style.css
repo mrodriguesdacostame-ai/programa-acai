@@ -2652,6 +2652,32 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .modal-erp .fsd-item .fsd-qty { font-weight: 900; color: #14467c; white-space: nowrap; }
 .modal-erp .fsd-item .fsd-de { color: #6b7688; white-space: nowrap; }
 .modal-erp .fsd-item td { padding: 5px 8px; border-bottom: 1px solid #eef2f7; }
+/* Contas a pagar — cards claros agrupados por conta (parcelas colapsáveis) */
+#tela-financeiro .cpg-card { background: #fff; border: 1px solid #dbe6f2; border-radius: 12px; margin-bottom: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(15,47,77,.06); }
+#tela-financeiro .cpg-card.venc { border-color: #e6a6a0; }
+#tela-financeiro .cpg-head { display: grid; grid-template-columns: 18px minmax(0,1fr) auto auto auto; align-items: center; gap: 12px; padding: 10px 14px; cursor: pointer; }
+#tela-financeiro .cpg-head.cpg-solo { grid-template-columns: minmax(0,1fr) auto auto auto; cursor: default; }
+#tela-financeiro .cpg-head:hover { background: #f4f9ff; }
+#tela-financeiro .cpg-head.cpg-solo:hover { background: #fff; }
+#tela-financeiro .cpg-seta { color: #0d6ea9; font-weight: 900; }
+#tela-financeiro .cpg-title { min-width: 0; }
+#tela-financeiro .cpg-title b { color: #14467c; font-size: 15px; }
+#tela-financeiro .cpg-forn { color: #6b7688; margin-left: 8px; font-size: 13px; }
+#tela-financeiro .cpg-badges { margin-left: 8px; display: inline-flex; gap: 6px; flex-wrap: wrap; vertical-align: middle; }
+#tela-financeiro .cpg-badge { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: #eef4fb; color: #14467c; }
+#tela-financeiro .cpg-badge.ab { background: #fdf0e6; color: #a5561f; }
+#tela-financeiro .cpg-badge.pg { background: #e9f8ee; color: #0a7a3b; }
+#tela-financeiro .cpg-venc { font-size: 13px; color: #55677a; white-space: nowrap; }
+#tela-financeiro .cpg-vals { text-align: right; white-space: nowrap; }
+#tela-financeiro .cpg-aberto { font-weight: 800; color: #c0392b; }
+#tela-financeiro .cpg-aberto.qui { color: #0a7a3b; }
+#tela-financeiro .cpg-vals small { display: block; color: #8a97a5; font-size: 11px; }
+#tela-financeiro .cpg-parcelas { border-top: 1px solid #eef2f7; background: #fafcff; overflow-x: auto; }
+#tela-financeiro .cpg-tab { width: 100%; border-collapse: collapse; }
+#tela-financeiro .cpg-tab th { padding: 6px 12px; text-align: left; font-size: 12px; color: #6b7688; }
+#tela-financeiro .cpg-tab td { padding: 6px 12px; border-top: 1px solid #eef2f7; font-size: 13px; color: #22303c; }
+#tela-financeiro .cpg-tab .col-num { text-align: right; }
+@media (max-width: 720px) { #tela-financeiro .cpg-head, #tela-financeiro .cpg-head.cpg-solo { grid-template-columns: 1fr auto; } #tela-financeiro .cpg-venc { grid-column: 1 / -1; } }
 .modal-erp .dia-tab-wrap { max-height: 60vh; overflow-y: auto; }
 .modal-erp .dia-tab-wrap table { width: 100%; border-collapse: collapse; }
 .modal-erp .dia-tab-wrap th { padding: 6px 8px; text-align: left; font-size: 12.5px; color: #6b7688; }
