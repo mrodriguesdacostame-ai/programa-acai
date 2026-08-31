@@ -2620,6 +2620,11 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 #tela-financeiro .fsa-btn:hover { background: #fff7ec; border-color: #c79b57; transform: translateY(-1px); }
 #tela-financeiro .fsa-btn.func { background: #eef4fb; border-color: #a9cef0; color: #14467c; }
 #tela-financeiro .fsa-btn.func:hover { background: #e2eefb; }
+.modal-erp .efp-vale-lista { background: #f3eefb; border: 1px solid #d5c3f2; border-radius: 10px; padding: 8px 12px; margin: 2px 0; }
+.modal-erp .efp-vale-tit { font-weight: 800; color: #5b2ea6; font-size: 13px; margin-bottom: 4px; }
+.modal-erp .efp-vale-item { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: #3a2a5a; padding: 3px 0; border-top: 1px solid #e6dbf7; }
+.modal-erp .efp-vale-item:first-of-type { border-top: none; }
+.modal-erp .efp-vale-item b { color: #5b2ea6; }
 #tela-financeiro .fsa-btn.vale { background: #f3eefb; border-color: #c9b6ef; color: #5b2ea6; }
 #tela-financeiro .fsa-btn.vale:hover { background: #e9dffb; }
 #tela-financeiro .fsa-btn.parc { background: #eafaf0; border-color: #a4d5b6; color: #0a7a3b; }

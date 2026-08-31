@@ -9226,7 +9226,7 @@ async function abrirPagamentoFuncionario() {
   let funcs = [], vd = {};
   try { funcs = await (await fetch('/api/funcionarios', { cache: 'no-store' })).json(); } catch {}
   try { vd = await (await fetch('/api/vales?pendentes=1', { cache: 'no-store' })).json(); } catch {}
-  const valesPorFunc = {}; ((vd && vd.vales) || []).forEach(v => { const k = (v.funcionario || '').trim().toLowerCase(); (valesPorFunc[k] || (valesPorFunc[k] = { total: 0, ids: [] })); valesPorFunc[k].total += +v.valor || 0; valesPorFunc[k].ids.push(v.id); });
+  const valesPorFunc = {}; ((vd && vd.vales) || []).forEach(v => { const k = (v.funcionario || '').trim().toLowerCase(); (valesPorFunc[k] || (valesPorFunc[k] = { total: 0, ids: [], itens: [] })); valesPorFunc[k].total += +v.valor || 0; valesPorFunc[k].ids.push(v.id); valesPorFunc[k].itens.push(v); });
   const ativos = (Array.isArray(funcs) ? funcs : []).filter(f => f.ativo !== 0 && f.ativo !== false);
   abrirErpModal(`<h3 class="erp-modal-tit">👤 Pagamento de funcionário</h3>
     <form id="erp-form-func" class="fin-form">
@@ -9234,6 +9234,7 @@ async function abrirPagamentoFuncionario() {
       <label id="efp-outro-wrap" style="display:none">Nome<input id="efp-outro" placeholder="nome do funcionário"></label>
       <div class="fin-frow"><label>Valor<input type="number" step="0.01" id="efp-valor" placeholder="0,00"></label><label>1º vencimento<input type="date" id="efp-venc"></label></div>
       <div class="fin-frow"><label>Repetir (vezes)<input type="number" min="1" step="1" id="efp-parcelas" value="1"></label><label>A cada<select id="efp-intervalo"><option value="mes" selected>Mês</option><option value="quinzena">Quinzena</option><option value="semana">Semana</option></select></label></div>
+      <div id="efp-vale-lista" class="efp-vale-lista" style="display:none"></div>
       <label class="op-mov-fluxo" id="efp-vale-wrap" style="display:none"><input type="checkbox" id="efp-descontar" checked> Descontar <b id="efp-vale-tot"></b> de vale(s) pendente(s)</label>
       <div class="fin-hint" id="efp-resumo"></div>
       <button type="submit" class="fin-btn-salvar">💾 Lançar em Contas a pagar</button></form>`);
@@ -9243,7 +9244,11 @@ async function abrirPagamentoFuncionario() {
   const outroWrap = $('efp-outro-wrap');
   const valeDoFunc = () => valesPorFunc[($('efp-func').value === '__outro' ? ($('efp-outro') || {}).value : $('efp-func').value || '').trim().toLowerCase()] || null;
   const syncOutro = () => { const o = $('efp-func').value === '__outro'; outroWrap.style.display = o ? '' : 'none'; if (o) $('efp-outro').focus();
-    const v = valeDoFunc(), w = $('efp-vale-wrap'); if (w) { if (v && v.total > 0) { w.style.display = ''; $('efp-vale-tot').textContent = fmt(v.total); } else w.style.display = 'none'; } };
+    const v = valeDoFunc(), w = $('efp-vale-wrap'), lst = $('efp-vale-lista');
+    if (v && v.total > 0) {
+      if (w) { w.style.display = ''; $('efp-vale-tot').textContent = fmt(v.total); }
+      if (lst) { lst.style.display = ''; lst.innerHTML = `<div class="efp-vale-tit">🤝 Vales que ${crmEsc($('efp-func').value === '__outro' ? $('efp-outro').value : $('efp-func').value)} pegou <b>(${v.itens.length} · ${fmt(v.total)})</b></div>` + v.itens.map(x => `<div class="efp-vale-item"><span>${erpFmtData(x.data)}${x.obs ? ' · ' + crmEsc(x.obs) : ''}</span><b>${fmt(x.valor)}</b></div>`).join(''); }
+    } else { if (w) w.style.display = 'none'; if (lst) { lst.style.display = 'none'; lst.innerHTML = ''; } } };
   syncOutro();
   const resumo = () => {
     const v = parseFloat($('efp-valor').value) || 0, n = Math.max(1, parseInt($('efp-parcelas').value) || 1);
