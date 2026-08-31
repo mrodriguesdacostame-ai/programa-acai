@@ -1743,6 +1743,7 @@ app.post('/api/caixa/troco', (req, res) => {
   const dataYmd = (d.data || ymdLocal(new Date(Date.now() + 864e5))).slice(0, 10);
   const movId = inserirMovimento({ data: dataYmd + 'T12:00:00', tipo: 'entrada', conta_id: contaCaixa, categoria_id: catFinId('Suprimento'),
     valor, descricao: 'Troco na gaveta (fundo) para o dia' + (d.obs ? ' · ' + d.obs : ''), origem: 'caixa', situacao: 'confirmado',
+    fora_fluxo: 1,   // fundo/troco é dinheiro da gaveta — SÓ fechamento; só entra no fluxo se selecionado
     referencia_tipo: 'caixa_suprimento', caixa_sessao_id: 0, responsavel: (req.usuario || {}).nome || '', criado_por: (req.usuario || {}).usuario || '' });
   manut.logAcao('troco/fundo na gaveta', 'caixa', { valor, data: dataYmd, por: (req.usuario || {}).usuario }, 'operacao');
   res.json({ ok: true, id: movId, valor, data: dataYmd });
@@ -3847,6 +3848,10 @@ try { db.exec('ALTER TABLE financeiro_movimentos ADD COLUMN fora_fluxo INTEGER D
 migrar('caixa_sangria_supr_so_gaveta', () => {
   db.prepare("UPDATE financeiro_movimentos SET fora_fluxo=1 WHERE referencia_tipo IN ('caixa_sangria','caixa_suprimento') AND COALESCE(fora_fluxo,0)=0").run();
 });
+// O endpoint do troco/fundo criava o suprimento sem fora_fluxo (ia pro fluxo). Corrige os existentes.
+migrar('troco_fundo_so_gaveta', () => {
+  db.prepare("UPDATE financeiro_movimentos SET fora_fluxo=1 WHERE referencia_tipo='caixa_suprimento' AND descricao LIKE 'Troco na gaveta%' AND COALESCE(fora_fluxo,0)=0").run();
+});
 
 // Seed inicial (só se vazio) — contas e categorias que a loja já usa.
 (function seedFinanceiro() {
@@ -4056,7 +4061,9 @@ app.delete('/api/financeiro/categorias/:id', (req, res) => {
 // Movimentos — lista com filtros
 app.get('/api/financeiro/movimentos', (req, res) => {
   const f = filtrosMovimentos(req.query);
-  res.json(db.prepare(`${SELECT_MOV} WHERE ${f.where} ORDER BY m.data DESC, m.id DESC LIMIT 1000`).all(...f.args));
+  // só-gaveta (fora_fluxo=1) NÃO aparece nas listas do financeiro (entradas/saídas/despesas) — só na gaveta
+  const ff = req.query.incluir_gaveta === '1' ? '' : ' AND COALESCE(m.fora_fluxo,0)=0';
+  res.json(db.prepare(`${SELECT_MOV} WHERE ${f.where}${ff} ORDER BY m.data DESC, m.id DESC LIMIT 1000`).all(...f.args));
 });
 // Fluxo de caixa — cronológico com saldo acumulado (só confirmado)
 app.get('/api/financeiro/fluxo', (req, res) => {
@@ -4138,7 +4145,7 @@ app.get('/api/financeiro/visao-geral', (req, res) => {
   const mi = new Date(); const mesIni = `${mi.getFullYear()}-${String(mi.getMonth() + 1).padStart(2, '0')}-01`;
   const sDia = db.prepare(`SELECT COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) ent, COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) sai FROM financeiro_movimentos WHERE situacao='confirmado' AND COALESCE(fora_fluxo,0)=0 AND ${dia('data')}`).get();
   const sMes = db.prepare(`SELECT COALESCE(SUM(CASE WHEN tipo='entrada' THEN valor ELSE 0 END),0) ent, COALESCE(SUM(CASE WHEN tipo='saida' THEN valor ELSE 0 END),0) sai FROM financeiro_movimentos WHERE situacao='confirmado' AND COALESCE(fora_fluxo,0)=0 AND date(data,'localtime') >= ?`).get(mesIni);
-  const ultimas = db.prepare(`${SELECT_MOV} WHERE m.situacao != 'estornado' ORDER BY m.data DESC, m.id DESC LIMIT 12`).all();
+  const ultimas = db.prepare(`${SELECT_MOV} WHERE m.situacao != 'estornado' AND COALESCE(m.fora_fluxo,0)=0 ORDER BY m.data DESC, m.id DESC LIMIT 12`).all();
   const pendentes = db.prepare(`${SELECT_MOV} WHERE m.situacao='pendente' ORDER BY m.data DESC LIMIT 30`).all();
   const contas = db.prepare('SELECT * FROM financeiro_contas WHERE ativo=1 ORDER BY nome').all().map(contaComSaldo);
   res.json({
@@ -5878,7 +5885,7 @@ function relatorioFinanceiro(tipo, fx) {
   }
   if (tipo === 'despesas' || tipo === 'receitas') {
     const t = tipo === 'despesas' ? 'saida' : 'entrada';
-    const rows = db.prepare(`SELECT COALESCE(cat.nome,'(sem categoria)') nome, SUM(m.valor) tot, COUNT(*) n FROM financeiro_movimentos m LEFT JOIN financeiro_categorias cat ON cat.id=m.categoria_id WHERE m.tipo=? AND m.situacao='confirmado'${wm.clause} GROUP BY m.categoria_id ORDER BY tot DESC`).all(t, ...wm.args);
+    const rows = db.prepare(`SELECT COALESCE(cat.nome,'(sem categoria)') nome, SUM(m.valor) tot, COUNT(*) n FROM financeiro_movimentos m LEFT JOIN financeiro_categorias cat ON cat.id=m.categoria_id WHERE m.tipo=? AND m.situacao='confirmado' AND COALESCE(m.fora_fluxo,0)=0${wm.clause} GROUP BY m.categoria_id ORDER BY tot DESC`).all(t, ...wm.args);
     return { titulo: (tipo === 'despesas' ? 'Despesas' : 'Receitas') + ' por categoria', colunas: ['Categoria', 'Total', 'Lançamentos'], linhas: rows.map(r => [r.nome, r2(r.tot), r.n]) };
   }
   if (tipo === 'fluxo') {
