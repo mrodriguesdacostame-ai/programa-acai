@@ -1751,9 +1751,11 @@ app.get('/api/balanco/historico', (req, res) => {
 // na conferência, sem exigir caixa aberto. Data default = amanhã.
 app.post('/api/caixa/troco', (req, res) => {
   const d = req.body || {}, valor = Math.round((+d.valor || 0) * 100) / 100;
-  if (valor <= 0) return res.status(400).json({ erro: 'Informe um valor maior que zero.' });
-  const contaCaixa = (db.prepare("SELECT id FROM financeiro_contas WHERE nome='Caixa'").get() || {}).id || null;
   const dataYmd = (d.data || ymdLocal(new Date(Date.now() + 864e5))).slice(0, 10);
+  // substituir: edição do fundo pela conferência — apaga o(s) fundo(s) do dia e regrava o novo valor.
+  if (d.substituir) db.prepare("DELETE FROM financeiro_movimentos WHERE referencia_tipo='caixa_suprimento' AND descricao LIKE 'Troco na gaveta%' AND date(data,'localtime')=?").run(dataYmd);
+  if (valor <= 0) { if (d.substituir) return res.json({ ok: true, id: null, valor: 0, data: dataYmd }); return res.status(400).json({ erro: 'Informe um valor maior que zero.' }); }
+  const contaCaixa = (db.prepare("SELECT id FROM financeiro_contas WHERE nome='Caixa'").get() || {}).id || null;
   const movId = inserirMovimento({ data: dataYmd + 'T12:00:00', tipo: 'entrada', conta_id: contaCaixa, categoria_id: catFinId('Suprimento'),
     valor, descricao: 'Troco na gaveta (fundo) para o dia' + (d.obs ? ' · ' + d.obs : ''), origem: 'caixa', situacao: 'confirmado',
     fora_fluxo: 1,   // fundo/troco é dinheiro da gaveta — SÓ fechamento; só entra no fluxo se selecionado

@@ -7643,17 +7643,17 @@ async function renderFinConferencia() {
       <div class="conf-head"><h2 class="cxd-tit">🧮 Fechamento / Conferência de caixa</h2>
         <span class="conf-sub">Siga a ordem: conte o <b>dinheiro da gaveta</b> (com as entradas e saídas), confira as <b>máquinas</b>, veja o <b>total</b> e <b>compare com as vendas</b>.</span></div>
       <div class="conf-periodo">
-        <label>De<input type="date" id="conf-de" value="${confPeriodo.de}"></label>
-        <label>Até<input type="date" id="conf-ate" value="${confPeriodo.ate}"></label>
-        ${ultima ? '<button class="crm-btn" id="conf-desde">↩️ Desde a última</button>' : ''}
+        <label>Dia<input type="date" id="conf-dia" value="${confPeriodo.de || hoje}"></label>
+        <button class="crm-btn" id="conf-hoje">📅 Hoje</button>
         <span class="conf-ultima">🕒 ${ultimaTxt}</span>
       </div>
       <div class="conf-grid">
         <div class="conf-lado">
           <div class="conf-passo"><span class="conf-passo-n">1</span> 💵 Dinheiro da gaveta</div>
           <div class="conf-fundo">
-            <div class="conf-fundo-info"><span>🪙 Troco/fundo da gaveta <small>(deixado com antecedência)</small></span><b id="conf-fundo-val">${fmt((confEsperado.dinheiroDetalhe || {}).fundo || 0)}</b></div>
-            <button class="crm-btn" id="conf-troco-btn">➕ Deixar / ajustar troco (adiantar p/ outro dia)</button>
+            <label class="conf-fundo-edit"><span>🪙 Troco/fundo da gaveta <small>(dinheiro deixado pro dia)</small></span>
+              <span class="conf-fundo-inpwrap">R$ <input type="number" step="0.01" min="0" id="conf-fundo-inp" class="conf-fundo-inp" value="${((confEsperado.dinheiroDetalhe || {}).fundo || 0).toFixed(2)}"></span></label>
+            <button class="crm-btn" id="conf-fundo-salvar">💾 salvar fundo</button>
           </div>
           <div class="conf-extra">
             <label class="conf-xrow conf-xrow-forte"><span>💵 Dinheiro contado na gaveta</span><input type="number" step="0.01" id="conf-dinheiro" value="${confValores.dinheiro}" placeholder="0,00"></label>
@@ -7690,17 +7690,23 @@ async function renderFinConferencia() {
 
   // período → só re-busca o esperado e recomputa (sem recriar os campos de data, p/ não perder o foco)
   const aplicarPeriodo = async () => {
-    confPeriodo = { de: $('conf-de').value, ate: $('conf-ate').value };
+    const dia = $('conf-dia').value || hoje;
+    confPeriodo = { de: dia, ate: dia };   // sempre 1 dia só
     try { await confBuscarEsperado(); } catch {}
     const orow = $('conf-outros-row'); if (orow) orow.style.display = (+confEsperado.outros || 0) > 0 ? '' : 'none';
-    const mv = $('conf-movimentos'); if (mv) { mv.innerHTML = confMovimentosHTML(); bindConfFluxo(); }  // entradas/saídas do novo período
-    const fv = $('conf-fundo-val'); if (fv) fv.textContent = fmt((confEsperado.dinheiroDetalhe || {}).fundo || 0);
+    const mv = $('conf-movimentos'); if (mv) { mv.innerHTML = confMovimentosHTML(); bindConfFluxo(); }  // entradas/saídas do dia
+    const fi = $('conf-fundo-inp'); if (fi) fi.value = ((confEsperado.dinheiroDetalhe || {}).fundo || 0).toFixed(2);
     confAtualizarComparacao();
   };
   bindConfFluxo();   // liga os botões "só gaveta ↔ no fluxo" no 1º render
-  ['conf-de', 'conf-ate'].forEach(id => $(id).addEventListener('change', aplicarPeriodo));
-  { const b = $('conf-desde'); if (b) b.addEventListener('click', () => { $('conf-de').value = (ultima && ultima.de) || hoje; $('conf-ate').value = hoje; aplicarPeriodo(); }); }
-  { const b = $('conf-troco-btn'); if (b) b.addEventListener('click', () => cxdAbrirTroco(renderFinConferencia)); }
+  { const b = $('conf-dia'); if (b) b.addEventListener('change', aplicarPeriodo); }
+  { const b = $('conf-hoje'); if (b) b.addEventListener('click', () => { $('conf-dia').value = hoje; aplicarPeriodo(); }); }
+  { const b = $('conf-fundo-salvar'); if (b) b.addEventListener('click', async () => {
+      const v = parseFloat(($('conf-fundo-inp').value || '0').replace(',', '.')) || 0;
+      const r = await (await fetch('/api/caixa/troco', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor: v, data: confPeriodo.de || hoje, substituir: true }) })).json();
+      if (r && r.erro) { toast('⚠ ' + r.erro); return; }
+      toast('💾 Fundo da gaveta salvo'); aplicarPeriodo();
+    }); }
   { const cc = $('conf-comparacao'); if (cc) cc.addEventListener('click', e => { if (e.target.closest('[data-ir-balanco]')) { balancoVoltarConferencia = true; finIr('balanco'); } }); }
   { const ht = $('conf-hist-toggle'); if (ht) ht.addEventListener('click', () => { const box = $('conf-hist'), fechado = box.style.display === 'none'; box.style.display = fechado ? '' : 'none'; ht.querySelector('.fin-av-seta').textContent = fechado ? '▴' : '▾'; if (fechado) confCarregarHistorico(); }); }
 
