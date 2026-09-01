@@ -2631,6 +2631,19 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .modal-erp .vcf-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; text-align: left; font-family: inherit; font-size: 14px; padding: 9px 12px; border: none; border-bottom: 1px solid #eef2f7; background: #fff; color: #1a2a3a; cursor: pointer; }
 .modal-erp .vcf-item:hover { background: #eef4fb; }
 .modal-erp .vcf-item b { white-space: nowrap; }
+/* Pagamento funcionário — tela 2 (confirmação) sobreposta */
+.modal-erp.erp-ci { position: relative; }
+.modal-erp .efp-confirm { position: absolute; inset: 0; background: rgba(255,255,255,.98); display: flex; align-items: center; justify-content: center; border-radius: 16px; z-index: 6; padding: 18px; }
+.modal-erp .efp-cf-card { width: 100%; max-width: 440px; }
+.modal-erp .efp-cf-tit { font-size: 18px; font-weight: 800; color: #14467c; text-align: center; margin-bottom: 14px; }
+.modal-erp .efp-cf-tab { width: 100%; border-collapse: collapse; font-size: 15px; color: #22303c; }
+.modal-erp .efp-cf-tab td { padding: 8px 6px; border-bottom: 1px solid #eef2f7; }
+.modal-erp .efp-cf-tab .col-num { text-align: right; white-space: nowrap; }
+.modal-erp .efp-cf-tab tr.neg td { color: #c0392b; }
+.modal-erp .efp-cf-tab tr.tot td { border-top: 2px solid #cfe0f0; border-bottom: none; font-size: 17px; padding-top: 10px; }
+.modal-erp .efp-cf-tab tr.tot b { color: #0a7a3b; font-size: 20px; }
+.modal-erp .efp-cf-acoes { display: flex; gap: 10px; margin-top: 20px; }
+.modal-erp .efp-cf-acoes .fin-btn-salvar { flex: 1; }
 #tela-financeiro .fsa-btn.vale { background: #f3eefb; border-color: #c9b6ef; color: #5b2ea6; }
 #tela-financeiro .fsa-btn.vale:hover { background: #e9dffb; }
 #tela-financeiro .fsa-btn.parc { background: #eafaf0; border-color: #a4d5b6; color: #0a7a3b; }
