@@ -9247,8 +9247,17 @@ async function abrirPagamentoFuncionario() {
   const outroWrap = $('efp-outro-wrap');
   const nomeAtual = () => ($('efp-func').value === '__outro' ? ($('efp-outro') || {}).value : $('efp-func').value || '').trim();
   const valeDoFunc = () => valesPorFunc[nomeAtual().toLowerCase()] || null;
-  // funcionário que também é cliente com fiado: acha pelo nome e pega o saldo devedor
-  const clienteDoFunc = () => { const n = nomeAtual().toLowerCase(); if (!n) return null; const c = (CLIENTES || []).find(x => (x.nome || '').trim().toLowerCase() === n); if (!c) return null; const s = saldoCliente(c); return s > 0.001 ? { cliente: c, saldo: Math.round(s * 100) / 100 } : null; };
+  // funcionário que também é cliente com fiado: casa pelo nome (exato → começa com → 1º nome) e pega o saldo devedor
+  const clienteDoFunc = () => {
+    const n = nomeAtual().trim().toLowerCase(); if (!n) return null;
+    const list = (CLIENTES || []), norm = x => (x.nome || '').trim().toLowerCase();
+    let c = list.find(x => norm(x) === n)
+      || list.find(x => norm(x).startsWith(n + ' ') || n.startsWith(norm(x) + ' '));
+    if (!c) { const first = n.split(' ')[0]; const cands = list.filter(x => norm(x).split(' ')[0] === first); c = cands.find(x => saldoCliente(x) > 0.001) || cands[0]; }
+    if (!c) return null;
+    const s = Math.round(saldoCliente(c) * 100) / 100;
+    return s > 0.001 ? { cliente: c, saldo: s } : null;
+  };
   const syncOutro = () => { const o = $('efp-func').value === '__outro'; outroWrap.style.display = o ? '' : 'none'; if (o) $('efp-outro').focus();
     const v = valeDoFunc(), w = $('efp-vale-wrap'), lst = $('efp-vale-lista');
     if (v && v.total > 0) {
@@ -9268,6 +9277,7 @@ async function abrirPagamentoFuncionario() {
     $('efp-resumo').innerHTML = t;
   };
   $('efp-func').addEventListener('change', () => { syncOutro(); resumo(); });
+  { const eo = $('efp-outro'); if (eo) eo.addEventListener('input', () => { syncOutro(); resumo(); }); }   // digitar "Outro" também atualiza vale/fiado
   ['efp-valor', 'efp-parcelas', 'efp-intervalo', 'efp-venc', 'efp-outro'].forEach(id => { const e = $(id); if (e) { e.addEventListener('input', resumo); e.addEventListener('change', resumo); } });
   resumo();
   $('erp-form-func').addEventListener('submit', async e => {
