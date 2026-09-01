@@ -7865,7 +7865,11 @@ async function renderFinBalanco() {
         <div id="bal-hist" style="display:none"></div>
       </div>
     </div>`;
-  const wireInputs = () => el.querySelectorAll('.bal-fis').forEach(i => i.addEventListener('input', () => { balancoValores[i.dataset.cod] = i.value; balancoAtualizarLinha(i.dataset.cod); }));
+  const wireInputs = () => el.querySelectorAll('.bal-fis').forEach(i => {
+    i.addEventListener('input', () => { balancoValores[i.dataset.cod] = i.value; balancoAtualizarLinha(i.dataset.cod); });
+    // regra do sistema: contagem de meio em meio (múltiplo de 0,5). Valida ao sair do campo.
+    i.addEventListener('change', () => { const v = parseFloat((i.value || '').replace(',', '.')); if (v > 0 && !qtdMeioValida(v)) { avisoGrande('QUANTIDADE NÃO CONFERE', 'Conte de meio em meio: 0,5 · 1 · 1,5 · 2… (não vale ' + i.value + ')'); bipErro(); i.value = ''; balancoValores[i.dataset.cod] = ''; balancoAtualizarLinha(i.dataset.cod); i.focus(); } });
+  });
   wireInputs();
   $('bal-busca').addEventListener('input', () => { balancoBusca = $('bal-busca').value; $('bal-tabela-wrap').innerHTML = balancoTabelaHTML(); wireInputs(); });
   $('bal-limpar').addEventListener('click', () => { balancoValores = {}; renderFinBalanco(); });
