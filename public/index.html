@@ -536,6 +536,7 @@
           <h3>🧴 Descartáveis</h3>
           <p class="prod-nota">Entrada de <strong>descartáveis</strong> (sacola, saco, luva, sabão, copo, colher...). Ao finalizar, o valor <strong>entra direto no fluxo de caixa como saída de descartáveis</strong>. <span style="opacity:.7">Não entra no custo das mercadorias.</span></p>
           <div class="campo"><label>Descrição *</label><input id="if-nome" required placeholder="Ex: Sacola, Saco, Luva, Sabão, Copo"></div>
+          <div class="if-mem" id="if-mem"></div>
           <div class="pf-row">
             <div class="campo"><label>Quantidade *</label><input type="number" id="if-qtd" step="0.01" min="0" required placeholder="Ex: 100"></div>
             <div class="campo"><label>Unidade</label>
@@ -548,7 +549,12 @@
           </div>
           <p class="pf-hint" id="if-unit-preview"></p>
           <div class="pf-acoes">
-            <button type="submit" class="btn-prod-salvar" id="if-finalizar">🏁 Finalizar — lançar no fluxo como saída</button>
+            <button type="submit" class="btn-prod-salvar" id="if-finalizar">➕ Adicionar à nota</button>
+          </div>
+          <div class="if-nota" id="if-nota" style="display:none">
+            <div class="if-nota-tit">🧾 Nota de descartáveis <span id="if-nota-tot"></span></div>
+            <div id="if-nota-itens"></div>
+            <button type="button" class="btn-prod-salvar if-nota-fin" id="if-finalizar-nota">🏁 Finalizar nota — lançar tudo no fluxo</button>
           </div>
         </form>
         <div class="prod-lista">

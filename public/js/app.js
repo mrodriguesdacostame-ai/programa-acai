@@ -5012,32 +5012,63 @@ $('pf-nome').addEventListener('keydown', e => {
   }
 });
 
-/* ── Insumos ── */
+/* ── Descartáveis: NOTA (vários itens de uma vez) + MEMÓRIA (reusa o que já foi lançado) ── */
+let notaDescartaveis = [];
+function descMem() { try { return JSON.parse(localStorage.getItem('acai_descartaveis_mem') || '{}'); } catch { return {}; } }
+function descMemSave(nome, unidade, valor) { const m = descMem(); m[nome.trim().toLowerCase()] = { nome: nome.trim(), unidade: unidade || 'un', valor: +valor || 0 }; try { localStorage.setItem('acai_descartaveis_mem', JSON.stringify(m)); } catch {} renderMemDescartaveis(); }
+function renderMemDescartaveis() {
+  const box = $('if-mem'); if (!box) return;
+  const itens = Object.values(descMem()).sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+  box.innerHTML = itens.length ? '<span class="if-mem-lbl">📌 salvos:</span>' + itens.map(x => `<button type="button" class="if-mem-chip" data-nome="${crmEsc(x.nome)}" data-un="${crmEsc(x.unidade || 'un')}" data-val="${x.valor || ''}">${crmEsc(x.nome)}${x.valor ? ` · ${fmt(x.valor)}` : ''}</button>`).join('') : '';
+  box.querySelectorAll('.if-mem-chip').forEach(b => b.addEventListener('click', () => {
+    $('if-nome').value = b.dataset.nome; if ($('if-unidade')) $('if-unidade').value = b.dataset.un || 'un';
+    if (b.dataset.val) $('if-custo').value = b.dataset.val;
+    atualizarBtnInsumo(); $('if-qtd').focus();
+  }));
+}
+function renderNotaDescartaveis() {
+  const wrap = $('if-nota'), lst = $('if-nota-itens'), tot = $('if-nota-tot'); if (!wrap) return;
+  if (!notaDescartaveis.length) { wrap.style.display = 'none'; lst.innerHTML = ''; return; }
+  wrap.style.display = '';
+  const total = notaDescartaveis.reduce((s, x) => s + (+x.custo || 0), 0);
+  tot.textContent = `(${notaDescartaveis.length} item(ns) · ${fmt(total)})`;
+  lst.innerHTML = notaDescartaveis.map((x, i) => `<div class="if-nota-item"><span>${crmEsc(x.nome)} · ${biNum(x.qtd)} ${crmEsc(x.unidade || 'un')}</span><b>${fmt(x.custo)}</b><button type="button" class="btn-mini-del" data-rmnota="${i}" title="remover">🗑</button></div>`).join('');
+  lst.querySelectorAll('[data-rmnota]').forEach(b => b.addEventListener('click', () => { notaDescartaveis.splice(+b.dataset.rmnota, 1); renderNotaDescartaveis(); }));
+}
 $('form-insumo').addEventListener('submit', e => {
   e.preventDefault();
-  const nome = $('if-nome').value.trim();
-  if (!nome) return;
-  const insumo = { nome, custo: +$('if-custo').value || 0, qtd: +$('if-qtd').value || 0, unidade: ($('if-unidade') && $('if-unidade').value) || 'un', hora: new Date().toISOString() };
-  insumos.push(insumo);
-  salvarInsumos();
-  // Fase 10/19: persiste no backend (agora com unidade; o backend cria saldo + movimento de entrada)
-  fetch('/api/insumos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: insumo.nome, custo_total: insumo.custo, qtd: insumo.qtd, unidade: insumo.unidade }) })
-    .then(r => r.json()).then(j => { if (j && j.id) { insumo._backendId = j.id; salvarInsumos(); } }).catch(() => {});
-  $('form-insumo').reset();
-  $('if-unit-preview').textContent = '';
-  atualizarBtnInsumo();
-  renderInsumos();
-  if ($('tela-financeiro') && $('tela-financeiro').classList.contains('ativa') && typeof finCarregarBase === 'function') { try { finCarregarBase(); } catch {} }
-  toast(`✅ Descartável lançado no fluxo (saída de ${fmt(insumo.custo)})`, 'sucesso');
+  const nome = $('if-nome').value.trim(), qtd = +$('if-qtd').value || 0, custo = +$('if-custo').value || 0;
+  if (!nome || !(qtd > 0) || !(custo > 0)) { toast('⚠ Preencha descrição, quantidade e valor'); return; }
+  const unidade = ($('if-unidade') && $('if-unidade').value) || 'un';
+  notaDescartaveis.push({ nome, qtd, custo, unidade });
+  descMemSave(nome, unidade, custo);   // fica na memória p/ próximas
+  $('if-nome').value = ''; $('if-qtd').value = ''; $('if-custo').value = '';
+  $('if-unit-preview').textContent = ''; atualizarBtnInsumo(); renderNotaDescartaveis();
+  $('if-nome').focus();   // pronto pro próximo item (teclado)
 });
-// preview do valor por unidade + habilita o botão Finalizar só quando qtd E valor estão preenchidos
+async function finalizarNotaDescartaveis() {
+  if (!notaDescartaveis.length) { toast('⚠ Adicione itens à nota primeiro'); return; }
+  const btn = $('if-finalizar-nota'); if (btn) btn.disabled = true;
+  let ok = 0;
+  for (const it of notaDescartaveis) {
+    try { const j = await (await fetch('/api/insumos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: it.nome, custo_total: it.custo, qtd: it.qtd, unidade: it.unidade }) })).json(); if (j && j.id) insumos.push({ nome: it.nome, custo: it.custo, qtd: it.qtd, unidade: it.unidade, _backendId: j.id, hora: new Date().toISOString() }); ok++; } catch {}
+  }
+  salvarInsumos();
+  const total = notaDescartaveis.reduce((s, x) => s + (+x.custo || 0), 0);
+  notaDescartaveis = []; renderNotaDescartaveis(); renderInsumos();
+  if (btn) btn.disabled = false;
+  if ($('tela-financeiro') && $('tela-financeiro').classList.contains('ativa') && typeof finCarregarBase === 'function') { try { finCarregarBase(); } catch {} }
+  toast(`✅ Nota lançada: ${ok} descartável(is) · saída de ${fmt(total)} no fluxo`, 'sucesso');
+}
+{ const b = $('if-finalizar-nota'); if (b) b.addEventListener('click', finalizarNotaDescartaveis); }
+// preview do valor por unidade + habilita o "Adicionar à nota" só com descrição+qtd+valor
 function atualizarBtnInsumo() {
   const q = +$('if-qtd').value || 0, c = +$('if-custo').value || 0;
-  $('if-unit-preview').textContent = (q > 0 && c > 0) ? `Valor por unidade: ${fmt(c / q)} · ao finalizar sai ${fmt(c)} do caixa` : '';
+  $('if-unit-preview').textContent = (q > 0 && c > 0) ? `Valor por unidade: ${fmt(c / q)}` : '';
   const b = $('if-finalizar'); if (b) b.disabled = !(q > 0 && c > 0 && ($('if-nome').value || '').trim());
 }
 ['if-custo', 'if-qtd', 'if-nome'].forEach(id => { const e = $(id); if (e) e.addEventListener('input', atualizarBtnInsumo); });
-atualizarBtnInsumo();
+atualizarBtnInsumo(); renderMemDescartaveis();
 function excluirInsumo(i) {
   const insumo = insumos[i];
   insumos.splice(i, 1); salvarInsumos();

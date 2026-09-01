@@ -2644,6 +2644,19 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .modal-erp .efp-cf-tab tr.tot b { color: #0a7a3b; font-size: 20px; }
 .modal-erp .efp-cf-acoes { display: flex; gap: 10px; margin-top: 20px; }
 .modal-erp .efp-cf-acoes .fin-btn-salvar { flex: 1; }
+/* Descartáveis — memória (chips) + nota (lista) */
+.if-mem { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: -4px 0 8px; }
+.if-mem-lbl { font-size: 12px; font-weight: 700; color: rgba(15,47,77,.55); }
+.if-mem-chip { font-family: inherit; font-size: 12.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; border: 1.5px solid #c9b6ef; background: #f3eefb; color: #5b2ea6; cursor: pointer; }
+.if-mem-chip:hover { background: #e9dffb; }
+.if-nota { margin-top: 12px; background: #f4f9ff; border: 1.5px solid #bcd7f5; border-radius: 12px; padding: 12px 14px; }
+.if-nota-tit { font-weight: 800; color: #14467c; margin-bottom: 8px; }
+.if-nota-tit span { color: #0a7a3b; font-weight: 700; }
+.if-nota-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid #e2edf8; }
+.if-nota-item:first-child { border-top: none; }
+.if-nota-item span { flex: 1; color: #22303c; }
+.if-nota-item b { color: #14467c; white-space: nowrap; }
+.if-nota-fin { margin-top: 10px; width: 100%; }
 #tela-financeiro .fsa-btn.vale { background: #f3eefb; border-color: #c9b6ef; color: #5b2ea6; }
 #tela-financeiro .fsa-btn.vale:hover { background: #e9dffb; }
 #tela-financeiro .fsa-btn.parc { background: #eafaf0; border-color: #a4d5b6; color: #0a7a3b; }
