@@ -6890,11 +6890,12 @@ async function admCarregarFuncionarios() {
   const tbody = $('adm-funcionarios-tbody'); if (!tbody) return;
   try {
     const lista = await (await fetch('/api/funcionarios', { cache: 'no-store' })).json();
-    if (!Array.isArray(lista) || !lista.length) { tbody.innerHTML = '<tr><td colspan="3" class="adm-vazio">Nenhum funcionário cadastrado ainda.</td></tr>'; return; }
+    if (!Array.isArray(lista) || !lista.length) { tbody.innerHTML = '<tr><td colspan="4" class="adm-vazio">Nenhum funcionário cadastrado ainda.</td></tr>'; return; }
     tbody.innerHTML = lista.map(f => `
       <tr data-id="${f.id}">
         <td>${escapar(f.nome)}</td>
         <td><span class="adm-tag ${f.ativo ? 'on' : 'off'}">${f.ativo ? 'ativo' : 'inativo'}</span></td>
+        <td>${f.cliente_id ? `📒 ${escapar(f.cliente_nome || '')}${f.fiado > 0 ? ` <b style="color:#c0392b">deve ${fmt(f.fiado)}</b>` : ''} <button class="adm-btn mini" data-facao="vincular" data-id="${f.id}" data-nome="${escapar(f.nome)}">trocar</button>` : `<button class="adm-btn mini" data-facao="vincular" data-id="${f.id}" data-nome="${escapar(f.nome)}">🔗 vincular conta</button>`}</td>
         <td class="adm-acoes-td">
           <button class="adm-btn mini ${f.ativo ? 'perigo' : ''}" data-facao="ativo" data-id="${f.id}" data-ativo="${f.ativo ? 1 : 0}">${f.ativo ? '⛔ Desativar' : '✔ Ativar'}</button>
           <button class="adm-btn mini perigo" data-facao="excluir" data-id="${f.id}" title="Remover da lista">🗑</button>
@@ -6923,8 +6924,32 @@ async function admCarregarFuncionarios() {
   } else if (btn.dataset.facao === 'excluir') {
     if (!confirm('Remover este funcionário da lista?')) return;
     try { await fetch('/api/funcionarios/' + id, { method: 'DELETE' }); admCarregarFuncionarios(); } catch {}
+  } else if (btn.dataset.facao === 'vincular') {
+    abrirVincularClienteFunc(+id, btn.dataset.nome || '');
   }
 }); }
+// Vincula um funcionário a uma CONTA de cliente (fiado) — assim o saldo dele aparece no pagamento.
+async function abrirVincularClienteFunc(funcId, funcNome) {
+  try { await carregarClientes(); } catch {}
+  const render = (filtro) => {
+    const q = (filtro || '').trim().toLowerCase();
+    const lista = (CLIENTES || []).filter(c => !q || (c.nome || '').toLowerCase().includes(q)).slice(0, 200);
+    return lista.map(c => { const s = Math.round(saldoCliente(c) * 100) / 100; return `<button type="button" class="vcf-item" data-cid="${c.id}"><span>${crmEsc(c.nome)}</span>${s > 0.001 ? `<b class="fin-neg">deve ${fmt(s)}</b>` : '<small style="opacity:.6">sem fiado</small>'}</button>`; }).join('') || '<div class="ac-vazio">Nenhum cliente.</div>';
+  };
+  abrirErpModal(`<h3 class="erp-modal-tit">🔗 Vincular conta de ${crmEsc(funcNome)}</h3>
+    <div class="vcf">
+      <p class="fin-hint">Escolha o cliente que é este funcionário. O saldo devedor (fiado) dele vai aparecer ao pagar.</p>
+      <input id="vcf-busca" class="rcc-forma-val" placeholder="🔎 buscar cliente…" autocomplete="off" style="width:100%">
+      <div class="vcf-lista" id="vcf-lista">${render('')}</div>
+      <button type="button" class="ds-btn" id="vcf-desvincular">✕ Desvincular</button>
+    </div>`);
+  $('modal-erp-box').classList.add('erp-ci');
+  const salvar = async (cid) => { const r = await (await fetch('/api/funcionarios/' + funcId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cliente_id: cid }) })).json(); if (r && r.erro) { toast('⚠ ' + r.erro); return; } toast(cid ? '🔗 Conta vinculada' : '✕ Desvinculado', 'sucesso'); fecharErpModal(); admCarregarFuncionarios(); };
+  $('vcf-busca').addEventListener('input', () => { $('vcf-lista').innerHTML = render($('vcf-busca').value); });
+  $('vcf-lista').addEventListener('click', e => { const b = e.target.closest('[data-cid]'); if (b) salvar(+b.dataset.cid); });
+  $('vcf-desvincular').addEventListener('click', () => salvar(null));
+  setTimeout(() => $('vcf-busca').focus(), 50);
+}
 
 /* ── Aba Segurança / Logs ── */
 async function admCarregarLogs() {
@@ -9228,6 +9253,7 @@ async function abrirPagamentoFuncionario() {
   try { vd = await (await fetch('/api/vales?pendentes=1', { cache: 'no-store' })).json(); } catch {}
   try { await carregarClientes(); } catch {}   // pra puxar o saldo devedor (fiado) do funcionário que também é cliente
   const valesPorFunc = {}; ((vd && vd.vales) || []).forEach(v => { const k = (v.funcionario || '').trim().toLowerCase(); (valesPorFunc[k] || (valesPorFunc[k] = { total: 0, ids: [], itens: [] })); valesPorFunc[k].total += +v.valor || 0; valesPorFunc[k].ids.push(v.id); valesPorFunc[k].itens.push(v); });
+  const funcVinc = {}; (Array.isArray(funcs) ? funcs : []).forEach(f => { if (f.cliente_id) funcVinc[(f.nome || '').trim().toLowerCase()] = f.cliente_id; });   // vínculo fixo funcionário→cliente
   const ativos = (Array.isArray(funcs) ? funcs : []).filter(f => f.ativo !== 0 && f.ativo !== false);
   abrirErpModal(`<h3 class="erp-modal-tit">👤 Pagamento de funcionário</h3>
     <form id="erp-form-func" class="fin-form">
@@ -9251,8 +9277,8 @@ async function abrirPagamentoFuncionario() {
   const clienteDoFunc = () => {
     const n = nomeAtual().trim().toLowerCase(); if (!n) return null;
     const list = (CLIENTES || []), norm = x => (x.nome || '').trim().toLowerCase();
-    let c = list.find(x => norm(x) === n)
-      || list.find(x => norm(x).startsWith(n + ' ') || n.startsWith(norm(x) + ' '));
+    let c = funcVinc[n] ? list.find(x => x.id === funcVinc[n]) : null;   // 1º: vínculo fixo
+    if (!c) c = list.find(x => norm(x) === n) || list.find(x => norm(x).startsWith(n + ' ') || n.startsWith(norm(x) + ' '));
     if (!c) { const first = n.split(' ')[0]; const cands = list.filter(x => norm(x).split(' ')[0] === first); c = cands.find(x => saldoCliente(x) > 0.001) || cands[0]; }
     if (!c) return null;
     const s = Math.round(saldoCliente(c) * 100) / 100;

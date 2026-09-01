@@ -3478,8 +3478,12 @@ app.get('/api/movimentacoes/funcionarios', (req, res) => {
 });
 // ── CADASTRO de FUNCIONÁRIOS (quem pega consumo interno) — não precisa ser usuário do sistema ──
 db.exec(`CREATE TABLE IF NOT EXISTS funcionarios (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT NOT NULL, ativo INTEGER DEFAULT 1, criado_em TEXT)`);
+try { db.exec('ALTER TABLE funcionarios ADD COLUMN cliente_id INTEGER'); } catch {}   // vínculo fixo com a conta (cliente) do fiado
 app.get('/api/funcionarios', (req, res) => {
-  res.json(db.prepare('SELECT id,nome,ativo FROM funcionarios ORDER BY nome').all().map(f => ({ id: f.id, nome: f.nome, ativo: !!f.ativo })));
+  res.json(db.prepare('SELECT id,nome,ativo,cliente_id FROM funcionarios ORDER BY nome').all().map(f => {
+    const cli = f.cliente_id ? db.prepare('SELECT id,nome FROM clientes WHERE id=?').get(f.cliente_id) : null;
+    return { id: f.id, nome: f.nome, ativo: !!f.ativo, cliente_id: cli ? cli.id : null, cliente_nome: cli ? cli.nome : null, fiado: cli ? r2(saldoDoClienteDb(cli.id)) : 0 };
+  }));
 });
 app.post('/api/funcionarios', (req, res) => {
   const nome = ((req.body || {}).nome || '').trim();
@@ -3495,8 +3499,9 @@ app.put('/api/funcionarios/:id', (req, res) => {
   if (!f) return res.status(404).json({ erro: 'Funcionário não encontrado.' });
   const nome = d.nome != null ? String(d.nome).trim() : f.nome;
   const ativo = d.ativo != null ? (d.ativo ? 1 : 0) : f.ativo;
-  db.prepare('UPDATE funcionarios SET nome=?, ativo=? WHERE id=?').run(nome || f.nome, ativo, f.id);
-  res.json({ id: f.id, nome: nome || f.nome, ativo: !!ativo });
+  const clienteId = d.cliente_id !== undefined ? (+d.cliente_id || null) : f.cliente_id;
+  db.prepare('UPDATE funcionarios SET nome=?, ativo=?, cliente_id=? WHERE id=?').run(nome || f.nome, ativo, clienteId, f.id);
+  res.json({ id: f.id, nome: nome || f.nome, ativo: !!ativo, cliente_id: clienteId });
 });
 app.delete('/api/funcionarios/:id', (req, res) => {
   db.prepare('DELETE FROM funcionarios WHERE id=?').run(+req.params.id);
