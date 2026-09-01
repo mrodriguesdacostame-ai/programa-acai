@@ -9226,6 +9226,7 @@ async function abrirPagamentoFuncionario() {
   let funcs = [], vd = {};
   try { funcs = await (await fetch('/api/funcionarios', { cache: 'no-store' })).json(); } catch {}
   try { vd = await (await fetch('/api/vales?pendentes=1', { cache: 'no-store' })).json(); } catch {}
+  try { await carregarClientes(); } catch {}   // pra puxar o saldo devedor (fiado) do funcionário que também é cliente
   const valesPorFunc = {}; ((vd && vd.vales) || []).forEach(v => { const k = (v.funcionario || '').trim().toLowerCase(); (valesPorFunc[k] || (valesPorFunc[k] = { total: 0, ids: [], itens: [] })); valesPorFunc[k].total += +v.valor || 0; valesPorFunc[k].ids.push(v.id); valesPorFunc[k].itens.push(v); });
   const ativos = (Array.isArray(funcs) ? funcs : []).filter(f => f.ativo !== 0 && f.ativo !== false);
   abrirErpModal(`<h3 class="erp-modal-tit">👤 Pagamento de funcionário</h3>
@@ -9236,19 +9237,28 @@ async function abrirPagamentoFuncionario() {
       <div class="fin-frow"><label>Repetir (vezes)<input type="number" min="1" step="1" id="efp-parcelas" value="1"></label><label>A cada<select id="efp-intervalo"><option value="mes" selected>Mês</option><option value="quinzena">Quinzena</option><option value="semana">Semana</option></select></label></div>
       <div id="efp-vale-lista" class="efp-vale-lista" style="display:none"></div>
       <label class="op-mov-fluxo" id="efp-vale-wrap" style="display:none"><input type="checkbox" id="efp-descontar" checked> Descontar <b id="efp-vale-tot"></b> de vale(s) pendente(s)</label>
+      <div id="efp-fiado-box" class="efp-fiado-box" style="display:none"></div>
+      <label class="op-mov-fluxo" id="efp-fiado-wrap" style="display:none"><input type="checkbox" id="efp-desc-fiado" checked> Descontar e <b>quitar a conta (fiado)</b> de <b id="efp-fiado-tot"></b></label>
       <div class="fin-hint" id="efp-resumo"></div>
       <button type="submit" class="fin-btn-salvar">💾 Lançar em Contas a pagar</button></form>`);
   $('modal-erp-box').classList.add('erp-ci');
   $('efp-venc').value = new Date().toISOString().slice(0, 10);
   if (!ativos.length) $('efp-func').value = '__outro';
   const outroWrap = $('efp-outro-wrap');
-  const valeDoFunc = () => valesPorFunc[($('efp-func').value === '__outro' ? ($('efp-outro') || {}).value : $('efp-func').value || '').trim().toLowerCase()] || null;
+  const nomeAtual = () => ($('efp-func').value === '__outro' ? ($('efp-outro') || {}).value : $('efp-func').value || '').trim();
+  const valeDoFunc = () => valesPorFunc[nomeAtual().toLowerCase()] || null;
+  // funcionário que também é cliente com fiado: acha pelo nome e pega o saldo devedor
+  const clienteDoFunc = () => { const n = nomeAtual().toLowerCase(); if (!n) return null; const c = (CLIENTES || []).find(x => (x.nome || '').trim().toLowerCase() === n); if (!c) return null; const s = saldoCliente(c); return s > 0.001 ? { cliente: c, saldo: Math.round(s * 100) / 100 } : null; };
   const syncOutro = () => { const o = $('efp-func').value === '__outro'; outroWrap.style.display = o ? '' : 'none'; if (o) $('efp-outro').focus();
     const v = valeDoFunc(), w = $('efp-vale-wrap'), lst = $('efp-vale-lista');
     if (v && v.total > 0) {
       if (w) { w.style.display = ''; $('efp-vale-tot').textContent = fmt(v.total); }
-      if (lst) { lst.style.display = ''; lst.innerHTML = `<div class="efp-vale-tit">🤝 Vales que ${crmEsc($('efp-func').value === '__outro' ? $('efp-outro').value : $('efp-func').value)} pegou <b>(${v.itens.length} · ${fmt(v.total)})</b></div>` + v.itens.map(x => `<div class="efp-vale-item"><span>${erpFmtData(x.data)}${x.obs ? ' · ' + crmEsc(x.obs) : ''}</span><b>${fmt(x.valor)}</b></div>`).join(''); }
-    } else { if (w) w.style.display = 'none'; if (lst) { lst.style.display = 'none'; lst.innerHTML = ''; } } };
+      if (lst) { lst.style.display = ''; lst.innerHTML = `<div class="efp-vale-tit">🤝 Vales que ${crmEsc(nomeAtual())} pegou <b>(${v.itens.length} · ${fmt(v.total)})</b></div>` + v.itens.map(x => `<div class="efp-vale-item"><span>${erpFmtData(x.data)}${x.obs ? ' · ' + crmEsc(x.obs) : ''}</span><b>${fmt(x.valor)}</b></div>`).join(''); }
+    } else { if (w) w.style.display = 'none'; if (lst) { lst.style.display = 'none'; lst.innerHTML = ''; } }
+    // fiado (conta do cliente)
+    const f = clienteDoFunc(), fw = $('efp-fiado-wrap'), fb = $('efp-fiado-box');
+    if (f) { if (fw) { fw.style.display = ''; $('efp-fiado-tot').textContent = fmt(f.saldo); } if (fb) { fb.style.display = ''; fb.innerHTML = `📒 <b>Conta do cliente</b> — ${crmEsc(f.cliente.nome)} deve <b>${fmt(f.saldo)}</b> de fiado.`; } }
+    else { if (fw) fw.style.display = 'none'; if (fb) { fb.style.display = 'none'; fb.innerHTML = ''; } } };
   syncOutro();
   const resumo = () => {
     const v = parseFloat($('efp-valor').value) || 0, n = Math.max(1, parseInt($('efp-parcelas').value) || 1);
@@ -9270,16 +9280,22 @@ async function abrirPagamentoFuncionario() {
     const vinfo = valeDoFunc();
     const descontar = !!(vinfo && vinfo.total > 0 && $('efp-vale-wrap') && $('efp-vale-wrap').style.display !== 'none' && $('efp-descontar') && $('efp-descontar').checked);
     const valeTot = descontar ? Math.min(vinfo.total, valor) : 0;
+    // desconto do fiado (conta do cliente): abate e depois dá baixa (sem gerar entrada nova no caixa)
+    const finfo = clienteDoFunc();
+    const descFiado = !!(finfo && $('efp-fiado-wrap') && $('efp-fiado-wrap').style.display !== 'none' && $('efp-desc-fiado') && $('efp-desc-fiado').checked);
+    const fiadoTot = descFiado ? Math.min(finfo.saldo, Math.round((valor - valeTot) * 100) / 100) : 0;   // não passa do que sobra
     let criadas = 0, erros = 0;
     for (let i = 0; i < n; i++) {
-      const vParc = i === 0 ? Math.round((valor - valeTot) * 100) / 100 : valor;
-      const desc = `👤 Pagamento — ${nome}${n > 1 ? ` (${i + 1}/${n})` : ''}${i === 0 && valeTot > 0 ? ` (− vale ${fmt(valeTot)})` : ''}`;
+      const vParc = i === 0 ? Math.round((valor - valeTot - fiadoTot) * 100) / 100 : valor;
+      const extra = i === 0 ? [valeTot > 0 ? `− vale ${fmt(valeTot)}` : '', fiadoTot > 0 ? `− fiado ${fmt(fiadoTot)}` : ''].filter(Boolean).join(' ') : '';
+      const desc = `👤 Pagamento — ${nome}${n > 1 ? ` (${i + 1}/${n})` : ''}${extra ? ` (${extra})` : ''}`;
       const body = { descricao: desc, fornecedor_id: null, valor_total: vParc, data_vencimento: cpAddIntervalo(base, it, i) };
       const r = await (await fetch('/api/erp/contas-pagar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
       if (r && r.erro) erros++; else criadas++;
     }
     if (descontar) { for (const vid of vinfo.ids) { try { await fetch('/api/vales/' + vid + '/descontar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); } catch {} } }
-    if (criadas) toast(`✅ ${criadas > 1 ? criadas + ' pagamentos lançados' : 'Pagamento lançado'}${valeTot > 0 ? ` (− ${fmt(valeTot)} de vale)` : ''}${erros ? ` (${erros} falharam)` : ''}`);
+    if (fiadoTot > 0) { try { await fetch('/api/clientes/' + finfo.cliente.id + '/lancamentos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tipo: 'pagamento', valor: fiadoTot, descricao: 'Descontado do salário', sem_financeiro: true, referencia: 'salario' }) }); await carregarClientes(); } catch {} }
+    if (criadas) toast(`✅ ${criadas > 1 ? criadas + ' pagamentos lançados' : 'Pagamento lançado'}${valeTot > 0 ? ` · −${fmt(valeTot)} vale` : ''}${fiadoTot > 0 ? ` · −${fmt(fiadoTot)} fiado (conta quitada)` : ''}${erros ? ` (${erros} falharam)` : ''}`);
     else toast('⚠ Não foi possível lançar');
     fecharErpModal(); if (finSecao === 'contas_pagar') renderFinContasPagar();
   });

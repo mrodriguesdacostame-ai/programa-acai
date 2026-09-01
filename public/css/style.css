@@ -2625,6 +2625,8 @@ button.crm-compra:hover { background: rgba(30, 136, 200, 0.18); border-color: rg
 .modal-erp .efp-vale-item { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: #3a2a5a; padding: 3px 0; border-top: 1px solid #e6dbf7; }
 .modal-erp .efp-vale-item:first-of-type { border-top: none; }
 .modal-erp .efp-vale-item b { color: #5b2ea6; }
+.modal-erp .efp-fiado-box { background: #fff4e6; border: 1px solid #f0cf9e; border-radius: 10px; padding: 8px 12px; margin: 2px 0; font-size: 13px; color: #7a4a12; }
+.modal-erp .efp-fiado-box b { color: #a5561f; }
 #tela-financeiro .fsa-btn.vale { background: #f3eefb; border-color: #c9b6ef; color: #5b2ea6; }
 #tela-financeiro .fsa-btn.vale:hover { background: #e9dffb; }
 #tela-financeiro .fsa-btn.parc { background: #eafaf0; border-color: #a4d5b6; color: #0a7a3b; }

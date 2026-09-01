@@ -2630,7 +2630,9 @@ app.post('/api/clientes/:id/lancamentos', (req, res) => {
     const info = db.prepare('INSERT INTO clientes_extrato (cliente_id, tipo, valor, descricao, formas, referencia, vencimento, criado_em) VALUES (?,?,?,?,?,?,?,?)')
       .run(id, d.tipo, +d.valor, d.descricao || d.desc || '', formas, d.referencia || '', venc, new Date().toISOString());
     const l = db.prepare('SELECT * FROM clientes_extrato WHERE id = ?').get(info.lastInsertRowid);
-    syncFin(sincronizarFinanceiroFiado, info.lastInsertRowid); // Fase 25: recebimento de fiado vira entrada no financeiro
+    // sem_financeiro: baixa que NÃO gera entrada no caixa (ex.: descontado do salário — o dinheiro já
+    // foi abatido no pagamento do funcionário, não pode contar de novo como recebimento).
+    if (!d.sem_financeiro) syncFin(sincronizarFinanceiroFiado, info.lastInsertRowid); // Fase 25: recebimento de fiado vira entrada no financeiro
     return { lancamento: extratoParaFront(l), saldo: saldoDoClienteDb(id) };
   });
   res.json(resultado);
