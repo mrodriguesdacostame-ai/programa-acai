@@ -1596,7 +1596,7 @@ function conferenciaMovimentos(de, ate) {
   const per = pc.length ? ' AND ' + pc.join(' AND ') : '';
   const rows = db.prepare(`SELECT id, data, tipo, valor, descricao, referencia_tipo, fora_fluxo
     FROM financeiro_movimentos
-    WHERE situacao='confirmado' AND (referencia_tipo IS NULL OR referencia_tipo <> 'venda')${per}
+    WHERE situacao='confirmado' AND (referencia_tipo IS NULL OR referencia_tipo NOT IN ('venda','compra_acai')) AND COALESCE(origem,'') <> 'compra_acai'${per}
     ORDER BY data, id`).all(...pa);
   const ROTULO = { caixa_suprimento: 'Suprimento (entrada de caixa)', caixa_sangria: 'Sangria (retirada de caixa)', anotacao: 'Recebimento anotado', extrato: 'Recebimento de fiado' };
   const map = r => ({ id: r.id, data: r.data, valor: r2(r.valor), descricao: r.descricao || ROTULO[r.referencia_tipo] || (r.tipo === 'entrada' ? 'Entrada' : 'Saída'), ref: r.referencia_tipo || '',

@@ -1,6 +1,6 @@
 {
   "name": "programa-acai",
-  "version": "1.0.153",
+  "version": "1.0.154",
   "description": "Sistema de Vendas - AÃ§aÃ­",
   "main": "server.js",
   "scripts": {
