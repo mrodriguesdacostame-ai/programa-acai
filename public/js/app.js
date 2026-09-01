@@ -5068,7 +5068,7 @@ function atualizarBtnInsumo() {
   const b = $('if-finalizar'); if (b) b.disabled = !(q > 0 && c > 0 && ($('if-nome').value || '').trim());
 }
 ['if-custo', 'if-qtd', 'if-nome'].forEach(id => { const e = $(id); if (e) e.addEventListener('input', atualizarBtnInsumo); });
-atualizarBtnInsumo(); renderMemDescartaveis();
+atualizarBtnInsumo();   // renderMemDescartaveis() é chamado no renderInsumos (runtime) — no topo daria TDZ com crmEsc
 function excluirInsumo(i) {
   const insumo = insumos[i];
   insumos.splice(i, 1); salvarInsumos();
@@ -5076,6 +5076,7 @@ function excluirInsumo(i) {
   renderInsumos(); renderProdutos();
 }
 function renderInsumos() {
+  renderNotaDescartaveis(); renderMemDescartaveis();   // nota + chips salvos (aqui é runtime; crmEsc já existe)
   const total = insumos.reduce((s, i) => s + (+i.custo || 0), 0);
   $('insumo-resumo').innerHTML = `Total em descartáveis: <strong>${fmt(total)}</strong> <span style="opacity:.65">— cada entrada vira saída no fluxo de caixa (não entra no custo das mercadorias)</span>`;
   $('insumo-tbody').innerHTML = insumos.map((i, idx) => {
@@ -8787,7 +8788,18 @@ const erpStatusChip = s => `<span class="erp-status erp-status-${s}">${({ aberto
 const erpGet = async (rota) => (await fetch('/api/erp/' + rota, { cache: 'no-store' })).json();
 const erpOptFornecedores = (sel) => erpFornecedoresCache.filter(f => f.ativo).map(f => `<option value="${f.id}" ${f.id == sel ? 'selected' : ''}>${crmEsc(f.nome)}</option>`).join('');
 let erpOnClose = null;   // callback disparado ao fechar o modal (ESC, X, clique fora, confirmar)
-function abrirErpModal(html) { erpOnClose = null; const b = $('modal-erp-box'); b.className = 'modal-erp'; b.innerHTML = html; $('overlay-erp').classList.add('aberto'); }
+// Todo campo de DATA de lançamento começa em HOJE (editável). Pula os filtros de período (De/Até).
+function preencherDatasHoje(root) {
+  const hoje = new Date().toISOString().slice(0, 10);
+  (root || document).querySelectorAll('input[type=date]').forEach(inp => {
+    if (inp.value) return;                                  // já tem valor → respeita
+    const id = (inp.id || '').toLowerCase(), cls = (inp.className || '').toLowerCase(), tit = (inp.title || '').toLowerCase();
+    if (/(^|[-_])(de|ate|ini|fim)$/.test(id) || /f-(de|ate)/.test(id)) return;   // filtro de período: deixa vazio
+    if (/valid/.test(tit) || /val\b/.test(cls) || /prazo|promessa/.test(id)) return;   // validade/prazo/promessa: não força hoje
+    inp.value = hoje;
+  });
+}
+function abrirErpModal(html) { erpOnClose = null; const b = $('modal-erp-box'); b.className = 'modal-erp'; b.innerHTML = html; $('overlay-erp').classList.add('aberto'); preencherDatasHoje(b); }
 function fecharErpModal() {
   $('overlay-erp').classList.remove('aberto');
   const cb = erpOnClose; erpOnClose = null;   // limpa antes (evita reentrância)
